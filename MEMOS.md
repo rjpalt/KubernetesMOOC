@@ -7,7 +7,7 @@
 `k3d cluster create -a 2'`
 
 ```bash
-kubectl create deployment hashgenerator-dep --image=<image-name> deployment.apps/hashgenerator-dep created
+kubectl create deployment hashgenerator-dep --image=<image-name>
 ```
 
 - `kubectl create deployment`: This tells Kubernetes you want to create a new Deployment object.
@@ -25,6 +25,13 @@ kubectl create deployment hashgenerator-dep --image=<image-name> deployment.apps
 4. The control plane's scheduler assigned this Pod to one of your available agent nodes (k3d-k3s-default-agent-0 or k3d-k3s-default-agent-1).
 
 5. The agent node then pulled the jakousa/dwk-app1 image and started the container inside the Pod.
+
+**Deployment of local image**
+
+```bash
+kubectl create deployment hashgenerator-dep --image=log-output-app
+``` 
+image import
 
 ## Checking resources ##
 
