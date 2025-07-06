@@ -21,9 +21,18 @@ RUN uv sync --frozen --no-dev
 COPY main.py .
 
 # Create non-root user for security
+
+## Create a new system group and a user appuser (-r for system account)
 RUN groupadd -r appuser && useradd -r -g appuser -m appuser
+
+## Change /app folder ownership to appuser instead of root
+## App can now write to /app without root privileges
 RUN chown -R appuser:appuser /app
+
+## Create a cache directory for appuser (uv requires it for dependency installation)
 RUN mkdir -p /home/appuser/.cache && chown -R appuser:appuser /home/appuser/.cache
+
+# Run everything as appuser from this point
 USER appuser
 
 # Expose port (can be overridden by PORT env var)
