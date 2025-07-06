@@ -1,0 +1,46 @@
+# Ignore environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignore Docker volumes
+docker-volumes/
+
+# Ignore Kubernetes secrets (local development)
+k8s/secrets/local/
+
+# Ignores specification files
+course_project/PROJECT_SPECIFICATION.md
