@@ -24,4 +24,28 @@
     - Command to apply manifests: `kubectl apply -f manifests/deployment.yaml`
         - *Note that running Kubernetes cluster is expected*
     - Command for port forwarding: `kubectl port-forward todo-app-server-<hash> 3003:8000`
- 
+
+## Cleanup Script
+
+The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by removing Docker containers, networks, volumes, and shutting down the k3d cluster.
+
+### What the script does:
+- **Stops and removes all Docker containers** - Cleans up any running or stopped containers
+- **Removes custom Docker networks** - Cleans up networking resources (preserves default networks)
+- **Deletes the k3d cluster** - Completely shuts down your Kubernetes cluster
+- **Cleans up Docker system** - Removes unused build cache and dangling images
+- **Preserves Docker images** - Your built images remain available for reuse
+- **Skips Docker volumes** - Leaves volumes untouched for safety
+
+### Usage:
+```bash
+./cleanup.sh
+```
+
+### Additional cleanup:
+If you want to remove unused Docker images as well:
+```bash
+docker image prune -a
+```
+
+**Warning:** This script will remove all Docker containers. Make sure you don't have any important data in containers before running it.
