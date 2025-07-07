@@ -33,7 +33,14 @@ kubectl create deployment hashgenerator-dep --image=<image-name>
 ```bash
 kubectl create deployment hashgenerator-dep --image=log-output-app
 ``` 
-image import
+
+## Importing images to K3d ##
+
+```bash
+k3d image import todo-app:latest -c <your-cluster-name>
+```
+
+
 
 ## Checking resources ##
 
@@ -76,6 +83,38 @@ kubectl apply -f manifests/deployment.yaml
 ```bash
 kubectl delete -f manifests/deployment.yaml
 ```
+
+## Debugging Kubernetes ##
+
+- Describe a resource to get more information about it:
+
+```bash
+kubectl describe pod <pod-name>
+```
+
+- Check the logs of a specific pod:
+
+```bash
+kubectl logs <pod-name>
+```
+
+- Worst case, delete the pod and let the Deployment recreate it:
+
+```bash
+kubectl delete pod <pod-name>
+```
+
+---
+# Kubernetes and Networking #
+
+## Port FOrwarding ##
+```bash
+kubectl port-forward hashresponse-dep-57bcc888d7-dj5vk 3003:3000
+```
+
+- port-forward targets a resource (in this case, a Pod) and forwards traffic from a local port (3003) to a port on that resource (3000).
+- E.g. it pairs a local port to a port on the kubernetes managed resource.
+
 
 ---
 # Docker Refresher #
