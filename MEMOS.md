@@ -26,6 +26,8 @@ kubectl create deployment hashgenerator-dep --image=<image-name>
 
 5. The agent node then pulled the jakousa/dwk-app1 image and started the container inside the Pod.
 
+```bash
+
 **Deployment of local image**
 
 ```bash
@@ -48,6 +50,32 @@ kubectl logs -f hashgenerator-dep-<hash>
 ```
 
 `-f` flag allows you to follow the logs in real-time.
+
+## Scaling Replicas ##
+
+1.
+```bash
+$ kubectl scale deployment/hashgenerator-dep --replicas=4
+````
+
+2.
+```bash
+kubectl set image deployment/hashgenerator-dep dwk-app1=jakousa/dwk-app1:hash_here
+```
+
+## Applying Manifests ##
+
+```bash
+kubectl apply -f manifests/deployment.yaml
+```
+
+*Note that the manifests.yaml file can be an URL or a local file path.*
+
+## Deleting Resources ##
+
+```bash
+kubectl delete -f manifests/deployment.yaml
+```
 
 ---
 # Docker Refresher #
