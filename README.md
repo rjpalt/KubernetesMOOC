@@ -24,7 +24,12 @@
     - Command to apply manifests: `kubectl apply -f manifests/deployment.yaml`
         - *Note that running Kubernetes cluster is expected*
     - Command for port forwarding: `kubectl port-forward todo-app-server-<hash> 3003:8000`
-
+- [1.6]()
+    - Command to start the k3d cluster: `k3d cluster create --port 8082:30080@agent:0 -p 8081:80@loadbalancer --agents 2`
+    - Command to import latest image: `k3d image import todo-app:latest`
+    - Command to apply deployment manifest: `kubectl apply -f deployment.yaml`
+    - Command to apply service manifest: `kubectl apply -f service.yaml`
+    - Check that service is running: `curl http://localhost:8082`
 ## Cleanup Script
 
 The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by removing Docker containers, networks, volumes, and shutting down the k3d cluster.

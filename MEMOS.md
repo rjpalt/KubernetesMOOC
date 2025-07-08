@@ -58,6 +58,17 @@ kubectl logs -f hashgenerator-dep-<hash>
 
 `-f` flag allows you to follow the logs in real-time.
 
+## Ports ##
+
+```bash
+k3d cluster create --port 8082:30080@agent:0 -p 8081:80@loadbalancer --agents 2
+```
+
+**Checking available services**
+```bash
+kubectl get svc
+```
+
 ## Scaling Replicas ##
 
 1.
@@ -107,7 +118,7 @@ kubectl delete pod <pod-name>
 ---
 # Kubernetes and Networking #
 
-## Port FOrwarding ##
+## Port Forwarding ##
 ```bash
 kubectl port-forward hashresponse-dep-57bcc888d7-dj5vk 3003:3000
 ```
@@ -115,6 +126,19 @@ kubectl port-forward hashresponse-dep-57bcc888d7-dj5vk 3003:3000
 - port-forward targets a resource (in this case, a Pod) and forwards traffic from a local port (3003) to a port on that resource (3000).
 - E.g. it pairs a local port to a port on the kubernetes managed resource.
 
+## Traffic Flow ##
+
+### NodePort with k3d ###
+1. **Host Machine (localhost:8082)** → Traffic enters through the host port mapped by k3d (`--port 8082:30080@agent:0`).
+2. **NodePort (30080)** → Traffic is forwarded to the NodePort exposed by the Kubernetes Service.
+3. **Service Port (2507)** → The Service routes traffic to the cluster-wide port defined in the Service manifest.
+4. **Pod TargetPort (8000)** → Finally, the Service forwards traffic to the container's port (`targetPort`) where the application is listening.
+
+### Summary ###
+- Host: `localhost:8082`
+- NodePort: `30080`
+- Service Port: `2507`
+- Pod TargetPort: `8000`
 
 ---
 # Docker Refresher #
