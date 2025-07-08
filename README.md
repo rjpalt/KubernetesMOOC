@@ -34,12 +34,14 @@
 
 ## Cleanup Script
 
-The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by removing Docker containers, networks, volumes, and shutting down the k3d cluster.
+The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by properly shutting down Kubernetes resources before cleaning up Docker containers, networks, and the k3d cluster.
 
 ### What the script does:
+- **Gracefully shuts down Kubernetes resources** - Deletes deployments, services, and pods in proper order with graceful termination
+- **Handles stuck pods** - Force deletes any pods that refuse to terminate gracefully
+- **Deletes k3d clusters** - Completely shuts down your Kubernetes cluster after resource cleanup
 - **Stops and removes all Docker containers** - Cleans up any running or stopped containers
 - **Removes custom Docker networks** - Cleans up networking resources (preserves default networks)
-- **Deletes the k3d cluster** - Completely shuts down your Kubernetes cluster
 - **Cleans up Docker system** - Removes unused build cache and dangling images
 - **Preserves Docker images** - Your built images remain available for reuse
 - **Skips Docker volumes** - Leaves volumes untouched for safety

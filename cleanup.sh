@@ -1,14 +1,50 @@
 #!/bin/bash
 
 # Cleanup script for Docker and Kubernetes resources
-# This script will stop and remove all running containers, and delete the k3d cluster
+# This script will properly shut down Kubernetes resources before cleaning up Docker
 
 set -e  # Exit on any error
 
 echo "Starting cleanup process..."
 
-# Delete k3d cluster FIRST (before killing Docker containers)
-echo "Deleting k3d cluster..."
+# First, check if kubectl is available and we have a cluster context
+if command -v kubectl &> /dev/null; then
+    echo "Checking for running Kubernetes pods..."
+    
+    # Get all pods across all namespaces
+    if kubectl get pods --all-namespaces 2>/dev/null | grep -q -v "^NAMESPACE"; then
+        echo "Found running pods, shutting them down gracefully..."
+        
+        # Delete all deployments first (this will scale down pods gracefully)
+        echo "Deleting all deployments..."
+        kubectl delete deployments --all --all-namespaces --grace-period=30 --timeout=60s 2>/dev/null || echo "No deployments to delete or timeout reached"
+        
+        # Delete all services
+        echo "Deleting all services..."
+        kubectl delete services --all --all-namespaces --grace-period=30 --timeout=60s 2>/dev/null || echo "No services to delete or timeout reached"
+        
+        # Delete all remaining pods (if any stragglers)
+        echo "Deleting any remaining pods..."
+        kubectl delete pods --all --all-namespaces --grace-period=30 --timeout=60s 2>/dev/null || echo "No pods to delete or timeout reached"
+        
+        # Wait a bit for graceful shutdown
+        echo "Waiting for graceful shutdown..."
+        sleep 5
+        
+        # Force delete any stuck pods
+        echo "Force deleting any stuck pods..."
+        kubectl delete pods --all --all-namespaces --force --grace-period=0 2>/dev/null || echo "No stuck pods to force delete"
+        
+        echo "Kubernetes resources cleaned up"
+    else
+        echo "No running pods found"
+    fi
+else
+    echo "kubectl not found, skipping Kubernetes cleanup"
+fi
+
+# Now check for running clusters and delete them
+echo "Checking for running Kubernetes clusters..."
 if k3d cluster list 2>/dev/null | grep -q "k3s-default"; then
     k3d cluster delete k3s-default
     echo "k3d cluster deleted"
