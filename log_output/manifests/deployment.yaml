@@ -13,6 +13,6 @@ spec:
         app: log-output
     spec:
       containers:
-        - name: log-output-app
-          image: log-output-app:1.7
+        - name: log-output
+          image: log-output:1.7
           imagePullPolicy: IfNotPresent

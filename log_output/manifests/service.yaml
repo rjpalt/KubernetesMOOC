@@ -3,12 +3,10 @@ kind: Service
 metadata:
   name: log-output-svc
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: log-output     # This is the app as declared in the deployment.
   ports:
-    - name: http
-      nodePort: 30080   # Port available outside
+    - port: 2506        # This is the port that the service will expose.
       protocol: TCP
-      port: 2506        # This is a port that is available to the cluster
-      targetPort: 3000  # This is the target port
+      targetPort: 8000  # This is the target port

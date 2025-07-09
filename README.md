@@ -31,7 +31,13 @@
     - Command to apply service manifest: `kubectl apply -f service.yaml`
     - Check that service is running: `curl http://localhost:8082`
 - [1.7]()
-    - 
+    - Command to start cluster with specific ports: `k3d cluster create -p "8080:80@loadbalancer" -a 2`
+    - Command to import latest image: `k3d image import log-output:1.7`
+    - Command to apply deployment manifest: `kubectl apply -f log_output/manifests/deployment.yaml`
+    - Command to apply service manifest: `kubectl apply -f log_output/manifests/service.yaml`
+    - Command to apply ingress manifest: `kubectl apply -f log_output/manifests/ingress.yaml`
+    - Command to check everything is running: `kubectl get pods,svc,ingress`
+    - Command to check ingress: `curl http://localhost:8080/`
 - [1.8]()
     - Command to start cluster with specific ports: `k3d cluster create --port 8082:30080@agent:0 -p 8081:80@loadbalancer --agents 2`
     - Command to import latest image: `k3d image import todo-app:1.5`
