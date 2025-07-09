@@ -38,7 +38,7 @@
     - Command to apply ingress manifest: `kubectl apply -f log_output/manifests/ingress.yaml`
     - Command to check everything is running: `kubectl get pods,svc,ingress`
     - Command to check ingress: `curl http://localhost:8080/`
-- [1.8]()
+- [1.8](https://github.com/rjpalt/KubernetesMOOC/tree/1.8/course_project/)
     - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
     - Command to import latest image: `k3d image import todo-app:1.5`
     - Command to apply manifests: `kubectl apply -f course_project/todo-app/manifests/`
