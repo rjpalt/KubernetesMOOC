@@ -44,6 +44,18 @@
     - Command to apply manifests: `kubectl apply -f course_project/todo-app/manifests/`
     - Command to check everything is running: `kubectl get pods,svc,ingress`
     - Command to check ingress: `curl http://localhost:8080/health`
+- [1.9]()
+    - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+    - Command to import both logout and todo-app images: 
+      ```bash
+      k3d image import log-output:1.7
+      k3d image import ping-pong-app:1.9
+      ```
+    - Command to apply manifests for ping-pong: `kubectl apply -f ping-pong/manifests/`
+    - Command to apply manifests for log-output (incl. shared ingress): `kubectl apply -f log_output/manifests/`
+    - Command to check everything is running: `kubectl get pods,svc,ingress`
+    - Command to check ingress for todo-app: `curl http://localhost:8080/`
+    - Command to check ingress for ping-pong: `curl http://localhost:8080/pingpong`
 
 
 ## Cleanup Script
