@@ -44,7 +44,8 @@
     - Command to apply manifests: `kubectl apply -f course_project/todo-app/manifests/`
     - Command to check everything is running: `kubectl get pods,svc,ingress`
     - Command to check ingress: `curl http://localhost:8080/health`
-- [1.9]()
+- [1.9](https://github.com/rjpalt/KubernetesMOOC/tree/1.9/ping-pong)
+    - **Note: The link is to ping-pong service, but the ingress is found in [log_output folder](https://github.com/rjpalt/KubernetesMOOC/blob/1.9/log_output/manifests/ingress.yaml)**
     - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
     - Command to import both logout and todo-app images: 
       ```bash
