@@ -39,11 +39,11 @@
     - Command to check everything is running: `kubectl get pods,svc,ingress`
     - Command to check ingress: `curl http://localhost:8080/`
 - [1.8]()
-    - Command to start cluster with specific ports: `k3d cluster create --port 8082:30080@agent:0 -p 8081:80@loadbalancer --agents 2`
+    - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
     - Command to import latest image: `k3d image import todo-app:1.5`
-    - Command to apply deployment manifest: `kubectl apply -f manifests/deployment.yaml`
-    - Command to apply service and ingress manifests: `kubectl apply -f manifests/service.yaml && kubectl apply -f manifests/ingress.yaml`
-
+    - Command to apply manifests: `kubectl apply -f course_project/todo-app/manifests/`
+    - Command to check everything is running: `kubectl get pods,svc,ingress`
+    - Command to check ingress: `curl http://localhost:8080/health`
 
 
 ## Cleanup Script
