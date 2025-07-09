@@ -30,6 +30,14 @@
     - Command to apply deployment manifest: `kubectl apply -f deployment.yaml`
     - Command to apply service manifest: `kubectl apply -f service.yaml`
     - Check that service is running: `curl http://localhost:8082`
+- [1.7]()
+    - 
+- [1.8]()
+    - Command to start cluster with specific ports: `k3d cluster create --port 8082:30080@agent:0 -p 8081:80@loadbalancer --agents 2`
+    - Command to import latest image: `k3d image import todo-app:1.5`
+    - Command to apply deployment manifest: `kubectl apply -f manifests/deployment.yaml`
+    - Command to apply service and ingress manifests: `kubectl apply -f manifests/service.yaml && kubectl apply -f manifests/ingress.yaml`
+
 
 
 ## Cleanup Script
