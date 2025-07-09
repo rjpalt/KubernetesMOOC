@@ -2,17 +2,20 @@
 
 ## How to Run Locally
 
-1. Install dependencies (if you haven't already):
+
+1. Install all dependencies from `pyproject.toml` and `uv.lock`:
 
    ```bash
-   uv add fastapi uvicorn
+   uv install
    ```
+
 
 2. Start the application:
 
    ```bash
    uv run app.py
    ```
+
 
 3. Access the status endpoint in your browser or with curl:
 

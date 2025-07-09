@@ -30,7 +30,7 @@
     - Command to apply deployment manifest: `kubectl apply -f deployment.yaml`
     - Command to apply service manifest: `kubectl apply -f service.yaml`
     - Check that service is running: `curl http://localhost:8082`
-- [1.7]()
+- [1.7](https://github.com/rjpalt/KubernetesMOOC/tree/1.7/log_output)
     - Command to start cluster with specific ports: `k3d cluster create -p "8080:80@loadbalancer" -a 2`
     - Command to import latest image: `k3d image import log-output:1.7`
     - Command to apply deployment manifest: `kubectl apply -f log_output/manifests/deployment.yaml`
