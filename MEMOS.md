@@ -211,3 +211,15 @@ Or force kill:
 docker rm -f log-output-container
 ```
 
+## Docker Compose Commands ##
+Building and running services with Docker Compose:
+
+```bash
+docker-compose up --build -d
+```
+
+Stopping and removing services with Docker Compose including volumes:
+
+```bash
+docker-compose down -v
+```

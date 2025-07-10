@@ -40,9 +40,52 @@
    - `log-generator:1.10`
    - `log-server:1.10`
 
-2. Run the containers together (recommended: use Docker Compose for shared volume testing)
+2. Run the containers together with Docker Compose:
 
-   See the provided docker-compose.yml example in the project for details.
+   ```bash
+   # Build and run with specific tag (matches exercise)
+   TAG=1.10 docker-compose up --build -d
+   
+   # Or use default 'latest' tag
+   docker-compose up --build -d
+   ```
+
+   This starts both containers with shared volume for testing.
+
+3. Test the setup automatically:
+
+   ```bash
+   # Run automated tests (includes health checks and endpoint validation)
+   ./test-compose.sh
+   
+   # Or with specific tag
+   TAG=1.10 ./test-compose.sh
+   ```
+
+   The test script will:
+   - Start the services with docker-compose
+   - Wait for containers to be healthy
+   - Test all endpoints (generator and log server)
+   - Verify log file sharing between containers
+   - Display container status and useful commands
+
+4. Test the endpoints manually:
+
+   ```bash
+   # Check container status
+   docker-compose ps
+   
+   # Test endpoints
+   curl http://localhost:8000/health    # Generator health
+   curl http://localhost:8001/health    # Log server health
+   curl http://localhost:8001/logs      # View shared log contents
+   ```
+
+5. Stop the containers:
+
+   ```bash
+   docker-compose down
+   ```
 
 ## How to Import Images to k3d and Deploy to Kubernetes
 
