@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: log-generator-server-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: log-generator-svc
+            port:
+              number: 2506
+      - path: /logs
+        pathType: Prefix
+        backend:
+          service:
+            name: log-server-svc
+            port:
+              number: 2507
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: log-generator-svc
+            port:
+              number: 2506

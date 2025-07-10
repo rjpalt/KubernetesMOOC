@@ -57,6 +57,32 @@
     - Command to check everything is running: `kubectl get pods,svc,ingress`
     - Command to check ingress for todo-app: `curl http://localhost:8080/`
     - Command to check ingress for ping-pong: `curl http://localhost:8080/pingpong`
+- [1.10]()
+    - **Note: This exercise uses the log-generator and log-server images**
+    - **Note: The manifests used are generator-server-ingress.yaml, deployment.yaml, generator-service.yaml, logserver-service.yaml**
+    - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+    - Command to import both logout and todo-app images:
+      ```bash
+      k3d image import log-generator:1.10
+      k3d image import log-server:1.10
+      ```
+    - Command to apply manifests for log-generator and log-server:
+      ```bash
+      kubectl apply -f log_output/manifests/deployment.yaml
+      ```
+    - Command to apply service manifests:
+      ```bash
+      kubectl apply -f log_output/manifests/generator-service.yaml
+      kubectl apply -f log_output/manifests/logserver-service.yaml
+      ```
+    - command to apply ingress manifest:
+      ```bash
+      kubectl apply -f log_output/manifests/generator-server-ingress.yaml
+      ```
+    - Command to check everything is running: `kubectl get pods,svc,ingress`
+    - Command to check ingress for log-generator: `curl http://localhost:8080/health`
+    - Command to check log-generator is logging: `kubectl logs -f <log-generator-pod-name>`
+    - Command to check log-server is serving the logs: `curl http://localhost:8080/logs`
 
 
 ## Cleanup Script

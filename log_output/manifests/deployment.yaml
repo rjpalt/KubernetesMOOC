@@ -12,7 +12,33 @@ spec:
       labels:
         app: log-output
     spec:
+      volumes:
+        - name: shared-logs
+          emptyDir: {} # Use emptyDir for shared volume
       containers:
-        - name: log-output
-          image: log-output:1.7
+        - name: log-generator
+          image: log-generator:1.10
           imagePullPolicy: IfNotPresent
+          env:
+            - name: LOG_APP_SHARED_LOG_PATH
+              value: "/shared-data/output.txt"
+            - name: LOG_APP_LOG_LEVEL
+              value: "INFO"
+            - name: PORT
+              value: "8000"
+          volumeMounts:
+            - name: shared-logs
+              mountPath: /shared-data # Mount volume to container path
+        - name: log-server
+          image: log-server:1.10
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: LOG_APP_SHARED_LOG_PATH
+              value: "/shared-data/output.txt"
+            - name: LOG_APP_LOG_LEVEL
+              value: "INFO"
+            - name: PORT
+              value: "8001"
+          volumeMounts:
+            - name: shared-logs
+              mountPath: /shared-data # Mount volume to container path
