@@ -16,13 +16,16 @@ COPY pyproject.toml uv.lock ./
 # Install dependencies
 RUN uv sync --frozen --no-dev
 
-# Copy the application
-COPY app.py .
+# Copy the application files
+COPY log_server.py settings.py ./
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser -m appuser
 
-# Change /app folder ownership to appuser instead of root
+# Create shared data directory and set permissions
+RUN mkdir -p /shared-data && chown -R appuser:appuser /shared-data
+
+# Change /app folder ownership to appuser
 RUN chown -R appuser:appuser /app
 
 # Create a cache directory for appuser (uv requires it for dependency installation)
@@ -34,15 +37,18 @@ USER appuser
 # Set environment variable to force unbuffered output
 ENV PYTHONUNBUFFERED=1
 
-# Set default PORT if not provided
-ENV PORT=8000
+# Override log path for container environment
+ENV LOG_APP_SHARED_LOG_PATH=/shared-data/output.txt
 
-# Expose port 8000
-EXPOSE 8000
+# Set default PORT if not provided
+ENV PORT=8001
+
+# Expose port 8001
+EXPOSE 8001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:$PORT/health || exit 1
 
-# Run the application using uv
-CMD ["uv", "run", "python", "app.py"]
+# Run the log server application using uv
+CMD ["uv", "run", "python", "log_server.py"]

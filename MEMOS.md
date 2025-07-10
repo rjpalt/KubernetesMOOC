@@ -141,6 +141,35 @@ kubectl port-forward hashresponse-dep-57bcc888d7-dj5vk 3003:3000
 - Pod TargetPort: `8000`
 
 ---
+
+# Kubenretes and Storage #
+
+## emptyDir Volume ##
+- An `emptyDir` volume is created when a Pod is assigned to a Node and exists as long as that Pod is running on that Node.
+- It is stored in the Node's filesystem and is deleted when the Pod is removed.
+- Useful for temporary storage needs within a Pod.
+
+Confgiuration example in `deployment.yaml`
+
+```yaml
+    spec:
+      volumes: # Define volume
+        - name: shared-image
+          emptyDir: {}
+      containers:
+        - name: image-finder
+          image: jakousa/dwk-app3-image-finder:b7fc18de2376da80ff0cfc72cf581a9f94d10e64
+          volumeMounts: # Mount volume
+          - name: shared-image
+            mountPath: /usr/src/app/files
+        - name: image-response
+          image: jakousa/dwk-app3-image-response:b7fc18de2376da80ff0cfc72cf581a9f94d10e64
+          volumeMounts: # Mount volume
+          - name: shared-image
+            mountPath: /usr/src/app/files
+```
+
+---
 # Docker Refresher #
 ## Docker Commands ##
 Building a docker image:

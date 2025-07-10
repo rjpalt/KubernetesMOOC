@@ -1,25 +1,41 @@
 #!/bin/bash
 
-# Check if tag argument is provided
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <image-tag>"
-    echo "Example: $0 log-output-app:v1.0"
-    exit 1
-fi
+# Usage: ./build.sh [tag]
+# Example: ./build.sh 1.10
 
-IMAGE_TAG="$1"
+TAG=${1:-latest}
 
-echo "Building Docker image with tag: $IMAGE_TAG"
+# Build both container images for the multi-container log-output service
 
-# Build the Docker image
-docker build -t "$IMAGE_TAG" .
+echo "🔨 Building log generator container..."
+docker build -f Dockerfile.generator -t log-generator:$TAG .
 
-# Check if build was successful
+# Check if generator build was successful
 if [ $? -eq 0 ]; then
-    echo "✅ Successfully built image: $IMAGE_TAG"
-    echo "To run: docker run -p 8000:8000 $IMAGE_TAG"
-    echo "With custom port: docker run -p 8080:8080 -e PORT=8080 $IMAGE_TAG"
+    echo "✅ Successfully built log-generator:$TAG"
 else
-    echo "❌ Failed to build image"
+    echo "❌ Failed to build log-generator image"
     exit 1
 fi
+
+echo ""
+echo "🔨 Building log server container..."
+docker build -f Dockerfile.logserver -t log-server:$TAG .
+
+# Check if log server build was successful
+if [ $? -eq 0 ]; then
+    echo "✅ Successfully built log-server:$TAG"
+else
+    echo "❌ Failed to build log-server image"
+    exit 1
+fi
+
+echo ""
+echo "🎉 Both images built successfully with tag: $TAG"
+echo ""
+echo "To import into k3d cluster, run:"
+echo "k3d image import log-generator:$TAG -c <your-cluster-name>"
+echo "k3d image import log-server:$TAG -c <your-cluster-name>"
+echo ""
+echo "Then deploy with:"
+echo "kubectl apply -f manifests/"
