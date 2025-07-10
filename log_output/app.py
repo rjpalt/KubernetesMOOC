@@ -8,15 +8,38 @@ import threading
 from datetime import datetime, timezone
 from fastapi import FastAPI
 import uvicorn
+from settings import get_settings
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(message)s',
-    handlers=[logging.StreamHandler()]
-)
+# Load settings
+settings = get_settings()
 
-logger = logging.getLogger(__name__)
+# Configure logging with both console and file handlers
+def setup_logging():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(getattr(logging, settings.log_level))
+    
+    # Clear any existing handlers
+    logger.handlers.clear()
+    
+    # Console handler for kubectl logs
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(getattr(logging, settings.log_level))
+    
+    # File handler for shared data
+    file_handler = logging.FileHandler(settings.shared_log_path, mode='a')
+    file_handler.setLevel(getattr(logging, settings.log_level))
+    
+    # Simple format without metadata cruft
+    formatter = logging.Formatter('%(message)s')
+    console_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
+    
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    
+    return logger
+
+logger = setup_logging()
 
 # Global variables to store the random string and app state
 random_string = str(uuid.uuid4())
@@ -33,7 +56,7 @@ def logging_worker():
     while True:
         timestamp = get_current_timestamp()
         logger.info(f"{timestamp}: {random_string}")
-        time.sleep(5)
+        time.sleep(settings.log_interval_seconds)
 
 @app.get("/")
 async def get_status():
@@ -55,7 +78,7 @@ def main():
     logging_thread.start()
     
     # Start the FastAPI server
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run(app, host=settings.host, port=settings.app_port, log_level=settings.log_level.lower())
 
 if __name__ == "__main__":
     main()
