@@ -19,6 +19,10 @@ class AppSettings(BaseSettings):
     shared_log_path: str = "tmp/logs/output.txt"
     log_level: str = "INFO"
     
+    # Shared volume configuration (for ping-pong communication)
+    shared_volume_path: str = "shared"
+    ping_pong_counter_file: str = "ping_pong_counter.txt"
+    
     # Server configuration
     app_port: int = 8000
     log_server_port: int = 8001
@@ -64,6 +68,12 @@ class AppSettings(BaseSettings):
         if v < 1:
             raise ValueError('Log interval must be at least 1 second')
         return v
+    
+    @property
+    def ping_pong_counter_file_path(self) -> str:
+        """Get the full path to the ping-pong counter file"""
+        from pathlib import Path
+        return str(Path(self.shared_volume_path) / self.ping_pong_counter_file)
 
 
 # Global settings instance - lazy loaded

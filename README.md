@@ -57,7 +57,7 @@
     - Command to check everything is running: `kubectl get pods,svc,ingress`
     - Command to check ingress for todo-app: `curl http://localhost:8080/`
     - Command to check ingress for ping-pong: `curl http://localhost:8080/pingpong`
-- [1.10]()
+- [1.10](https://github.com/rjpalt/KubernetesMOOC/tree/1.10/log_output)
     - **Note: This exercise uses the log-generator and log-server images**
     - **Note: The manifests used are generator-server-ingress.yaml, deployment.yaml, generator-service.yaml, logserver-service.yaml**
     - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`

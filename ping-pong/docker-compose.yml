@@ -1,0 +1,75 @@
+version: '3.8'
+
+# Docker Compose configuration for ping-pong and log-output integration
+# This setup demonstrates shared persistent volume communication between services
+
+services:
+  # Ping-pong service: increments counter and writes to shared volume
+  ping-pong:
+    image: ping-pong-app:1.11
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ping-pong-app
+    environment:
+      # Configure ping-pong to use shared volume
+      - PING_PONG_SHARED_VOLUME_PATH=/shared
+      - PING_PONG_APP_PORT=3000
+      - PING_PONG_LOG_LEVEL=INFO
+    volumes:
+      # Mount shared volume for counter file
+      - shared_data:/shared
+    ports:
+      # Expose ping-pong on port 3000
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - ping_pong_network
+
+  # Log-output service: reads ping-pong counter and displays with logs
+  log-output:
+    image: log-output:1.11
+    build:
+      context: ../log_output
+      dockerfile: Dockerfile
+    container_name: log-output-app
+    environment:
+      # Configure log-output to read from shared volume
+      - LOG_APP_SHARED_VOLUME_PATH=/shared
+      - LOG_APP_APP_PORT=8000
+      - LOG_APP_LOG_LEVEL=INFO
+    volumes:
+      # Mount shared volume for ping-pong counter
+      - shared_data:/shared
+    ports:
+      # Expose log-output on port 8000
+      - "8000:8000"
+    depends_on:
+      # Start ping-pong first since log-output reads its data
+      - ping-pong
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - ping_pong_network
+
+volumes:
+  # Shared volume for ping-pong counter communication
+  shared_data:
+    driver: local
+  # Separate volume for log output files
+  log_data:
+    driver: local
+
+networks:
+  # Custom network for service communication
+  ping_pong_network:
+    driver: bridge
