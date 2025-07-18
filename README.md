@@ -107,6 +107,8 @@
     ```bash
     kubectl apply -f ping-pong/manifests/deployment.yaml
     ```
+
+    **Note: The deployment.yaml file has initContainer section to fix permissions on the shared volume.' The Dockerfiles for the images only grant access to appuser and the access to shared fodler in the persistent volume needs to be granted separately.**
   - Command to apply service manifests for ping-pong and log output:
     ```bash
     kubectl apply -f ping-pong/manifests/ping-pong-service.yaml
@@ -115,6 +117,13 @@
   - Command to apply ingress manifest for ping-pong and log output:
     ```bash
     kubectl apply -f manifests/ingress.yaml
+    ```
+  - Command to check everything is running: `kubectl get pv,pvc,pods,svc,ingress`
+  - Command to check ingress for ping-pong: `curl http://localhost:8080/pingpong`
+  - Command to check ingress for log-output: `curl http://localhost:8080/`
+  - Command to check shared counter file in the persistent volume:
+    ```bash
+    kubectl exec -it <insert-pod-name-here> -c log-output -- cat /shared/ping_pong_counter.txt
     ```
 
 

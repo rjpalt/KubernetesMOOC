@@ -84,15 +84,65 @@ chmod +x build.sh
 
 ## Kubernetes
 
-Deploy using manifests in `manifests/` directory. Ensure you have:
+Deploy using manifests in `manifests/` directory. This exercise demonstrates persistent volume sharing between ping-pong and log-output services.
+
+### Prerequisites
 
 1. A PersistentVolume and PersistentVolumeClaim for shared data
 2. Volume mount configuration in deployment manifest
 3. Environment variables for shared volume path
+4. Proper permissions on the shared volume (handled by initContainer)
+
+### Deployment Steps
+
+```bash
+# 1. Create the persistent volume directory on k3d node
+docker exec k3d-k3s-default-agent-0 mkdir -p /tmp/kube
+
+# 2. Apply PersistentVolume
+kubectl apply -f manifests/ping-pong-pv.yaml
+
+# 3. Apply PersistentVolumeClaim
+kubectl apply -f manifests/ping-pong-pvc.yaml
+
+# 4. Apply deployment (includes both ping-pong and log-output containers)
+kubectl apply -f manifests/deployment.yaml
+
+# 5. Apply services
+kubectl apply -f manifests/ping-pong-service.yaml
+kubectl apply -f manifests/log-output-service.yaml
+
+# 6. Apply ingress
+kubectl apply -f manifests/ingress.yaml
+```
+
+### Verification
+
+```bash
+# Check all resources
+kubectl get pv,pvc,pods,svc,ingress
+
+# Test ping-pong endpoint
+curl http://localhost:8080/pingpong
+
+# Test log-output endpoint
+curl http://localhost:8080/
+
+# Verify shared counter file
+kubectl exec -it <pod-name> -c ping-pong -- cat /shared/ping_pong_counter.txt
+```
+
+### Architecture Notes
+
+- **Multi-container pod**: Both ping-pong and log-output run in the same pod for shared volume access
+- **initContainer**: Fixes permissions on the shared volume before main containers start
+- **Persistent storage**: Counter persists across pod restarts via PersistentVolume
 
 Example environment variables for Kubernetes:
 ```yaml
 env:
 - name: PING_PONG_SHARED_VOLUME_PATH
+  value: "/shared"
+- name: LOG_APP_SHARED_VOLUME_PATH
   value: "/shared"
 ```
