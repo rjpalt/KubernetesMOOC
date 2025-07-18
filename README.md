@@ -61,7 +61,7 @@
     - **Note: This exercise uses the log-generator and log-server images**
     - **Note: The manifests used are generator-server-ingress.yaml, deployment.yaml, generator-service.yaml, logserver-service.yaml**
     - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
-    - Command to import both logout and todo-app images:
+    - Commands to import both log-output generator and log-server images:
       ```bash
       k3d image import log-generator:1.10
       k3d image import log-server:1.10
@@ -83,6 +83,39 @@
     - Command to check ingress for log-generator: `curl http://localhost:8080/health`
     - Command to check log-generator is logging: `kubectl logs -f <log-generator-pod-name>`
     - Command to check log-server is serving the logs: `curl http://localhost:8080/logs`
+- [1.11]()
+  - **Note: all commands are run in the ping-pong folder!**
+  - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+  - Commands to import both ping-pong-app and log-output images:
+    ```bash
+    k3d image import ping-pong-app:1.11
+    k3d image import log-output:1.11
+    ```
+  - Command to create a persistent volume tmp folder:
+    ```bash
+    docker exec k3d-k3s-default-agent-0 mkdir -p /tmp/kube
+    ```
+  - Command to apply persistent volume for shared counter:
+    ```bash
+    kubectl apply -f ping-pong/manifests/ping-pong-pv.yaml
+    ```
+  - Command to apply persistent volume claim for shared counter:
+    ```bash
+    kubectl apply -f ping-pong/manifests/ping-pong-pvc.yaml
+    ```
+  - Command to apply deployment manifest for ping-pong:
+    ```bash
+    kubectl apply -f ping-pong/manifests/deployment.yaml
+    ```
+  - Command to apply service manifests for ping-pong and log output:
+    ```bash
+    kubectl apply -f ping-pong/manifests/ping-pong-service.yaml
+    kubectl apply -f log_output/manifests/log-output-service.yaml
+    ```
+  - Command to apply ingress manifest for ping-pong and log output:
+    ```bash
+    kubectl apply -f manifests/ingress.yaml
+    ```
 
 
 ## Cleanup Script

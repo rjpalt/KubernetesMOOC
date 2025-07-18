@@ -12,6 +12,15 @@ spec:
       labels:
         app: ping-pong
     spec:
+      # Ensure the shared directory has the right permissions as the
+      # Dockerfiles give access only to appuser, not root
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ['sh', '-c', 'chmod 777 /shared']
+          volumeMounts:
+            - name: shared-counter
+              mountPath: /shared
       volumes:
         - name: shared-counter
           persistentVolumeClaim:
