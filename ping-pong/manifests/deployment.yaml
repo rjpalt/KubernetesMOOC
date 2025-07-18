@@ -12,7 +12,34 @@ spec:
       labels:
         app: ping-pong
     spec:
+      volumes:
+        - name: shared-counter
+          persistentVolumeClaim:
+            claimName: shared-counter-pvc
       containers:
         - name: ping-pong
-          image: ping-pong-app:1.9
+          image: ping-pong-app:1.11
           imagePullPolicy: IfNotPresent
+          env:
+            - name: PING_PONG_SHARED_VOLUME_PATH
+              value: "/shared"
+            - name: PING_PONG_APP_PORT
+              value: "3000"
+            - name: PING_PONG_LOG_LEVEL
+              value: "INFO"
+          volumeMounts:
+            - name: shared-counter
+              mountPath: /shared
+        - name: log-output
+          image: log-output:1.11
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: LOG_APP_SHARED_VOLUME_PATH
+            value: "/shared"
+          - name: LOG_APP_APP_PORT
+            value: "8000"
+          - name: LOG_APP_LOG_LEVEL
+            value: "INFO"
+          volumeMounts:
+            - name: shared-counter
+              mountPath: /shared

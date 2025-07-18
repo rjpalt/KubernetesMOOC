@@ -9,4 +9,4 @@ spec:
   ports:
     - port: 2507        # This is the port that the service will expose.
       protocol: TCP
-      targetPort: 8000  # This is the target port
+      targetPort: 3000  # This is the target port
