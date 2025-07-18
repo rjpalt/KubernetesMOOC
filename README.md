@@ -83,8 +83,8 @@
     - Command to check ingress for log-generator: `curl http://localhost:8080/health`
     - Command to check log-generator is logging: `kubectl logs -f <log-generator-pod-name>`
     - Command to check log-server is serving the logs: `curl http://localhost:8080/logs`
-- [1.11]()
-  - **Note: all commands are run in the ping-pong folder!**
+- [1.11](https://github.com/rjpalt/KubernetesMOOC/tree/1.11/ping-pong)
+  - **Note: all commands are run in the ping-pong folder! The exercise was implemented in the separate ping-pong folder to keep refactors separate from the log output service implemented previously.**
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Commands to import both ping-pong-app and log-output images:
     ```bash
