@@ -17,8 +17,10 @@ COPY pyproject.toml uv.lock ./
 # Install dependencies
 RUN uv sync --frozen --no-dev
 
-# Copy application code
+# Copy application code and templates
 COPY main.py .
+COPY src/ ./src/
+COPY templates/ ./templates/
 
 # Create non-root user for security
 

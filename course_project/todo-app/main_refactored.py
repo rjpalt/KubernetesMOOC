@@ -54,7 +54,7 @@ def main():
     logger.info(f"Update interval: {settings.image_update_interval_minutes} minutes")
 
     uvicorn.run(
-        "main:app",
+        "main_refactored:app",
         host=settings.host,
         port=settings.port,
         reload=settings.debug,

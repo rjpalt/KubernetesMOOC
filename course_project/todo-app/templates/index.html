@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>🚀 Todo App with Hourly Images</h1>
+
+<div class="status">
+    <h3>✅ Application Status: Running</h3>
+    <p>Your todo application is up and running with image caching!</p>
+    <p><strong>Image Status:</strong> {{ image_status }}</p>
+</div>
+
+<div class="image-section">
+    <h3>📸 Current Image</h3>
+    {% if image_info.status == "available" %}
+        <img src="/image" alt="Random image" 
+             style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    {% else %}
+        <p style="color: #999;">No image cached yet. Click "Fetch New Image" to get one!</p>
+    {% endif %}
+</div>
+
+<div class="controls">
+    <h3>🎛️ Test Controls</h3>
+    <button class="btn" onclick="fetchNewImage()">Fetch New Image</button>
+    <button class="btn btn-warning" onclick="fetchNewImage(true)">Force Fetch New Image</button>
+    <a href="/image/info" class="btn">View Image Info</a>
+    <button class="btn btn-danger" onclick="shutdownApp()">Shutdown Container</button>
+</div>
+
+<div class="info">
+    <h4>Available Endpoints:</h4>
+    <ul>
+        <li><code>/</code> - This page</li>
+        <li><code>/health</code> - Health check endpoint</li>
+        <li><code>/image</code> - Current cached image</li>
+        <li><code>/image/info</code> - Image metadata</li>
+        <li><code>POST /fetch-image</code> - Manually fetch new image</li>
+        <li><code>POST /shutdown</code> - Shutdown container (for testing)</li>
+    </ul>
+    <div class="metadata">
+        <strong>Configuration:</strong><br>
+        Cache Path: {{ config.cache_path }}<br>
+        Update Interval: {{ config.update_interval }} minutes<br>
+        Picsum URL: {{ config.picsum_url }}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function fetchNewImage(force = false) {
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Fetching...';
+        btn.disabled = true;
+        
+        try {
+            const url = force ? '/fetch-image?force=true' : '/fetch-image';
+            const response = await fetch(url, { method: 'POST' });
+            const result = await response.json();
+            
+            if (response.ok) {
+                alert('Image fetch result: ' + result.status);
+                if (result.status === 'success') {
+                    location.reload();
+                }
+            } else {
+                alert('Error: ' + result.detail);
+            }
+        } catch (error) {
+            alert('Network error: ' + error.message);
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    }
+    
+    async function shutdownApp() {
+        if (confirm('Are you sure you want to shutdown the container? This is for testing purposes.')) {
+            try {
+                await fetch('/shutdown', { method: 'POST' });
+                alert('Shutdown signal sent. Container should stop shortly.');
+            } catch (error) {
+                alert('Shutdown initiated (this is expected behavior)');
+            }
+        }
+    }
+</script>
+{% endblock %}

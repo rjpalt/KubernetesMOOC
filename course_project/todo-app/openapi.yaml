@@ -1,0 +1,234 @@
+openapi: 3.1.0
+info:
+  title: Todo App with Hourly Images
+  description: |
+    A FastAPI application that displays random images from Lorem Picsum with caching and automatic refresh functionality.
+    
+    ## Features
+    - Automatic image refresh every 10 minutes (configurable)
+    - Manual image fetching for testing
+    - Persistent image caching
+    - Container testing endpoints
+    - Modern Jinja2 templated UI
+    
+    ## Architecture
+    - Background tasks for automatic image fetching
+    - Atomic file operations for image caching
+    - Graceful error handling
+    - Professional templating with separation of concerns
+  version: 0.2.0
+  contact:
+    name: Todo App API
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: http://todo-app:8000
+    description: Container/Kubernetes service
+
+paths:
+  /:
+    get:
+      summary: Main UI Page
+      description: Returns the main HTML interface with image display and test controls
+      operationId: read_root
+      tags: [UI]
+      responses:
+        '200':
+          description: HTML page with current image and controls
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "<!DOCTYPE html>..."
+
+  /health:
+    get:
+      summary: Health Check
+      description: Returns application health status and cache information
+      operationId: health_check
+      tags: [Health]
+      responses:
+        '200':
+          description: Health status information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2025-07-19T03:35:13.227049+00:00"
+                  image_cache_status:
+                    type: string
+                    enum: ["available", "not_available"]
+                    example: "available"
+                  cache_path:
+                    type: string
+                    example: "images"
+                  update_interval_minutes:
+                    type: integer
+                    example: 10
+
+  /image:
+    get:
+      summary: Get Current Image
+      description: Serves the currently cached image file
+      operationId: get_current_image
+      tags: [Images]
+      responses:
+        '200':
+          description: Current cached image
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: No image available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /image/info:
+    get:
+      summary: Get Image Metadata
+      description: Returns detailed information about the currently cached image
+      operationId: get_image_info
+      tags: [Images]
+      responses:
+        '200':
+          description: Image metadata information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: ["available", "not_available"]
+                    example: "available"
+                  file_size:
+                    type: integer
+                    example: 48520
+                    description: "File size in bytes"
+                  last_fetch_time:
+                    type: string
+                    format: date-time
+                    example: "2025-07-19T03:35:04.057735+00:00"
+                  cache_path:
+                    type: string
+                    example: "images/current.jpg"
+                  source_url:
+                    type: string
+                    example: "https://picsum.photos/1200?random=6016e495"
+
+  /fetch-image:
+    post:
+      summary: Manually Fetch New Image
+      description: Triggers manual image fetch, with optional force parameter to bypass cache timing
+      operationId: fetch_new_image_endpoint
+      tags: [Images]
+      parameters:
+        - name: force
+          in: query
+          description: Force fetch even if cache interval hasn't elapsed
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Image fetch result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: ["success"]
+                        example: "success"
+                      timestamp:
+                        type: string
+                        format: date-time
+                        example: "2025-07-19T03:35:28.476197+00:00"
+                      size_bytes:
+                        type: integer
+                        example: 48520
+                      url:
+                        type: string
+                        example: "https://picsum.photos/1200?random=6016e495"
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: ["skipped"]
+                        example: "skipped"
+                      reason:
+                        type: string
+                        example: "Last fetch was 16s ago, interval is 600s"
+                      last_fetch:
+                        type: string
+                        format: date-time
+                        example: "2025-07-19T03:35:04.057735+00:00"
+                  - type: object
+                    properties:
+                      status:
+                        type: string
+                        enum: ["error"]
+                        example: "error"
+                      error:
+                        type: string
+                        example: "Failed to fetch image: Network error"
+        '500':
+          description: Server error during image fetch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+
+  /shutdown:
+    post:
+      summary: Shutdown Container
+      description: Triggers container shutdown for testing purposes
+      operationId: shutdown_container
+      tags: [Testing]
+      responses:
+        '200':
+          description: Shutdown initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Shutdown initiated for testing purposes"
+
+components:
+  schemas:
+    HTTPError:
+      type: object
+      properties:
+        detail:
+          type: string
+          example: "No image available. Fetch one first."
+
+tags:
+  - name: UI
+    description: User interface endpoints
+  - name: Images
+    description: Image management and serving
+  - name: Health
+    description: Health check and monitoring
+  - name: Testing
+    description: Testing and debugging endpoints

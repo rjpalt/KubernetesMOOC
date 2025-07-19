@@ -125,6 +125,8 @@
     ```bash
     kubectl exec -it <insert-pod-name-here> -c log-output -- cat /shared/ping_pong_counter.txt
     ```
+- [1.12]()
+  - asd
 
 
 ## Cleanup Script
