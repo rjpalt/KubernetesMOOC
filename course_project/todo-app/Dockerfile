@@ -18,9 +18,11 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 # Copy application code and templates
-COPY main.py .
 COPY src/ ./src/
 COPY templates/ ./templates/
+
+# Create directories for runtime data
+RUN mkdir -p images
 
 # Create non-root user for security
 
@@ -28,7 +30,7 @@ COPY templates/ ./templates/
 RUN groupadd -r appuser && useradd -r -g appuser -m appuser
 
 ## Change /app folder ownership to appuser instead of root
-## App can now write to /app without root privileges
+## App can now write to /app without root privileges (including images directory)
 RUN chown -R appuser:appuser /app
 
 ## Create a cache directory for appuser (uv requires it for dependency installation)
@@ -36,6 +38,12 @@ RUN mkdir -p /home/appuser/.cache && chown -R appuser:appuser /home/appuser/.cac
 
 # Run everything as appuser from this point
 USER appuser
+
+# Create volume mount point for persistent image cache
+VOLUME ["/app/images"]
+
+# Set Python path to include current directory for module imports
+ENV PYTHONPATH=/app
 
 # Expose port (can be overridden by PORT env var)
 EXPOSE 8000
@@ -48,4 +56,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:$PORT/health || exit 1
 
 # Run the application
-CMD ["uv", "run", "python", "main.py"]
+CMD ["uv", "run", "python", "-m", "src.main"]

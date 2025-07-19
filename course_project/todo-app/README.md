@@ -22,11 +22,11 @@ A FastAPI application that displays random images from Lorem Picsum with caching
 # Install dependencies
 uv sync
 
-# Start the application (using refactored main.py)
-python main.py
+# Start the application (using refactored structure)
+python -m src.main
 
 # Or with uvicorn directly
-uvicorn main:app --reload --port 8000
+uvicorn src.main:app --reload --port 8000
 ```
 
 The application will be available at http://localhost:8000
@@ -125,8 +125,8 @@ The application includes several features specifically for testing:
 
 ```
 todo-app/
-├── main.py                    # Clean application entry point
-├── src/                       # Modular application source
+├── src/                       # Complete application source
+│   ├── main.py               # Application entry point
 │   ├── config/
 │   │   └── settings.py       # Centralized configuration management
 │   ├── models/

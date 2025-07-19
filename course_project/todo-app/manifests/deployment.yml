@@ -12,7 +12,28 @@ spec:
       labels:
         app: todo-app
     spec:
+      initContainers:
+        - name: fix-cache-permissions
+          image: busybox
+          command: ['sh', '-c', 'chmod 777 /images']
+          volumeMounts:
+            - name: image-cache-volume
+              mountPath: /images
+      volumes:
+        - name: image-cache-volume
+          persistentVolumeClaim:
+            claimName: image-cache-pvc
       containers:
         - name: todo-app-server
-          image: todo-app:1.5
+          image: todo-app:1.12
           imagePullPolicy: IfNotPresent
+          env:
+            - name: IMAGE_CACHE_PATH
+              value: "/images"
+            - name: PORT
+              value: "8080"
+            - name: LOG_LEVEL
+              value: "INFO"
+          volumeMounts:
+            - name: image-cache-volume
+              mountPath: /images

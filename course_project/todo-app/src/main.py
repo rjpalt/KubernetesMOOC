@@ -3,10 +3,10 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 
-from src.config.settings import settings
-from src.api.dependencies import initialize_dependencies, get_background_task_manager_instance
-from src.api.routes import images, health
-from src.core.lifespan import create_lifespan_manager
+from .config.settings import settings
+from .api.dependencies import initialize_dependencies, get_background_task_manager_instance
+from .api.routes import images, health
+from .core.lifespan import create_lifespan_manager
 
 # Configure logging
 logging.basicConfig(
@@ -54,7 +54,7 @@ def main():
     logger.info(f"Update interval: {settings.image_update_interval_minutes} minutes")
 
     uvicorn.run(
-        "main:app",
+        "src.main:app",
         host=settings.host,
         port=settings.port,
         reload=settings.debug,
