@@ -1,12 +1,13 @@
 """Health and system-related API routes."""
+
 import asyncio
 import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 
-from ...services.image_service import ImageService
 from ...config.settings import settings
+from ...services.image_service import ImageService
 
 router = APIRouter()
 
@@ -14,6 +15,7 @@ router = APIRouter()
 def get_image_service() -> ImageService:
     """Dependency to get image service instance."""
     from ...api.dependencies import get_image_service_instance
+
     return get_image_service_instance()
 
 
@@ -34,6 +36,7 @@ async def health_check(image_service: ImageService = Depends(get_image_service))
 async def shutdown_container():
     """Shutdown endpoint for testing container resilience."""
     import logging
+
     logger = logging.getLogger(__name__)
     logger.warning("Shutdown endpoint called - stopping application for testing")
 

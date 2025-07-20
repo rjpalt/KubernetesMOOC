@@ -1,10 +1,11 @@
 """Image-related API routes."""
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Request, Depends
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 
+from ...models.image import FetchResult, ImageInfo
 from ...services.image_service import ImageService
-from ...models.image import ImageInfo, FetchResult
 
 router = APIRouter()
 
@@ -12,12 +13,14 @@ router = APIRouter()
 def get_image_service() -> ImageService:
     """Dependency to get image service instance."""
     from ...api.dependencies import get_image_service_instance
+
     return get_image_service_instance()
 
 
 def get_templates() -> Jinja2Templates:
     """Dependency to get templates instance."""
     from ...api.dependencies import get_templates_instance
+
     return get_templates_instance()
 
 
@@ -25,7 +28,7 @@ def get_templates() -> Jinja2Templates:
 async def read_root(
     request: Request,
     image_service: ImageService = Depends(get_image_service),
-    templates: Jinja2Templates = Depends(get_templates)
+    templates: Jinja2Templates = Depends(get_templates),
 ):
     """Root endpoint - returns HTML page with current image and controls."""
     image_info = await image_service.get_image_info()
@@ -63,7 +66,7 @@ async def get_image_info(image_service: ImageService = Depends(get_image_service
 async def fetch_new_image_endpoint(
     force: bool = False,
     background_tasks: BackgroundTasks = None,
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service),
 ):
     """Manually trigger a new image fetch."""
     return await image_service.fetch_new_image(force=force)

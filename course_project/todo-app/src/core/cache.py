@@ -1,15 +1,15 @@
 """Image cache management with atomic operations and metadata tracking."""
-import uuid
+
 import logging
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import aiofiles
 import httpx
 
 from ..config.settings import settings
-from ..models.image import ImageInfo, FetchResult, ImageMetadata
+from ..models.image import FetchResult, ImageInfo, ImageMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class ImageCacheManager:
                     await f.write(f"{metadata.timestamp}\n{metadata.size_bytes}\n{metadata.url}")
 
                 logger.info(f"Successfully cached new image: {len(response.content)} bytes")
-                
+
                 return FetchResult(
                     status="success",
                     timestamp=metadata.timestamp,
@@ -100,10 +100,7 @@ class ImageCacheManager:
     async def get_current_image_info(self) -> ImageInfo:
         """Get information about the current cached image."""
         if not self.current_image_file.exists():
-            return ImageInfo(
-                status="no_image", 
-                message="No image has been cached yet"
-            )
+            return ImageInfo(status="no_image", message="No image has been cached yet")
 
         stat = self.current_image_file.stat()
 

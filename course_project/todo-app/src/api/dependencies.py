@@ -1,10 +1,11 @@
 """FastAPI dependencies for dependency injection."""
+
 from fastapi.templating import Jinja2Templates
 
-from ..core.cache import ImageCacheManager
-from ..services.image_service import ImageService
-from ..services.background import BackgroundTaskManager
 from ..config.settings import settings
+from ..core.cache import ImageCacheManager
+from ..services.background import BackgroundTaskManager
+from ..services.image_service import ImageService
 
 # Global instances - because you apparently can't live without globals
 _image_cache_manager: ImageCacheManager = None
@@ -16,7 +17,7 @@ _templates: Jinja2Templates = None
 def initialize_dependencies():
     """Initialize all dependencies. Call this once at startup."""
     global _image_cache_manager, _image_service, _background_task_manager, _templates
-    
+
     _image_cache_manager = ImageCacheManager()
     _image_service = ImageService(_image_cache_manager)
     _background_task_manager = BackgroundTaskManager(_image_service)

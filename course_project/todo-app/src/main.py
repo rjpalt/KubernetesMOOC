@@ -1,11 +1,14 @@
 """Main application entry point - clean and modular."""
+
 import logging
+
 import uvicorn
 from fastapi import FastAPI
 
+from .api.dependencies import (get_background_task_manager_instance,
+                               initialize_dependencies)
+from .api.routes import health, images
 from .config.settings import settings
-from .api.dependencies import initialize_dependencies, get_background_task_manager_instance
-from .api.routes import images, health
 from .core.lifespan import create_lifespan_manager
 
 # Configure logging
@@ -22,24 +25,20 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     # Initialize dependencies
     initialize_dependencies()
-    
+
     # Get background task manager for lifespan
     background_task_manager = get_background_task_manager_instance()
-    
+
     # Create lifespan manager
     lifespan = create_lifespan_manager(background_task_manager)
-    
+
     # Create FastAPI app
-    app = FastAPI(
-        title="Todo App with Hourly Images",
-        version="0.2.0",
-        lifespan=lifespan
-    )
-    
+    app = FastAPI(title="Todo App with Hourly Images", version="0.2.0", lifespan=lifespan)
+
     # Include routers
     app.include_router(images.router)
     app.include_router(health.router)
-    
+
     return app
 
 
