@@ -5,7 +5,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app: ping-pong    # This is the app as declared in the deployment.
+    app: log-output     # This is the app as declared in the deployment.
   ports:
     - port: 2506        # This is the port that the service will expose.
       protocol: TCP

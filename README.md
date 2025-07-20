@@ -195,7 +195,33 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     kubectl exec -it <insert-pod-name-here> -c todo-app-server -- ls /images
     ``` 
-  
+### Chapter 3
+
+- [3.1]()
+  - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+  - Command to add container iamges for ping-pong and log-output:
+    ```bash
+    k3d image import ping-pong-app:2.1
+    k3d image import log-output-app:2.1
+    ```
+  - Command to apply manifests for ping-pong:
+    ```bash
+    kubectl apply -f manifests/log-output-deployment.yaml
+    kubectl apply -f manifests/ping-pong-deployment.yaml
+    kubectl apply -f manifests/log-output-service.yaml
+    kubectl apply -f manifests/ping-pong-service.yaml
+    kubectl apply -f manifests/ingress.yaml
+    ```
+  - Command to check everything is running: `kubectl get pv,pvc,pods,svc,ingress`
+  - Command to check log-output-app logs are correct:
+    ```bash
+    kubectl logs -f log-output-app-<hash>
+    ```
+  - Command to check ping the pingpong endpoint:
+    ```bash
+    curl http://localhost:8080/pingpong
+    ```
+    
 
 
 ## Cleanup Script
