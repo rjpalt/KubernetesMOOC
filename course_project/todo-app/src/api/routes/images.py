@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 
 from ...models.image import FetchResult, ImageInfo
 from ...services.image_service import ImageService
+from ...services.todo_service import TodoService
 
 router = APIRouter()
 
@@ -24,16 +25,25 @@ def get_templates() -> Jinja2Templates:
     return get_templates_instance()
 
 
+def get_todo_service() -> TodoService:
+    """Dependency to get todo service instance."""
+    from ...api.dependencies import get_todo_service_instance
+
+    return get_todo_service_instance()
+
+
 @router.get("/")
 async def read_root(
     request: Request,
     image_service: ImageService = Depends(get_image_service),
+    todo_service: TodoService = Depends(get_todo_service),
     templates: Jinja2Templates = Depends(get_templates),
 ):
     """Root endpoint - returns HTML page with current image and controls."""
     image_info = await image_service.get_image_info()
     image_status = image_service.format_image_status(image_info)
     config = image_service.get_config_for_template()
+    todos = todo_service.get_all_todos()
 
     return templates.TemplateResponse(
         "index.html",
@@ -42,6 +52,7 @@ async def read_root(
             "image_info": image_info.dict(),
             "image_status": image_status,
             "config": config,
+            "todos": todos,
         },
     )
 

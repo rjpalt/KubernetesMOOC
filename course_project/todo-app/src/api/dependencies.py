@@ -6,22 +6,25 @@ from ..config.settings import settings
 from ..core.cache import ImageCacheManager
 from ..services.background import BackgroundTaskManager
 from ..services.image_service import ImageService
+from ..services.todo_service import TodoService
 
 # Global instances - because you apparently can't live without globals
 _image_cache_manager: ImageCacheManager = None
 _image_service: ImageService = None
 _background_task_manager: BackgroundTaskManager = None
 _templates: Jinja2Templates = None
+_todo_service: TodoService = None
 
 
 def initialize_dependencies():
     """Initialize all dependencies. Call this once at startup."""
-    global _image_cache_manager, _image_service, _background_task_manager, _templates
+    global _image_cache_manager, _image_service, _background_task_manager, _templates, _todo_service
 
     _image_cache_manager = ImageCacheManager()
     _image_service = ImageService(_image_cache_manager)
     _background_task_manager = BackgroundTaskManager(_image_service)
     _templates = Jinja2Templates(directory=settings.template_directory)
+    _todo_service = TodoService()
 
 
 def get_image_cache_manager_instance() -> ImageCacheManager:
@@ -50,3 +53,10 @@ def get_templates_instance() -> Jinja2Templates:
     if _templates is None:
         raise RuntimeError("Dependencies not initialized. Call initialize_dependencies() first.")
     return _templates
+
+
+def get_todo_service_instance() -> TodoService:
+    """Get the global todo service instance."""
+    if _todo_service is None:
+        raise RuntimeError("Dependencies not initialized. Call initialize_dependencies() first.")
+    return _todo_service

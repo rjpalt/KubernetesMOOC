@@ -9,6 +9,26 @@
     <p><strong>Image Status:</strong> {{ image_status }}</p>
 </div>
 
+<div class="todo-section">
+    <h2>📝 Todo List</h2>
+    <form class="todo-form">
+        <input type="text" maxlength="140" placeholder="What needs to be done? (max 140 chars)" 
+               oninput="updateCharCount(this)" id="todo-input">
+        <span id="char-count">0/140</span>
+        <button type="button">Add Todo</button>
+    </form>
+    
+    <div class="todo-list">
+        {% for todo in todos %}
+        <div class="todo-item">
+            <input type="checkbox" {% if todo.status == "done" %}checked{% endif %}>
+            <span class="{% if todo.status == 'done' %}completed{% endif %}">{{ todo.text }}</span>
+            <button class="delete-btn">×</button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
 <div class="image-section">
     <h3>📸 Current Image</h3>
     {% if image_info.status == "available" %}
@@ -48,6 +68,13 @@
 
 {% block scripts %}
 <script>
+    function updateCharCount(input) {
+        const count = input.value.length;
+        const counter = document.getElementById('char-count');
+        counter.textContent = `${count}/140`;
+        counter.style.color = count > 140 ? 'red' : '#666';
+    }
+
     async function fetchNewImage(force = false) {
         const btn = event.target;
         const originalText = btn.textContent;
