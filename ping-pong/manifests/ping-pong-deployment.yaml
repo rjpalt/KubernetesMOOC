@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ping-pong-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ping-pong
+  template:
+    metadata:
+      labels:
+        app: ping-pong
+    spec:
+      containers:
+        - name: ping-pong
+          image: ping-pong-app:2.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PING_PONG_APP_PORT
+              value: "3000"
+            - name: PING_PONG_LOG_LEVEL
+              value: "INFO"

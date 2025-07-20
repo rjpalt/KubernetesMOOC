@@ -102,6 +102,36 @@
    kubectl apply -f manifests/
    ```
 
+## Networking Configuration: Local vs Kubernetes
+
+### Local Development
+When running locally, the app uses default settings from `settings.py`:
+```python
+ping_pong_service_host: str = "localhost"  # Works for local development
+ping_pong_service_port: int = 3000         # Default ping-pong port
+```
+
+### Kubernetes Deployment
+In Kubernetes, you MUST override these defaults using environment variables:
+
+```yaml
+env:
+- name: LOG_APP_PING_PONG_SERVICE_HOST
+  value: "ping-pong-svc"  # Kubernetes service name (NOT localhost)
+- name: LOG_APP_PING_PONG_SERVICE_PORT
+  value: "2507"           # Service port (matches ping-pong service)
+```
+
+**Why localhost doesn't work in Kubernetes:**
+- Each pod has its own network namespace
+- `localhost` only refers to the same pod, not other services
+- Use Kubernetes service names for inter-pod communication
+
+**Environment Variable Mapping:**
+The app uses Pydantic BaseSettings with `env_prefix = "LOG_APP_"`:
+- `ping_pong_service_host` ← `LOG_APP_PING_PONG_SERVICE_HOST`
+- `ping_pong_service_port` ← `LOG_APP_PING_PONG_SERVICE_PORT`
+
 ## Endpoints
 
 - Generator:
