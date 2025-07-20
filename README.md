@@ -161,7 +161,7 @@
     ```bash
     kubectl exec -it <insert-pod-name-here> -c todo-app-server -- ls /images
     ```
-- [1.13]()
+- [1.13](https://github.com/rjpalt/KubernetesMOOC/tree/1.13/course_project/todo-app)
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Command to create tmp folder in the k3d cluster:
     ```bash

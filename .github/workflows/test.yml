@@ -1,0 +1,135 @@
+name: Test Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'course_project/todo-app/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'course_project/todo-app/**'
+
+jobs:
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: course_project/todo-app
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Install dependencies
+      run: |
+        uv sync --group test
+    
+    - name: Run unit tests
+      run: |
+        uv run pytest tests/unit/ -v --tb=short
+    
+    - name: Generate coverage report
+      run: |
+        uv run pytest tests/unit/ --cov=src --cov-report=xml --cov-report=term-missing
+    
+    - name: Upload coverage to artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: unit-coverage
+        path: coverage.xml
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: course_project/todo-app
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Install dependencies
+      run: |
+        uv sync --group test
+    
+    - name: Run integration tests
+      run: |
+        uv run pytest tests/integration/ -v --tb=short
+
+  test-container:
+    name: Container Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: course_project/todo-app
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Install dependencies
+      run: |
+        uv sync --group test
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      run: |
+        docker build -t todo-app:test .
+    
+    - name: Run container tests
+      run: |
+        # Start container in background
+        docker run -d --name todo-test -p 8080:8000 todo-app:test
+        
+        # Wait for container to be ready
+        sleep 10
+        
+        # Check if container is running
+        docker ps | grep todo-test
+        
+        # Basic health check
+        curl -f http://localhost:8080/health || exit 1
+        
+        # Cleanup
+        docker stop todo-test
+        docker rm todo-test
+    
+    - name: Run container unit tests
+      run: |
+        # Run container tests from the host, not inside the container
+        uv run pytest tests/container/ -v

@@ -223,3 +223,50 @@ Stopping and removing services with Docker Compose including volumes:
 ```bash
 docker-compose down -v
 ```
+
+# Using Busybox for debugging #
+
+## Setting up a Busybox Pod ##
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-busybox
+  labels:
+    app: my-busybox
+spec:
+  containers:
+  - image: busybox
+    command:
+      - sleep
+      - "3600"
+    imagePullPolicy: IfNotPresent
+    name: busybox
+  restartPolicy: Always
+```
+## Accessing the Busybox Pod ##
+```bash
+kubectl exec -it my-busybox -- wget -qO - http://todo-backend-svc:2345
+```
+
+Change name to your service name and port.
+
+Also possible to try out with the real IP!
+
+1. Get the IP of the service:
+
+```bash
+kubectl get svc
+```
+2. Use the IP in the command:
+
+```bash
+kubectl exec -it my-busybox -- wget -qO - http://<service-ip>:2345
+```
+
+
+Opening a shell in the Busybox Pod:
+
+```bash
+kubectl exec -it my-busybox -- sh
+```

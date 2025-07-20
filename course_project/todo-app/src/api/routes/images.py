@@ -46,10 +46,10 @@ async def read_root(
     todos = todo_service.get_all_todos()
 
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
-            "image_info": image_info.dict(),
+            "image_info": image_info.model_dump(),
             "image_status": image_status,
             "config": config,
             "todos": todos,
