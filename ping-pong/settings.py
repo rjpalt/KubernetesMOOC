@@ -11,13 +11,9 @@ class PingPongSettings(BaseSettings):
     """
     Ping-pong application settings with environment variable support.
     
-    Environment variables are prefixed with PING_PONG_ (e.g., PING_PONG_SHARED_VOLUME_PATH).
+    Environment variables are prefixed with PING_PONG_ (e.g., PING_PONG_APP_PORT).
     Also supports .env file loading.
     """
-    
-    # Shared volume configuration
-    shared_volume_path: str = "shared"
-    counter_file_name: str = "ping_pong_counter.txt"
     
     # Server configuration
     app_port: int = 3000
@@ -30,14 +26,6 @@ class PingPongSettings(BaseSettings):
         env_prefix = "PING_PONG_"
         env_file = ".env"
         case_sensitive = False
-    
-    @field_validator('shared_volume_path')
-    @classmethod
-    def validate_shared_path(cls, v):
-        """Ensure the shared volume path exists or can be created"""
-        shared_path = Path(v)
-        shared_path.mkdir(parents=True, exist_ok=True)
-        return str(shared_path)
     
     @field_validator('log_level')
     @classmethod
@@ -55,11 +43,6 @@ class PingPongSettings(BaseSettings):
         if not (1 <= v <= 65535):
             raise ValueError('Port must be between 1 and 65535')
         return v
-    
-    @property
-    def counter_file_path(self) -> str:
-        """Get the full path to the counter file"""
-        return str(Path(self.shared_volume_path) / self.counter_file_name)
 
 
 # Global settings instance - lazy loaded
@@ -90,8 +73,6 @@ if __name__ == "__main__":
     # For testing/debugging the settings
     settings = get_settings()
     print("Current ping-pong settings:")
-    print(f"  Shared volume path: {settings.shared_volume_path}")
-    print(f"  Counter file path: {settings.counter_file_path}")
     print(f"  App port: {settings.app_port}")
     print(f"  Log level: {settings.log_level}")
     print(f"  Host: {settings.host}")

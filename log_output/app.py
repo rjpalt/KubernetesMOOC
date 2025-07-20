@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import os
 import time
 import uuid
 import logging
 import asyncio
 import threading
+import httpx
 from datetime import datetime, timezone
 from fastapi import FastAPI
 import uvicorn
@@ -14,7 +14,6 @@ from settings import get_settings
 # Load settings
 settings = get_settings()
 
-# Configure logging with both console and file handlers
 def setup_logging():
     logger = logging.getLogger(__name__)
     logger.setLevel(getattr(logging, settings.log_level))
@@ -26,17 +25,11 @@ def setup_logging():
     console_handler = logging.StreamHandler()
     console_handler.setLevel(getattr(logging, settings.log_level))
     
-    # File handler for shared data
-    file_handler = logging.FileHandler(settings.shared_log_path, mode='a')
-    file_handler.setLevel(getattr(logging, settings.log_level))
-    
     # Simple format without metadata cruft
     formatter = logging.Formatter('%(message)s')
     console_handler.setFormatter(formatter)
-    file_handler.setFormatter(formatter)
     
     logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
     
     return logger
 
@@ -46,16 +39,16 @@ logger = setup_logging()
 random_string = str(uuid.uuid4())
 app = FastAPI(title="Log Output App", description="A simple app that logs timestamps and serves status")
 
-def read_ping_pong_counter():
-    """Read the current ping-pong counter from the shared file"""
+async def get_ping_pong_counter():
+    """Get the current ping-pong counter via HTTP request"""
     try:
-        counter_file_path = settings.ping_pong_counter_file_path
-        if os.path.exists(counter_file_path):
-            with open(counter_file_path, 'r') as f:
-                return int(f.read().strip())
-        return 0
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"http://{settings.ping_pong_service_host}:{settings.ping_pong_service_port}/pings", timeout=5.0)
+            response.raise_for_status()
+            data = response.json()
+            return data.get("pings", 0)
     except Exception as e:
-        logger.error(f"Failed to read ping-pong counter: {e}")
+        logger.error(f"Failed to get ping-pong counter via HTTP: {e}")
         return 0
 
 def get_current_timestamp():
@@ -66,19 +59,23 @@ def logging_worker():
     """Background worker that logs the timestamp, random string, and ping-pong counter every 5 seconds"""
     logger.info(f"Application started. Generated string: {random_string}")
     
-    while True:
+    async def log_with_ping_count():
         timestamp = get_current_timestamp()
-        ping_pong_count = read_ping_pong_counter()
+        ping_pong_count = await get_ping_pong_counter()
         log_message = f"{timestamp}: {random_string}"
         if ping_pong_count > 0:
             log_message += f"\nPing / Pongs: {ping_pong_count}"
         logger.info(log_message)
+    
+    while True:
+        # Run the async function in the current thread
+        asyncio.run(log_with_ping_count())
         time.sleep(settings.log_interval_seconds)
 
 @app.get("/")
 async def get_status():
     """Endpoint to get current status with timestamp, random string, and ping-pong count"""
-    ping_pong_count = read_ping_pong_counter()
+    ping_pong_count = await get_ping_pong_counter()
     response = {
         "timestamp": get_current_timestamp(),
         "string": random_string,

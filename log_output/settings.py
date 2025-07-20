@@ -19,9 +19,12 @@ class AppSettings(BaseSettings):
     shared_log_path: str = "tmp/logs/output.txt"
     log_level: str = "INFO"
     
-    # Shared volume configuration (for ping-pong communication)
-    shared_volume_path: str = "shared"
-    ping_pong_counter_file: str = "ping_pong_counter.txt"
+    # Ping-pong service configuration (HTTP communication)
+    # By default uses localhost for local development, for kubernetes deployment needs to be
+    # over-written with the service name DNS and port
+    # Use env variables LOG_APP_PING_PONG_SERVICE_HOST and LOG_APP_PING_PONG_SERVICE_PORT
+    ping_pong_service_host: str = "localhost"
+    ping_pong_service_port: int = 3000
     
     # Server configuration
     app_port: int = 8000
@@ -53,7 +56,7 @@ class AppSettings(BaseSettings):
             raise ValueError(f'Log level must be one of {valid_levels}')
         return v.upper()
     
-    @field_validator('app_port', 'log_server_port')
+    @field_validator('app_port', 'log_server_port', 'ping_pong_service_port')
     @classmethod
     def validate_ports(cls, v):
         """Ensure ports are in valid range"""
@@ -68,12 +71,6 @@ class AppSettings(BaseSettings):
         if v < 1:
             raise ValueError('Log interval must be at least 1 second')
         return v
-    
-    @property
-    def ping_pong_counter_file_path(self) -> str:
-        """Get the full path to the ping-pong counter file"""
-        from pathlib import Path
-        return str(Path(self.shared_volume_path) / self.ping_pong_counter_file)
 
 
 # Global settings instance - lazy loaded

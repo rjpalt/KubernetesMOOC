@@ -16,17 +16,14 @@ COPY pyproject.toml uv.lock ./
 # Install dependencies
 RUN uv sync --frozen --no-dev
 
-# Copy the combined application files
+# Copy the application files
 COPY app.py settings.py ./
-
-# Create shared directory mount points
-RUN mkdir -p /shared-data /shared
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser -m appuser
 
 # Change ownership of directories to appuser
-RUN chown -R appuser:appuser /app /shared-data /shared
+RUN chown -R appuser:appuser /app
 
 # Create a cache directory for appuser
 RUN mkdir -p /home/appuser/.cache && chown -R appuser:appuser /home/appuser/.cache
@@ -36,12 +33,6 @@ USER appuser
 
 # Set environment variable to force unbuffered output
 ENV PYTHONUNBUFFERED=1
-
-# Set default shared volume path for ping-pong integration
-ENV LOG_APP_SHARED_VOLUME_PATH=/shared
-
-# Override log path for container environment
-ENV LOG_APP_SHARED_LOG_PATH=/shared-data/output.txt
 
 # Set default PORT
 ENV PORT=8000

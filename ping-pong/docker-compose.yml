@@ -1,24 +1,20 @@
 version: '3.8'
 
 # Docker Compose configuration for ping-pong and log-output integration
-# This setup demonstrates shared persistent volume communication between services
+# This setup demonstrates HTTP communication between services
 
 services:
-  # Ping-pong service: increments counter and writes to shared volume
+  # Ping-pong service: increments counter and provides HTTP endpoint
   ping-pong:
-    image: ping-pong-app:1.11
+    image: ping-pong-app:2.1
     build:
       context: .
       dockerfile: Dockerfile
     container_name: ping-pong-app
     environment:
-      # Configure ping-pong to use shared volume
-      - PING_PONG_SHARED_VOLUME_PATH=/shared
+      # Configure ping-pong service
       - PING_PONG_APP_PORT=3000
       - PING_PONG_LOG_LEVEL=INFO
-    volumes:
-      # Mount shared volume for counter file
-      - shared_data:/shared
     ports:
       # Expose ping-pong on port 3000
       - "3000:3000"
@@ -31,26 +27,24 @@ services:
     networks:
       - ping_pong_network
 
-  # Log-output service: reads ping-pong counter and displays with logs
+  # Log-output service: gets ping-pong counter via HTTP and displays with logs
   log-output:
-    image: log-output:1.11
+    image: log-output:2.1
     build:
       context: ../log_output
       dockerfile: Dockerfile
     container_name: log-output-app
     environment:
-      # Configure log-output to read from shared volume
-      - LOG_APP_SHARED_VOLUME_PATH=/shared
+      # Configure log-output to communicate with ping-pong via HTTP
+      - LOG_APP_PING_PONG_SERVICE_HOST=ping-pong
+      - LOG_APP_PING_PONG_SERVICE_PORT=3000
       - LOG_APP_APP_PORT=8000
       - LOG_APP_LOG_LEVEL=INFO
-    volumes:
-      # Mount shared volume for ping-pong counter
-      - shared_data:/shared
     ports:
       # Expose log-output on port 8000
       - "8000:8000"
     depends_on:
-      # Start ping-pong first since log-output reads its data
+      # Start ping-pong first since log-output communicates with it
       - ping-pong
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -60,14 +54,6 @@ services:
       start_period: 5s
     networks:
       - ping_pong_network
-
-volumes:
-  # Shared volume for ping-pong counter communication
-  shared_data:
-    driver: local
-  # Separate volume for log output files
-  log_data:
-    driver: local
 
 networks:
   # Custom network for service communication
