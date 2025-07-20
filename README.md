@@ -161,6 +161,26 @@
     ```bash
     kubectl exec -it <insert-pod-name-here> -c todo-app-server -- ls /images
     ```
+- [1.13]()
+  - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+  - Command to create tmp folder in the k3d cluster:
+    ```bash
+    docker exec k3d-k3s-default-agent-0 mkdir -p /tmp/kube
+    ```
+  - Command to import todo app image:
+    ```bash
+    k3d image import todo-app:1.13
+    ```
+  - Command to apply all manifests for todo app (All manifests are unchanged from the previous exercise except deployment image tag):
+    ```bash
+    kubectl apply -f manifests/
+    ```
+  - Command to check everything is running: `kubectl get pv,pvc,pods,svc,ingress`
+  - Command to check ingress for todo app: `curl http://localhost:8080/`
+  - Command to check shared image cache file in the persistent volume:
+    ```bash
+    kubectl exec -it <insert-pod-name-here> -c todo-app-server -- ls /images
+    ``` 
   
 
 

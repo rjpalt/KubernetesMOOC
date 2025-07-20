@@ -25,7 +25,7 @@ spec:
             claimName: image-cache-pvc
       containers:
         - name: todo-app-server
-          image: todo-app:1.12
+          image: todo-app:1.13
           imagePullPolicy: IfNotPresent
           env:
             - name: IMAGE_CACHE_PATH
