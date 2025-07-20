@@ -125,7 +125,7 @@
     ```bash
     kubectl exec -it <insert-pod-name-here> -c log-output -- cat /shared/ping_pong_counter.txt
     ```
-- [1.12]()
+- [1.12](https://github.com/rjpalt/KubernetesMOOC/tree/1.12/course_project/todo-app)
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Command to create tmp folder in the k3d cluster:
     ```bash
