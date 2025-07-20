@@ -1,5 +1,19 @@
 # KubernetesSubmissions
 
+## CI/CD Pipeline
+
+The repository includes automated testing via GitHub Actions for the todo-app project:
+
+- **Triggers**: Changes to `course_project/todo-app/**` only
+- **Tests**: Unit tests, integration tests, container build validation
+- **Local testing**: Use `act` to run GitHub Actions locally
+  ```bash
+  brew install act  # macOS
+  act --job test-unit
+  act --job test-integration
+  act --job test-container
+  ```
+
 ## Exercises
 
 ### Chapter 2
