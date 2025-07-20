@@ -43,4 +43,5 @@ docker-volumes/
 k8s/secrets/local/
 
 # Ignores specification files
-course_project/PROJECT_SPECIFICATION.md
+course_project/todo-app/PROJECT_SPECIFICATION.md
+course_project/todo-app/TESTING_PLAN.md
