@@ -197,7 +197,7 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ``` 
 ### Chapter 3
 
-- [3.1]()
+- [2.1](https://github.com/rjpalt/KubernetesMOOC/tree/2.1/ping-pong)
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Command to add container iamges for ping-pong and log-output:
     ```bash
