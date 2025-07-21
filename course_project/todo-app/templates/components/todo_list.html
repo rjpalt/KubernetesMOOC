@@ -1,0 +1,8 @@
+<div id="todo-list">
+    {% for todo in todos %}
+        {% include "components/todo_item.html" %}
+    {% endfor %}
+    {% if not todos %}
+        <div class="no-todos">No todos yet. Add one above!</div>
+    {% endif %}
+</div>

@@ -1,75 +1,82 @@
-"""Todo test fixtures and sample data.
+"""Frontend test fixtures for mocking backend responses.
 
-Sample data for testing todo functionality because you'll probably 
-create garbage data if left to your own devices.
+After microservice separation:
+- Todo business logic moved to backend
+- Frontend tests mock backend HTTP responses
+- These fixtures provide consistent mock data that matches backend format
+
+This ensures frontend tests use the same data format the backend actually returns.
 """
 
-import uuid
+from typing import List, Dict
 from datetime import datetime
-from typing import List
-
-from src.models.todo import Todo, TodoStatus
 
 
-def get_sample_todos() -> List[Todo]:
-    """Get sample todos for testing."""
-    return [
-        Todo(
-            id="test-id-1",
-            text="Test todo that's not done",
-            status=TodoStatus.NOT_DONE,
-            created_at=datetime(2024, 1, 1, 12, 0, 0)
-        ),
-        Todo(
-            id="test-id-2", 
-            text="Test todo that's done",
-            status=TodoStatus.DONE,
-            created_at=datetime(2024, 1, 1, 13, 0, 0)
-        ),
-        Todo(
-            id="test-id-3",
-            text="Another test todo",
-            status=TodoStatus.NOT_DONE,
-            created_at=datetime(2024, 1, 1, 14, 0, 0)
-        )
-    ]
-
-
-def get_sample_todo() -> Todo:
-    """Get a single sample todo for testing."""
-    return Todo(
-        id="single-test-id",
-        text="Single test todo",
-        status=TodoStatus.NOT_DONE,
-        created_at=datetime(2024, 1, 1, 12, 0, 0)
-    )
-
-
-def get_long_text_todo() -> Todo:
-    """Get a todo with text at the character limit for boundary testing."""
-    return Todo(
-        id="long-text-id",
-        text="x" * 140,  # Exactly at the 140 character limit
-        status=TodoStatus.NOT_DONE,
-        created_at=datetime(2024, 1, 1, 12, 0, 0)
-    )
-
-
-def get_invalid_todo_data() -> dict:
-    """Get invalid todo data for testing validation."""
+def get_mock_backend_todo_response() -> Dict:
+    """Get a single todo in the format the backend returns.
+    
+    Critical: This must match the exact format todo-backend returns!
+    """
     return {
-        "id": "invalid-test-id",
-        "text": "x" * 141,  # Over the 140 character limit
-        "status": "invalid-status",
-        "created_at": "not-a-datetime"
+        "id": "mock-backend-todo-1",
+        "text": "Mock todo from backend",
+        "status": "not-done",  # Note: hyphen format from backend!
+        "created_at": "2025-07-21T10:00:00Z"
     }
 
 
-def create_todo_with_id(todo_id: str) -> Todo:
-    """Create a todo with a specific ID for testing."""
-    return Todo(
-        id=todo_id,
-        text=f"Test todo with ID {todo_id}",
-        status=TodoStatus.NOT_DONE,
-        created_at=datetime(2024, 1, 1, 12, 0, 0)
-    )
+def get_mock_backend_todos_list() -> List[Dict]:
+    """Get multiple todos in backend response format."""
+    return [
+        {
+            "id": "mock-todo-1",
+            "text": "First mock todo",
+            "status": "not-done",
+            "created_at": "2025-07-21T10:00:00Z"
+        },
+        {
+            "id": "mock-todo-2", 
+            "text": "Second mock todo",
+            "status": "done",
+            "created_at": "2025-07-21T11:00:00Z"
+        },
+        {
+            "id": "mock-todo-3",
+            "text": "Third mock todo",
+            "status": "not-done",
+            "created_at": "2025-07-21T12:00:00Z"
+        }
+    ]
+
+
+def get_sample_todos() -> List[Dict]:
+    """Alias for get_mock_backend_todos_list for backward compatibility."""
+    return get_mock_backend_todos_list()
+
+
+def get_mock_backend_created_todo_response() -> Dict:
+    """Get response format for newly created todo from backend."""
+    return {
+        "id": "newly-created-mock-id",
+        "text": "Newly created mock todo",
+        "status": "not-done",
+        "created_at": "2025-07-21T13:00:00Z"
+    }
+
+
+def get_mock_backend_error_response() -> Dict:
+    """Get error response format from backend."""
+    return {
+        "detail": "Mock backend error for testing"
+    }
+
+
+# TODO: Add Image fixtures here when Image functionality is implemented
+# Example:
+# def get_mock_image_info() -> Dict:
+#     """Mock image information for frontend testing."""
+#     return {
+#         "filename": "mock-image.jpg",
+#         "last_updated": "2025-07-21T10:00:00Z",
+#         "size": 1024
+#     }

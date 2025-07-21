@@ -11,22 +11,10 @@
 
 <div class="todo-section">
     <h2>📝 Todo List</h2>
-    <form class="todo-form">
-        <input type="text" maxlength="140" placeholder="What needs to be done? (max 140 chars)" 
-               oninput="updateCharCount(this)" id="todo-input">
-        <span id="char-count">0/140</span>
-        <button type="button">Add Todo</button>
-    </form>
+    <p><small>Todos are managed by the todo-backend service via API calls</small></p>
     
-    <div class="todo-list">
-        {% for todo in todos %}
-        <div class="todo-item">
-            <input type="checkbox" {% if todo.status == "done" %}checked{% endif %}>
-            <span class="{% if todo.status == 'done' %}completed{% endif %}">{{ todo.text }}</span>
-            <button class="delete-btn">×</button>
-        </div>
-        {% endfor %}
-    </div>
+    {% include "components/todo_form.html" %}
+    {% include "components/todo_list.html" %}
 </div>
 
 <div class="image-section">
@@ -89,7 +77,11 @@
             if (response.ok) {
                 alert('Image fetch result: ' + result.status);
                 if (result.status === 'success') {
-                    location.reload();
+                    // Update just the image with cache-busting timestamp
+                    const img = document.querySelector('img[src="/image"]');
+                    if (img) {
+                        img.src = `/image?t=${Date.now()}`;
+                    }
                 }
             } else {
                 alert('Error: ' + result.detail);

@@ -1,0 +1,23 @@
+<div class="todo-item" id="todo-{{ todo.id }}" data-todo-id="{{ todo.id }}">
+    <div class="todo-content">
+        <input type="checkbox" 
+               {% if todo.status == "done" %}checked{% endif %}
+               hx-put="/todos/{{ todo.id }}/toggle" 
+               hx-target="#todo-{{ todo.id }}" 
+               hx-swap="outerHTML">
+        <span class="todo-text {% if todo.status == 'done' %}completed{% endif %}">
+            {{ todo.text }}
+        </span>
+        <small class="todo-meta">
+            Created: {{ todo.created_at.strftime('%Y-%m-%d %H:%M') }}
+            {% if todo.updated_at %}
+                | Updated: {{ todo.updated_at.strftime('%Y-%m-%d %H:%M') }}
+            {% endif %}
+        </small>
+    </div>
+    <button class="delete-btn" 
+            hx-delete="/todos/{{ todo.id }}" 
+            hx-target="#todo-{{ todo.id }}" 
+            hx-swap="outerHTML"
+            hx-confirm="Delete this todo?">×</button>
+</div>
