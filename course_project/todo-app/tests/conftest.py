@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import Mock
 
 from src.main import create_app
+from src.services.todo_backend_client import TodoBackendClient
 from src.api import dependencies
 from src.services.todo_service import TodoService
 from src.services.image_service import ImageService
@@ -43,8 +44,8 @@ def test_client(mock_todo_service, mock_image_service, mock_image_cache_manager)
     # Override dependencies with mocks
     app = create_app()
     
-    # Import the actual dependency functions from the routes module
-    from src.api.routes.images import get_image_service, get_todo_service, get_templates
+    # Import the actual dependency functions from the routes modules
+    from src.api.routes.images import get_image_service, get_templates, get_todo_backend_client
     
     def override_get_todo_service():
         return mock_todo_service
@@ -52,14 +53,19 @@ def test_client(mock_todo_service, mock_image_service, mock_image_cache_manager)
     def override_get_image_service():
         return mock_image_service
         
+    def override_get_todo_backend_client():
+        # For the backend client, we can return a mock
+        return Mock(spec=TodoBackendClient)
+    
     def override_get_templates():
         # For templates, we can use the real one since it's just Jinja2
+        from src.api import dependencies
         return dependencies.get_templates_instance()
     
     # Apply dependency overrides
-    app.dependency_overrides[get_todo_service] = override_get_todo_service
     app.dependency_overrides[get_image_service] = override_get_image_service
     app.dependency_overrides[get_templates] = override_get_templates
+    app.dependency_overrides[get_todo_backend_client] = override_get_todo_backend_client
     
     with TestClient(app) as client:
         yield client

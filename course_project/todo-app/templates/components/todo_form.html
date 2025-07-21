@@ -1,0 +1,35 @@
+<form id="todo-form" hx-post="/todos" hx-target="#todo-list" hx-swap="afterbegin">
+    <div class="form-group">
+        <input type="text" 
+               name="text" 
+               id="todo-input"
+               placeholder="What needs to be done? (max 140 chars)"
+               maxlength="140"
+               required
+               oninput="updateCharCount(this)">
+        <span id="char-count" class="char-count">0/140</span>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Todo</button>
+</form>
+
+<script>
+function updateCharCount(input) {
+    const charCount = document.getElementById('char-count');
+    const remaining = 140 - input.value.length;
+    charCount.textContent = input.value.length + '/140';
+    
+    if (remaining < 20) {
+        charCount.classList.add('warning');
+    } else {
+        charCount.classList.remove('warning');
+    }
+}
+
+// Clear form after successful submission
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'todo-list') {
+        document.getElementById('todo-form').reset();
+        updateCharCount(document.getElementById('todo-input'));
+    }
+});
+</script>
