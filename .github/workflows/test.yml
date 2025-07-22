@@ -52,6 +52,7 @@ jobs:
     
     - name: Upload backend coverage
       uses: actions/upload-artifact@v4
+      if: github.actor != 'nektos/act'  # Skip when running with act locally
       with:
         name: backend-coverage
         path: course_project/todo-backend/coverage.xml
@@ -98,6 +99,7 @@ jobs:
     
     - name: Upload frontend coverage
       uses: actions/upload-artifact@v4
+      if: github.actor != 'nektos/act'  # Skip when running with act locally
       with:
         name: frontend-coverage
         path: course_project/todo-app/coverage.xml
