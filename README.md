@@ -221,7 +221,8 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     curl http://localhost:8080/pingpong
     ```
-- [2.2]()
+- [2.2](https://github.com/rjpalt/KubernetesMOOC/tree/2.2/course_project)
+  - **Note: All of the Kubernetes manifests have been moved to folder `course_projectmanifests/` and all kubectl commands are run from the course_project folder.**
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Command to create tmp folder in the k3d cluster:
     ```bash
