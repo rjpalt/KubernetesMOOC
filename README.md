@@ -4,7 +4,7 @@
 
 The repository includes automated testing via GitHub Actions for the todo-app project:
 
-- **Triggers**: Changes to `course_project/todo-app/**` only
+- **Triggers**: Changes to `course_project/**` only
 - **Tests**: Unit tests, integration tests, container build validation
 - **Local testing**: Use `act` to run GitHub Actions locally
   ```bash
@@ -12,6 +12,7 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
   act --job test-backend # Backend tests
   act --job test-frontend # Frontend tests
   act --job test-microservice-integration # Microservice integration tests
+  act # Runs all jobs
   ```
 
 ## Exercises
@@ -245,6 +246,14 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     kubectl apply -f manifests/shared/
     ```
+- [2.3]()
+- [2.4]()
+- [2.5]()
+- [2.6]()
+- [2.7]()
+- [2.8]()
+- [2.9]()
+- [2.10]()
   
     
 
