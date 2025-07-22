@@ -181,7 +181,7 @@ docker build -t log-output-app .
 Running a docker container:
 
 ```bash
-docker run -d --name log-output-container log-output-app
+docker run -p 8000:8000 todo-app-fe:2.2
 ```
 
 Tailing the logs of a running container:

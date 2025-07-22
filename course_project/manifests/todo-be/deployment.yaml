@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app-be
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-app-be
+  template:
+    metadata:
+      labels:
+        app: todo-app-be
+    spec:
+      containers:
+        - name: todo-app-be
+          image: todo-app-be:2.2
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PORT
+              value: "8001"
+            - name: LOG_LEVEL
+              value: "INFO"
+          ports:
+            - containerPort: 8001

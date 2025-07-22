@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app-fe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-app-fe
+  template:
+    metadata:
+      labels:
+        app: todo-app-fe
+    spec:
+      initContainers:
+        - name: fix-cache-permissions
+          image: busybox
+          command: ['sh', '-c', 'chmod 777 /images']
+          volumeMounts:
+            - name: image-cache-volume
+              mountPath: /images
+      volumes:
+        - name: image-cache-volume
+          persistentVolumeClaim:
+            claimName: image-cache-pvc
+      containers:
+      - name: todo-app-fe
+        image: todo-app-fe:2.2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        - name: TODO_BACKEND_URL
+          value: "http://todo-app-be-svc:2506"
+        - name: LOG_LEVEL
+          value: "INFO"
+        volumeMounts:
+          - name: image-cache-volume
+            mountPath: /images
