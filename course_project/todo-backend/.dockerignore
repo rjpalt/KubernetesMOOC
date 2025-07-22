@@ -1,0 +1,58 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+
+# Development files
+.flake8
+.black
+
+# Backup and temporary files
+main_old_monolith.py
+*_backup.py
+*.tmp
+
+# Development and build artifacts
+.coverage
+htmlcov/
+.tox/
+.cache/
+.mypy_cache/
+.ruff_cache/
+
+# Log files
+*.log
+logs/
+
+# Test files (since you don't want testing apparently)
+tests/
+*_test.py
+test_*.py

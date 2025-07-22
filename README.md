@@ -9,9 +9,9 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
 - **Local testing**: Use `act` to run GitHub Actions locally
   ```bash
   brew install act  # macOS
-  act --job test-unit
-  act --job test-integration
-  act --job test-container
+  act --job test-backend # Backend tests
+  act --job test-frontend # Frontend tests
+  act --job test-microservice-integration # Microservice integration tests
   ```
 
 ## Exercises
@@ -221,6 +221,30 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     curl http://localhost:8080/pingpong
     ```
+- [2.2]()
+  - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+  - Command to create tmp folder in the k3d cluster:
+    ```bash
+    docker exec k3d-k3s-default-agent-0 mkdir -p /tmp/kube
+    ```
+  - Command to add container images for todo-app backend and frontend:
+    ```bash
+    k3d image import todo-app-be:2.2
+    k3d image import todo-app-fe:2.2
+    ```
+  - Command to apply backend manifests:
+    ```bash
+    kubectl apply -f manifests/todo-be/
+    ```
+  - Command to apply frontend manifests:
+    ```bash
+    kubectl apply -f manifests/todo-fe/
+    ```
+  - Command to apply shared ingress manifest:
+    ```bash
+    kubectl apply -f manifests/shared/
+    ```
+  
     
 
 
