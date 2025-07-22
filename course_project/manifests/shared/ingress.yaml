@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: todo-app-ingress
+  # Routing strategy:
+  # - /todos goes to frontend to handle HTMX form submissions
+  # - Frontend then makes internal JSON API calls to backend
+  # - /docs goes directly to backend for API documentation
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-app-fe-svc
+            port:
+              number: 2507
+      - path: /todos
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-app-fe-svc
+            port:
+              number: 2507
+      - path: /docs
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-app-be-svc
+            port:
+              number: 2506
