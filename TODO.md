@@ -1,0 +1,71 @@
+# TODO: OpenAPI Documentation Automation
+
+## Goal
+Automatically extract OpenAPI specs from todo-app and todo-backend services, centralize them in course_project root, and publish via GitHub Pages with automatic updates on main branch merges.
+
+## Prerequisites to Setup First
+- [ ] Enable GitHub Pages for this repository
+- [ ] Enable GitHub Actions for this repository
+- [ ] Verify docker-compose.yaml works for both services
+
+## Implementation Plan
+
+### Phase 1: Directory Structure Setup
+```
+course_project/
+├── docs/
+│   ├── api/
+│   │   ├── todo-app-openapi.json
+│   │   └── todo-backend-openapi.json
+│   └── index.html (Swagger UI)
+├── scripts/
+│   └── extract-openapi.sh
+└── .github/
+    └── workflows/
+        └── update-openapi.yml
+```
+
+### Phase 2: Manual Process (Learning)
+- [ ] Create docs/api/ directory structure
+- [ ] Write script to start services via docker-compose
+- [ ] Write script to fetch OpenAPI specs from running services
+  - todo-app: http://localhost:8000/openapi.json
+  - todo-backend: http://localhost:8001/openapi.json
+- [ ] Create basic Swagger UI HTML page
+- [ ] Test manual process locally
+
+### Phase 3: GitHub Actions Automation
+- [ ] Create workflow file (.github/workflows/update-openapi.yml)
+- [ ] Use existing GitHub Actions:
+  - `docker/compose-action` - Start services with docker-compose
+  - `stefanzweifel/git-auto-commit-action` - Auto-commit if specs changed
+  - `peaceiris/actions-gh-pages` - Deploy to GitHub Pages
+
+### Phase 4: Workflow Logic
+1. **Trigger**: On push to main branch
+2. **Health Check**: Wait for services to be ready (ports 8000/8001)
+3. **Extract**: Fetch /openapi.json from both services
+4. **Compare**: Check if specs have actually changed (not just timestamps)
+5. **Commit**: Auto-commit updated specs if changed
+6. **Deploy**: Update GitHub Pages with new Swagger UI
+
+### Key GitHub Actions to Use
+- `docker/compose-action` - Service orchestration
+- `stefanzweifel/git-auto-commit-action` - Git automation
+- `peaceiris/actions-gh-pages` - Pages deployment
+- Custom scripts for OpenAPI extraction and comparison
+
+### Questions to Address During Implementation
+1. Service startup time and health check strategy
+2. Change detection logic (ignore timestamps, focus on actual API changes)
+3. Swagger UI layout (single page vs separate pages for each service)
+4. Error handling if services fail to start in CI
+
+### Expected Outcome
+- Automated API documentation that stays current with code
+- Public Swagger UI accessible via GitHub Pages
+- Zero-maintenance documentation pipeline
+- Learning experience with GitHub Actions and OpenAPI workflows
+
+---
+**Next Steps**: Enable GitHub Pages and Actions, then start with Phase 1 directory setup.

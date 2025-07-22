@@ -11,15 +11,14 @@ Two-service todo application: **todo-backend** (REST API) and **todo-app** (Fron
 
 ```mermaid
 graph TD
-    UserBrowser -->|1. HTMX Form POST| Ingress
-    Ingress -->|2. Routes /todos to Frontend| Frontend
-    Frontend -->|3. Internal API Call (JSON)| Backend
-    Backend -->|4. JSON Response| Frontend
-    Frontend -->|5. HTML Fragment| UserBrowser
+    UserBrowser -->|HTMX POST| Ingress
+    Ingress -->|/todos to Frontend| Frontend
+    Frontend -->|API Call| Backend
+    Backend -->|JSON Response| Frontend
+    Frontend -->|HTML Fragment| UserBrowser
 
-    %% Direct API access for docs
-    UserBrowser -->|Alternative: /docs| Ingress
-    Ingress -->|Routes /docs to Backend| Backend
+    UserBrowser -->|/docs| Ingress
+    Ingress -->|/docs to Backend| Backend
     Backend -->|Swagger UI| UserBrowser
 ```
 
