@@ -11,25 +11,16 @@ Two-service todo application: **todo-backend** (REST API) and **todo-app** (Fron
 
 ```mermaid
 graph TD
-    User[👤 User Browser] --> |1. HTMX Form POST| Ingress[🌐 Kubernetes Ingress]
-    Ingress --> |2. Routes /todos to Frontend| Frontend[🖥️ todo-app Frontend<br/>Port 8000/2507]
-    Frontend --> |3. Internal API Call<br/>JSON: {"text": "..."}| Backend[⚙️ todo-backend API<br/>Port 8001/2506]
-    Backend --> |4. JSON Response<br/>{"id": "123", "text": "...", "status": "not-done"}| Frontend
-    Frontend --> |5. HTML Fragment<br/>&lt;div class="todo-item"&gt;...&lt;/div&gt;| User
-    
+    UserBrowser -->|1. HTMX Form POST| Ingress
+    Ingress -->|2. Routes /todos to Frontend| Frontend
+    Frontend -->|3. Internal API Call (JSON)| Backend
+    Backend -->|4. JSON Response| Frontend
+    Frontend -->|5. HTML Fragment| UserBrowser
+
     %% Direct API access for docs
-    User --> |Alternative: /docs| Ingress
-    Ingress --> |Routes /docs to Backend| Backend
-    Backend --> |Swagger UI| User
-    
-    %% Styling
-    classDef frontend fill:#e1f5fe
-    classDef backend fill:#f3e5f5
-    classDef user fill:#e8f5e8
-    
-    class Frontend frontend
-    class Backend backend
-    class User user
+    UserBrowser -->|Alternative: /docs| Ingress
+    Ingress -->|Routes /docs to Backend| Backend
+    Backend -->|Swagger UI| UserBrowser
 ```
 
 ## Quick Start
