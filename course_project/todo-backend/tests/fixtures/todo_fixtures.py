@@ -5,20 +5,17 @@ Todo model schema, ensuring consistency between tests and
 the actual API responses.
 """
 
-import pytest
 from datetime import datetime
-from typing import List, Dict
+from typing import Dict, List
 
+import pytest
 from src.models.todo import Todo, TodoStatus
 
 
 @pytest.fixture
 def valid_todo_dict():
     """Valid todo data as dictionary (for API testing)."""
-    return {
-        "text": "Test todo from backend fixture",
-        "status": "not_done"
-    }
+    return {"text": "Test todo from backend fixture", "status": "not_done"}
 
 
 @pytest.fixture
@@ -28,7 +25,7 @@ def valid_todo_object():
         id="test-id-123",
         text="Test todo object",
         status=TodoStatus.NOT_DONE,
-        created_at=datetime(2025, 7, 21, 10, 0, 0)
+        created_at=datetime(2025, 7, 21, 10, 0, 0),
     )
 
 
@@ -40,14 +37,11 @@ def multiple_todos():
             id="todo-1",
             text="First backend todo",
             status=TodoStatus.NOT_DONE,
-            created_at=datetime(2025, 7, 21, 10, 0, 0)
+            created_at=datetime(2025, 7, 21, 10, 0, 0),
         ),
         Todo(
-            id="todo-2", 
-            text="Second backend todo",
-            status=TodoStatus.DONE,
-            created_at=datetime(2025, 7, 21, 11, 0, 0)
-        )
+            id="todo-2", text="Second backend todo", status=TodoStatus.DONE, created_at=datetime(2025, 7, 21, 11, 0, 0)
+        ),
     ]
 
 
@@ -65,7 +59,4 @@ def invalid_todo_data():
 @pytest.fixture
 def todo_update_data():
     """Data for testing todo updates."""
-    return {
-        "text": "Updated todo text",
-        "status": "done"
-    }
+    return {"text": "Updated todo text", "status": "done"}

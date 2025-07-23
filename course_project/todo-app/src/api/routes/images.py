@@ -1,6 +1,7 @@
 """Image-related API routes."""
 
 import logging
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
@@ -43,7 +44,7 @@ async def read_root(
     image_info = await image_service.get_image_info()
     image_status = image_service.format_image_status(image_info)
     config = image_service.get_config_for_template()
-    
+
     # Fetch todos from backend service
     try:
         todos = await backend_client.get_all_todos()
@@ -72,13 +73,9 @@ async def get_current_image(image_service: ImageService = Depends(get_image_serv
         raise HTTPException(status_code=404, detail="No image available. Fetch one first.")
 
     return FileResponse(
-        image_path, 
+        image_path,
         media_type="image/jpeg",
-        headers={
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
-        }
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
     )
 
 

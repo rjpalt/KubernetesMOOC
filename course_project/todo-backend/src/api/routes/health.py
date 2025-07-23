@@ -1,6 +1,7 @@
 """Health check endpoints."""
 
 import logging
+
 from fastapi import APIRouter
 
 from ...api.dependencies import get_todo_service

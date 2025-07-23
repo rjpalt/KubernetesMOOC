@@ -5,9 +5,9 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
+from ...api.dependencies import get_todo_service
 from ...models.todo import Todo, TodoCreate, TodoUpdate
 from ...services.todo_service import TodoService
-from ...api.dependencies import get_todo_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -43,9 +43,7 @@ async def get_todo(todo_id: str, todo_service: TodoService = Depends(get_todo_se
 
 
 @router.put("/todos/{todo_id}", response_model=Todo)
-async def update_todo(
-    todo_id: str, todo_update: TodoUpdate, todo_service: TodoService = Depends(get_todo_service)
-):
+async def update_todo(todo_id: str, todo_update: TodoUpdate, todo_service: TodoService = Depends(get_todo_service)):
     """Update an existing todo."""
     logger.info(f"Updating todo: {todo_id}")
     updated_todo = todo_service.update_todo(todo_id, text=todo_update.text, status=todo_update.status)

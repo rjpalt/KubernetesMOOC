@@ -5,8 +5,7 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 
-from .api.dependencies import (get_background_task_manager_instance,
-                               initialize_dependencies)
+from .api.dependencies import get_background_task_manager_instance, initialize_dependencies
 from .api.routes import health, images, todos
 from .config.settings import settings
 from .core.lifespan import create_lifespan_manager

@@ -1,5 +1,14 @@
 # KubernetesSubmissions
 
+## Code Quality & Pre-commit Hooks
+
+Pre-commit hooks are configured for automated code quality checks:
+
+- **Configuration**: `.pre-commit-config.yaml` with course_project code quality enforcement
+- **Tools**: Black formatting, isort imports, flake8 linting via shared configs
+- **Activation**: Run `pre-commit install` from repository root to enable git hooks
+- **Manual check**: Use `course_project/quality.sh --check` for manual validation
+
 ## CI/CD Pipeline
 
 The repository includes automated testing via GitHub Actions for the todo-app project:
@@ -246,7 +255,7 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     kubectl apply -f manifests/shared/
     ```
-- [2.3]()
+- [2.3](https://github.com/rjpalt/KubernetesMOOC/tree/2.3/ping-pong)
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Command to add container iamges for ping-pong and log-output:
     ```bash
@@ -279,6 +288,41 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     curl http://localhost:8080/
     ```
 - [2.4]()
+  - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+  - Command to add container iamges for todo-app backend and frontend:
+    ```bash
+    k3d image import todo-app-be:2.2
+    k3d image import todo-app-fe:2.2
+    ```
+  - Command to create temporary folder in the k3d cluster:
+    ```bash
+    docker exec k3d-k3s-default-agent-0 mkdir -p /tmp/kube
+    ```
+  - Command to apply shared manifests for namespace and ingress:
+    ```bash
+    kubectl apply -f manifests/shared/
+    ```
+  - Command to switch to the project namespace:
+    ```bash
+    kubens project
+    ```
+  - Command to apply backend manifests:
+    ```bash
+    kubectl apply -f manifests/todo-be/
+    ```
+  - Command to apply frontend manifests:
+    ```bash
+    kubectl apply -f manifests/todo-fe/
+    ```
+  - Command to check that everything is running (kubens project has been run):
+    ```bash
+    kubectl get pods,svc,ingress,pv,pvc -n project
+    ```
+  - Commands to check that the service is working
+    ```bash
+    curl http://localhost:8080/todos
+    curl http://localhost:8080/docs
+    ```
 - [2.5]()
 - [2.6]()
 - [2.7]()
