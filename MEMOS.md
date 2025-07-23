@@ -169,6 +169,55 @@ Confgiuration example in `deployment.yaml`
             mountPath: /usr/src/app/files
 ```
 
+# Kubernetes and Namespaces #
+ ## Accessing Namespaces ##
+```bash
+$ kubectl get pods -n kube-system
+```
+
+`-n kube-system` specifies the namespace to query.
+
+To get all in all namespaces, use:
+```bash
+kubectl get all --all-namespaces
+```
+
+## Creating a Namespace ##
+```bash
+kubectl create namespace example-namespace
+```
+
+Optionally this can be done with a manifest:
+```yaml
+kind: Namespace
+```
+
+## Binding Manifests to a Namespace ##
+To bind a manifest to a specific namespace, add the `metadata` section in your YAML file
+```yaml
+# ...
+metadata:
+  namespace: example-namespace
+  name: example
+# ...
+```
+
+Or, when applying the manifest, use flag `--namespace=my-namespace`
+
+```bash
+kubectl apply -f manifests/deployment.yaml --namespace=my-namespace
+```
+
+## Setting a Default Namespace ##
+To set a default namespace for your kubectl commands, you can use:
+```bash
+kubectl config set-context --current --namespace=<name>
+```
+
+# Kubectx #
+- List all contexts: `kubectx`
+- Choose a context: `kubectx mycontext`
+
 ---
 # Docker Refresher #
 ## Docker Commands ##
@@ -223,6 +272,8 @@ Stopping and removing services with Docker Compose including volumes:
 ```bash
 docker-compose down -v
 ```
+
+
 
 # Using Busybox for debugging #
 

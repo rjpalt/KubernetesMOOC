@@ -1,47 +1,46 @@
 #!/usr/bin/env python3
 
-import os
-from pathlib import Path
+from typing import Optional
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class PingPongSettings(BaseSettings):
     """
     Ping-pong application settings with environment variable support.
-    
+
     Environment variables are prefixed with PING_PONG_ (e.g., PING_PONG_APP_PORT).
     Also supports .env file loading.
     """
-    
+
     # Server configuration
     app_port: int = 3000
     host: str = "0.0.0.0"
-    
+
     # Logging configuration
     log_level: str = "INFO"
-    
+
     class Config:
         env_prefix = "PING_PONG_"
         env_file = ".env"
         case_sensitive = False
-    
-    @field_validator('log_level')
+
+    @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v):
         """Ensure log level is valid"""
-        valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if v.upper() not in valid_levels:
-            raise ValueError(f'Log level must be one of {valid_levels}')
+            raise ValueError(f"Log level must be one of {valid_levels}")
         return v.upper()
-    
-    @field_validator('app_port')
+
+    @field_validator("app_port")
     @classmethod
     def validate_port(cls, v):
         """Ensure port is in valid range"""
         if not (1 <= v <= 65535):
-            raise ValueError('Port must be between 1 and 65535')
+            raise ValueError("Port must be between 1 and 65535")
         return v
 
 
