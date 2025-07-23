@@ -517,8 +517,6 @@ dependencies = [
 dev = [
     { name = "black" },
     { name = "flake8" },
-]
-test = [
     { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -542,8 +540,6 @@ requires-dist = [
 dev = [
     { name = "black", specifier = ">=25.1.0" },
     { name = "flake8", specifier = ">=7.3.0" },
-]
-test = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-asyncio", specifier = ">=0.24.0" },

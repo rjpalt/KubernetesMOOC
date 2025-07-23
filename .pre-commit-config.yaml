@@ -1,0 +1,17 @@
+repos:
+  - repo: local
+    hooks:
+      - id: course-project-quality
+        name: Course Project Code Quality
+        entry: bash -c 'cd course_project && ./quality.sh --check'
+        language: system
+        files: ^course_project/.*\.py$
+        pass_filenames: false
+        
+      # You could add other project-specific hooks here later:
+      # - id: ping-pong-quality
+      #   name: Ping Pong Quality
+      #   entry: bash -c 'cd ping-pong && ./quality.sh --check'
+      #   language: system
+      #   files: ^ping-pong/.*\.py$
+      #   pass_filenames: false

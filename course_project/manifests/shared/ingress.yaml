@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: todo-app-ingress
+  namespace: project
   # Routing strategy:
   # - /todos goes to frontend to handle HTMX form submissions
   # - Frontend then makes internal JSON API calls to backend

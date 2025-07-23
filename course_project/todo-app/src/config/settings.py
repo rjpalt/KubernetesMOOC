@@ -24,7 +24,7 @@ class Settings:
 
         # Template configuration
         self.template_directory: str = os.environ.get("TEMPLATE_DIRECTORY", "templates")
-        
+
         # Todo backend service configuration
         self.todo_backend_url: str = os.environ.get("TODO_BACKEND_URL", "http://localhost:8001")
         self.todo_backend_timeout: float = float(os.environ.get("TODO_BACKEND_TIMEOUT", "10.0"))

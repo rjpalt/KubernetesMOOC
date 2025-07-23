@@ -26,29 +26,6 @@ dev = [
     "httpx>=0.28.1",
 ]
 
-[tool.black]
-line-length = 120
-target-version = ['py313']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
-
-[tool.flake8]
-max-line-length = 120
-extend-ignore = ["E203", "W503"]
-exclude = [".git", "__pycache__", ".venv", "build", "dist"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
