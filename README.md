@@ -287,7 +287,7 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     curl http://localhost:8080/
     ```
-- [2.4]()
+- [2.4](https://github.com/rjpalt/KubernetesMOOC/tree/2.4/course_project)
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Command to add container iamges for todo-app backend and frontend:
     ```bash
