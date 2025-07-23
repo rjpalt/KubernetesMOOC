@@ -1,6 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
+  namespace: exercises
   name: shared-counter-pv
 spec:
   storageClassName: shared-counter-pv # this is the name you are using later to claim this volume
