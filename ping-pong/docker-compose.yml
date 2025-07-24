@@ -40,6 +40,7 @@ services:
       - LOG_APP_PING_PONG_SERVICE_PORT=3000
       - LOG_APP_APP_PORT=8000
       - LOG_APP_LOG_LEVEL=INFO
+      - LOG_APP_MESSAGE=hello world
     ports:
       # Expose log-output on port 8000
       - "8000:8000"
@@ -52,6 +53,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
+    volumes:
+      - ../log_output/config/information.txt:/config/information.txt
     networks:
       - ping_pong_network
 
