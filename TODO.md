@@ -97,3 +97,18 @@ Set up Azure Key Vault for secure secrets management when deploying microservice
 - [ ] Plan Workload Identity setup approach
 
 **Next Steps**: Complete local development, then tackle Azure resource setup and integration concepts.
+
+---
+
+# TODO: Exercise 2.5 - ConfigMap Environment Variable Integration
+
+## Current Status
+- ConfigMap created with `information.txt` file mount ✅
+- File-based ConfigMap working correctly ✅
+- Need to migrate `LOG_APP_MESSAGE` environment variable to ConfigMap
+
+## Next Steps
+- [ ] Remove `LOG_APP_MESSAGE` from log-output-deployment.yaml env section
+- [ ] Add ConfigMap reference using `envFrom` or `env.valueFrom.configMapKeyRef`
+- [ ] Test that application reads message from ConfigMap instead of hardcoded env var
+- [ ] Verify deployment works and submit exercise
