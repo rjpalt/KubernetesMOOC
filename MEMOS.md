@@ -218,6 +218,40 @@ kubectl config set-context --current --namespace=<name>
 - List all contexts: `kubectx`
 - Choose a context: `kubectx mycontext`
 
+# Kubernetes and Labels #
+## Labeling Resources ##
+```bash
+kubectl label po hashgenerator-dep-7b9b88f8bf-lvcv4 importance=great pod/hashgenerator-dep-7b9b88f8bf-lvcv4 labeled
+```
+
+## Listing Resources with Labels ##
+```bash
+kubectl get pod -l my-label
+```
+
+## Use cases ##
+It's possible, for example to label nodes and then choose correct nodes for given containers.
+
+First define in `deployment.yaml` how to select nodes:
+```yaml
+    ...
+    spec:
+      containers:
+        - name: hashgenerator
+          image: jakousa/dwk-app1:b7fc18de2376da80ff0cfc72cf581a9f94d10e64
+      nodeSelector:
+        networkquality: excellent
+```
+
+Now, what is required is a node with label `networkquality=excellent`. To create such a node, use:
+```bash
+kubectl label nodes k3d-k3s-default-agent-1 networkquality=excellent
+```
+
+This is a bit hamfisted approach, and using [affinity](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/) is a more subtle approach. Also [tainsts and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) can be used to control which pods can run on which nodes.
+
+
+
 ---
 # Docker Refresher #
 ## Docker Commands ##
