@@ -35,6 +35,14 @@ def setup_logging():
 
 logger = setup_logging()
 
+# Initialize configuration at startup - this will fail fast if required config is missing
+try:
+    settings.initialize_config()
+    logger.info("Configuration initialized successfully")
+except RuntimeError as e:
+    logger.error(f"Configuration initialization failed: {e}")
+    exit(1)
+
 # Global variables to store the random string and app state
 random_string = str(uuid.uuid4())
 app = FastAPI(title="Log Output App", description="A simple app that logs timestamps and serves status")
@@ -59,12 +67,47 @@ def logging_worker():
     """Background worker that logs the timestamp, random string, and ping-pong counter every 5 seconds"""
     logger.info(f"Application started. Generated string: {random_string}")
     
+    # Get ConfigMap information once at startup
+    file_content, env_message = settings.get_config_info()
+    
+    # Log ConfigMap detection at startup
+    config_status = []
+    if file_content:
+        config_status.append(f"ConfigMap file detected: {file_content}")
+    else:
+        config_status.append(f"ConfigMap file not found at: {settings.config_file_path}")
+    
+    if env_message:
+        config_status.append(f"MESSAGE env var detected: {env_message}")
+    else:
+        config_status.append("MESSAGE env var not set")
+    
+    logger.info("ConfigMap status:\n" + "\n".join(config_status))
+    
     async def log_with_ping_count():
         timestamp = get_current_timestamp()
         ping_pong_count = await get_ping_pong_counter()
-        log_message = f"{timestamp}: {random_string}"
+        
+        # Build log message with ConfigMap info if available
+        log_lines = []
+        
+        # Add ConfigMap file content if available (read once at startup)
+        if file_content:
+            log_lines.append(f"file content: {file_content}")
+        
+        # Add ConfigMap environment variable if available  
+        if env_message:
+            log_lines.append(f"env variable: MESSAGE={env_message}")
+        
+        # Add timestamp and random string
+        log_lines.append(f"{timestamp}: {random_string}")
+        
+        # Add ping-pong count if available
         if ping_pong_count > 0:
-            log_message += f"\nPing / Pongs: {ping_pong_count}"
+            log_lines.append(f"Ping / Pongs: {ping_pong_count}")
+        
+        # Join all lines and log
+        log_message = "\n".join(log_lines)
         logger.info(log_message)
     
     while True:
@@ -76,13 +119,26 @@ def logging_worker():
 async def get_status():
     """Endpoint to get current status with timestamp, random string, and ping-pong count"""
     ping_pong_count = await get_ping_pong_counter()
+    
+    # Get ConfigMap information
+    file_content, env_message = settings.get_config_info()
+    
     response = {
         "timestamp": get_current_timestamp(),
         "string": random_string,
         "status": "healthy"
     }
+    
+    # Add ConfigMap info if available
+    if file_content:
+        response["config_file_content"] = file_content
+    
+    if env_message:
+        response["config_env_message"] = env_message
+    
     if ping_pong_count > 0:
         response["ping_pong_count"] = ping_pong_count
+        
     return response
 
 @app.get("/health")
