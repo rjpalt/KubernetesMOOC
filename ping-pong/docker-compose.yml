@@ -6,7 +6,7 @@ version: '3.8'
 services:
   # Ping-pong service: increments counter and provides HTTP endpoint
   ping-pong:
-    image: ping-pong-app:2.1
+    image: ping-pong-app:2.5
     build:
       context: .
       dockerfile: Dockerfile
@@ -29,7 +29,7 @@ services:
 
   # Log-output service: gets ping-pong counter via HTTP and displays with logs
   log-output:
-    image: log-output:2.1
+    image: log-output-app:2.5
     build:
       context: ../log_output
       dockerfile: Dockerfile
