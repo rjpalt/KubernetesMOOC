@@ -351,15 +351,25 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     kubectl apply -f manifests/log-output/
     ```
+  - Command to apply ingress manifest:
+    ```bash
+    kubectl apply -f manifests/shared/ingress.yaml
+    ```
+  - Command to check everything is running: `kubectl get pv,pvc,pods,svc,ingress`
+  - Command to check log-output-app logs are correct:
+    ```bash
+    kubectl logs -f log-output-app-<hash>
+    ```
+  - Verify app is running with correct settings:
+    ```bash
+    curl http://localhost:8080/
+    ```
 - [2.6]()
 - [2.7]()
 - [2.8]()
 - [2.9]()
 - [2.10]()
   
-    
-
-
 ## Cleanup Script
 
 The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by properly shutting down Kubernetes resources before cleaning up Docker containers, networks, and the k3d cluster.

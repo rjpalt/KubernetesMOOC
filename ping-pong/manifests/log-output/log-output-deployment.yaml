@@ -36,7 +36,10 @@ spec:
           - name: LOG_APP_PING_PONG_SERVICE_PORT
             value: "2507"  # This is the port exposed by the ping-pong
           - name: LOG_APP_MESSAGE
-            value: "hello world"
+            valueFrom:
+              configMapKeyRef:
+                name: log-output-app-config           # The ConfigMap this value comes from.
+                key: message                          # The key to fetch.
           volumeMounts:
             - name: config
               mountPath: "/config"
