@@ -4,17 +4,11 @@ on:
   push:
     branches: [ main, develop ]
     paths:
-      - 'course_project/todo-app/**'
-      - 'course_project/todo-backend/**'
-      - 'course_project/.flake8'
-      - 'course_project/pyproject.toml'
+      - 'course_project/**'
   pull_request:
     branches: [ main ]
     paths:
-      - 'course_project/todo-app/**'
-      - 'course_project/todo-backend/**'
-      - 'course_project/.flake8'
-      - 'course_project/pyproject.toml'
+      - 'course_project/**'
 
 jobs:
   code-quality:
@@ -187,7 +181,7 @@ jobs:
         sleep 5
         
         # Test backend is responding
-        curl -f http://localhost:8001/health || exit 1
+        curl -f http://localhost:8001/be-health || exit 1
         
         # Start frontend (pointing to backend)
         docker run -d --name frontend-test --network host -e PORT=8000 -e TODO_BACKEND_URL=http://localhost:8001 todo-app:test
