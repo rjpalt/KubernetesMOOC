@@ -60,6 +60,39 @@ else
     exit 1
 fi
 
+# Update docker-compose.yaml with new tag
+echo ""
+echo "Updating docker-compose.yaml with tag: $TAG"
+echo "============================================"
+
+# Go back to project root
+cd ..
+
+# Create backup
+if [ -f "docker-compose.yaml" ]; then
+    cp docker-compose.yaml docker-compose.yaml.backup
+    echo "✓ Backup created: docker-compose.yaml.backup"
+    
+    # Update image tags using sed
+    sed -i.tmp "s/image: todo-app-be:[^[:space:]]*/image: todo-app-be:$TAG/" docker-compose.yaml
+    sed -i.tmp "s/image: todo-app-fe:[^[:space:]]*/image: todo-app-fe:$TAG/" docker-compose.yaml
+    rm docker-compose.yaml.tmp  # Remove sed backup file
+    
+    # Validate YAML syntax
+    python3 -c "import yaml; yaml.safe_load(open('docker-compose.yaml'))" 2>/dev/null
+    if [ $? -eq 0 ]; then
+        echo "✓ docker-compose.yaml updated successfully"
+        echo "✓ YAML validation passed"
+    else
+        echo "✗ YAML validation failed! Restoring backup..."
+        cp docker-compose.yaml.backup docker-compose.yaml
+        echo "✓ Backup restored"
+        exit 1
+    fi
+else
+    echo "⚠ docker-compose.yaml not found - skipping update"
+fi
+
 echo ""
 echo "=========================================="
 echo "✓ All images built successfully!"
@@ -67,4 +100,5 @@ echo "Images created:"
 echo "  - todo-app-fe:$TAG"
 echo "  - todo-app-be:$TAG"
 echo ""
-echo "You can now use these images in your Kubernetes manifests or docker-compose files."
+echo "✓ docker-compose.yaml updated to use tag: $TAG"
+echo "You can now use these images in your Kubernetes manifests or run with docker-compose."
