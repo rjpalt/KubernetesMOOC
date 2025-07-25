@@ -364,7 +364,7 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     curl http://localhost:8080/
     ```
-- [2.6]()
+- [2.6](https://github.com/rjpalt/KubernetesMOOC/tree/2.6/course_project)
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Commands to import images for todo app fe and be:
     ```bash
