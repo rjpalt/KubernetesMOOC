@@ -102,7 +102,7 @@ class TodoBackendClient:
         """Check backend service health."""
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{self.backend_url}/health")
+                response = await client.get(f"{self.backend_url}/be-health")
                 response.raise_for_status()
                 return response.json()
         except Exception as e:

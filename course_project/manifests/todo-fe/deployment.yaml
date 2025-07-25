@@ -31,6 +31,8 @@ spec:
         ports:
         - containerPort: 8000
         env:
+        - name: PORT
+          value: "8000"
         - name: TODO_BACKEND_URL
           value: "http://todo-app-be-svc:2506"
         - name: LOG_LEVEL
