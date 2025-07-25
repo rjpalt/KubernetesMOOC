@@ -26,11 +26,13 @@ spec:
             claimName: image-cache-pvc
       containers:
       - name: todo-app-fe
-        image: todo-app-fe:2.2
+        image: todo-app-fe:2.6
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
         env:
+        - name: PORT
+          value: "8000"
         - name: TODO_BACKEND_URL
           value: "http://todo-app-be-svc:2506"
         - name: LOG_LEVEL
