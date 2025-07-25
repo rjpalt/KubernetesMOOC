@@ -69,3 +69,46 @@ course_project/
 
 ---
 **Next Steps**: Enable GitHub Pages and Actions, then start with Phase 1 directory setup.
+
+---
+
+# TODO: Azure Key Vault Integration for AKS Deployment
+
+## Goal
+Set up Azure Key Vault for secure secrets management when deploying microservices to AKS, replacing current local/SOPS approach with production-ready Azure-native solution.
+
+## Key Concepts to Learn & Implement
+- [ ] Azure Key Vault creation and configuration
+- [ ] Workload Identity for pod-to-Azure authentication
+- [ ] CSI Secrets Store Driver for mounting secrets in Kubernetes
+- [ ] SecretProviderClass resource definition
+- [ ] Database connection string management
+
+## Current Status
+- Services running locally with k3d/Docker
+- Need to determine full specifications for AKS deployment
+- Planning phase - not ready for implementation yet
+- Target secrets: database passwords and connection strings
+
+## Implementation Prerequisites
+- [ ] Finalize AKS cluster requirements
+- [ ] Determine database service specifications (Azure SQL, PostgreSQL, etc.)
+- [ ] Design secret structure and naming conventions
+- [ ] Plan Workload Identity setup approach
+
+**Next Steps**: Complete local development, then tackle Azure resource setup and integration concepts.
+
+---
+
+# TODO: Exercise 2.5 - ConfigMap Environment Variable Integration
+
+## Current Status
+- ConfigMap created with `information.txt` file mount ✅
+- File-based ConfigMap working correctly ✅
+- Need to migrate `LOG_APP_MESSAGE` environment variable to ConfigMap
+
+## Next Steps
+- [ ] Remove `LOG_APP_MESSAGE` from log-output-deployment.yaml env section
+- [ ] Add ConfigMap reference using `envFrom` or `env.valueFrom.configMapKeyRef`
+- [ ] Test that application reads message from ConfigMap instead of hardcoded env var
+- [ ] Verify deployment works and submit exercise
