@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: exercises
+  name: log-output-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-output
+  template:
+    metadata:
+      labels:
+        app: log-output
+    spec:
+      volumes:
+        - name: config
+          configMap:
+            # Provide the name of the ConfigMap you want to mount.
+            name: log-output-app-config
+            # An array of keys from the ConfigMap to create as files
+            items:
+            - key: information.txt
+              path: information.txt
+      containers:
+        - name: log-output
+          image: log-output-app:2.5
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: LOG_APP_APP_PORT
+            value: "8000"
+          - name: LOG_APP_LOG_LEVEL
+            value: "INFO"
+          - name: LOG_APP_PING_PONG_SERVICE_HOST
+            value: "ping-pong-svc"  # This is the service name for the ping-pong app
+          - name: LOG_APP_PING_PONG_SERVICE_PORT
+            value: "2507"  # This is the port exposed by the ping-pong
+          - name: LOG_APP_MESSAGE
+            valueFrom:
+              configMapKeyRef:
+                name: log-output-app-config           # The ConfigMap this value comes from.
+                key: message                          # The key to fetch.
+          volumeMounts:
+            - name: config
+              mountPath: "/config"
+              readOnly: true

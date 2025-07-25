@@ -1,0 +1,16 @@
+# Local development configuration
+config/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.venv/
+.env
+
+# Logs
+tmp/
+*.log

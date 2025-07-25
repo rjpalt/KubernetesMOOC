@@ -218,6 +218,93 @@ kubectl config set-context --current --namespace=<name>
 - List all contexts: `kubectx`
 - Choose a context: `kubectx mycontext`
 
+# Kubernetes and Labels #
+## Labeling Resources ##
+```bash
+kubectl label po hashgenerator-dep-7b9b88f8bf-lvcv4 importance=great pod/hashgenerator-dep-7b9b88f8bf-lvcv4 labeled
+```
+
+## Listing Resources with Labels ##
+```bash
+kubectl get pod -l my-label
+```
+
+## Use cases ##
+It's possible, for example to label nodes and then choose correct nodes for given containers.
+
+First define in `deployment.yaml` how to select nodes:
+```yaml
+    ...
+    spec:
+      containers:
+        - name: hashgenerator
+          image: jakousa/dwk-app1:b7fc18de2376da80ff0cfc72cf581a9f94d10e64
+      nodeSelector:
+        networkquality: excellent
+```
+
+Now, what is required is a node with label `networkquality=excellent`. To create such a node, use:
+```bash
+kubectl label nodes k3d-k3s-default-agent-1 networkquality=excellent
+```
+
+This is a bit hamfisted approach, and using [affinity](https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes-using-node-affinity/) is a more subtle approach. Also [tainsts and tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/) can be used to control which pods can run on which nodes.
+
+
+# Kubernetes and Secrets #
+- Given to containers on runtime
+
+Defining secrets in a manifest:
+```yaml
+# ...
+containers:
+  - name: imageagain
+    envFrom:
+      - secretRef:
+          name: pixabay-apikey
+```
+
+This assumes that the secret pixabay-apikey defines the key as a variable called API_KEY. If the env name in the secret would be different, the longer form of definition could be used in the deployment.yaml:
+```yaml
+# ...
+containers:
+  - name: imageagain
+    env:
+      - name: API_KEY # ENV name passed to container
+        valueFrom:
+          secretKeyRef:
+            name: pixabay-apikey
+            key: API_KEY # ENV name in the secret
+```
+
+This would refer to a Secret manifest like this:
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pixabay-apikey
+type: Opaque
+data:
+  API_KEY: <base64-encoded-value>
+```
+
+## ConfigMaps ##
+- ConfigMaps are used to store non-sensitive configuration data in key-value pairs.
+
+Example of a ConfigMap manifest:
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: example-configmap
+data:
+  serverconfig.txt: |
+    maxplayers=12
+    difficulty=2
+```
+
+
+
 ---
 # Docker Refresher #
 ## Docker Commands ##

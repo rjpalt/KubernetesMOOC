@@ -324,15 +324,52 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     curl http://localhost:8080/docs
     ```
 - [2.5]()
+  - **Note: The commands are run fom the ping-pong folder! The exercise was implemented in the separate ping-pong folder to keep refactors separate from the log output service implemented previously.**
+  - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+  - Command to add container images for ping-pong and log-output:
+    ```bash
+    k3d image import ping-pong-app:2.5
+    k3d image import log-output-app:2.5
+    ```
+  - Command to create a persistent volume tmp folder:
+    ```bash
+    docker exec k3d-k3s-default-agent-0 mkdir -p /tmp/kube
+    ```
+  - Command to apply manifest for namespace:
+    ```bash
+    kubectl apply -f manifests/shared/namespace.yaml
+    ```
+  - Command to switch to the exercises namespace:
+    ```bash
+    kubens exercises
+    ```
+  - Command to apply ping-pong manifests (service, pov, povc, deployment):
+    ```bash
+    kubectl apply -f manifests/ping-pong/
+    ```
+  - Command to apply log-output manifests (service, deployment):
+    ```bash
+    kubectl apply -f manifests/log-output/
+    ```
+  - Command to apply ingress manifest:
+    ```bash
+    kubectl apply -f manifests/shared/ingress.yaml
+    ```
+  - Command to check everything is running: `kubectl get pv,pvc,pods,svc,ingress`
+  - Command to check log-output-app logs are correct:
+    ```bash
+    kubectl logs -f log-output-app-<hash>
+    ```
+  - Verify app is running with correct settings:
+    ```bash
+    curl http://localhost:8080/
+    ```
 - [2.6]()
 - [2.7]()
 - [2.8]()
 - [2.9]()
 - [2.10]()
   
-    
-
-
 ## Cleanup Script
 
 The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by properly shutting down Kubernetes resources before cleaning up Docker containers, networks, and the k3d cluster.

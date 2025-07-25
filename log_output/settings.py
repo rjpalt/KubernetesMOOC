@@ -34,6 +34,54 @@ class AppSettings(BaseSettings):
     # Application behavior
     log_interval_seconds: int = 5
     
+    # ConfigMap configuration
+    config_file_path: str = "/config/information.txt"
+    message: Optional[str] = None  # ConfigMap environment variable
+    require_config_in_k8s: bool = False  # Set to True to require ConfigMap in all environments
+    
+    # Startup-time cached values
+    _config_file_content: Optional[str] = None
+    _config_initialized: bool = False
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+        # For local development, try local config file first
+        self._setup_config_path()
+        
+    def _setup_config_path(self):
+        """Setup the config file path, preferring local development path if available"""
+        # Check if we have a local config file for development
+        local_config_path = Path(__file__).parent / "config" / "information.txt"
+        
+        if local_config_path.exists():
+            self.config_file_path = str(local_config_path)
+        # Otherwise use the default Kubernetes path
+        # (self.config_file_path already set to "/config/information.txt")
+        
+    def initialize_config(self) -> None:
+        """
+        Initialize configuration at startup. Call this once when the app starts.
+        Will fail fast if required configuration is missing in deployment environments.
+        """
+        if self._config_initialized:
+            return
+            
+        # Read config file content once at startup
+        self._config_file_content = self._read_config_file_startup()
+        
+        # Check if we're likely in a Kubernetes environment
+        is_k8s_env = os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount')
+        
+        # Fail fast if we require config and are missing it in K8s
+        if self.require_config_in_k8s and is_k8s_env:
+            if self._config_file_content is None:
+                raise RuntimeError(f"Required ConfigMap file not found at {self.config_file_path} in Kubernetes environment")
+            if self.message is None:
+                raise RuntimeError("Required MESSAGE environment variable not set in Kubernetes environment")
+        
+        self._config_initialized = True
+    
     class Config:
         env_prefix = "LOG_APP_"
         env_file = ".env"
@@ -71,6 +119,46 @@ class AppSettings(BaseSettings):
         if v < 1:
             raise ValueError('Log interval must be at least 1 second')
         return v
+    
+    def _read_config_file_startup(self) -> Optional[str]:
+        """
+        Read the content of the configuration file at startup.
+        Returns None if file doesn't exist or can't be read.
+        Handles all deployment scenarios gracefully.
+        """
+        try:
+            with open(self.config_file_path, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                return content if content else None
+        except FileNotFoundError:
+            # File doesn't exist - normal in local dev or Docker without ConfigMap
+            return None
+        except PermissionError:
+            # No permission to read file
+            return None
+        except Exception:
+            # Any other error reading file
+            return None
+
+    def read_config_file(self) -> Optional[str]:
+        """
+        Read the content of the configuration file.
+        Returns None if file doesn't exist or can't be read.
+        Handles all deployment scenarios gracefully.
+        
+        DEPRECATED: Use get_config_info() instead, which uses cached startup values.
+        """
+        return self._read_config_file_startup()
+    
+    def get_config_info(self) -> tuple[Optional[str], Optional[str]]:
+        """
+        Get both configuration pieces: file content and environment variable.
+        Returns tuple of (file_content, env_message).
+        Uses values cached at startup for consistency.
+        """
+        if not self._config_initialized:
+            self.initialize_config()
+        return self._config_file_content, self.message
 
 
 # Global settings instance - lazy loaded
@@ -123,3 +211,10 @@ if __name__ == "__main__":
     print(f"  Log interval: {settings.log_interval_seconds}s")
     print(f"  Log level: {settings.log_level}")
     print(f"  Host: {settings.host}")
+    print(f"  Config file path: {settings.config_file_path}")
+    print(f"  MESSAGE env var: {settings.message}")
+    
+    # Test config reading
+    file_content, env_message = settings.get_config_info()
+    print(f"  Config file content: {file_content}")
+    print(f"  Config env message: {env_message}")
