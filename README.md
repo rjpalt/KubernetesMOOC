@@ -323,7 +323,7 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     curl http://localhost:8080/todos
     curl http://localhost:8080/docs
     ```
-- [2.5]()
+- [2.5](https://github.com/rjpalt/KubernetesMOOC/tree/2.5/ping-pong)
   - **Note: The commands are run fom the ping-pong folder! The exercise was implemented in the separate ping-pong folder to keep refactors separate from the log output service implemented previously.**
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Command to add container images for ping-pong and log-output:
