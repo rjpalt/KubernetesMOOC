@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   todo-app-be:
-    image: todo-app-be:2.2
+    image: todo-app-be:2.6
     build:
       context: ./todo-backend
       dockerfile: Dockerfile
@@ -13,7 +13,7 @@ services:
     ports:
       - "8001:8001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/be-health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -22,7 +22,7 @@ services:
       - todo-app-network
 
   todo-app-fe:
-    image: todo-app-fe:2.2
+    image: todo-app-fe:2.6
     build:
       context: ./todo-app
       dockerfile: Dockerfile

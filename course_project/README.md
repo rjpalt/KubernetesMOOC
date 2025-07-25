@@ -37,6 +37,30 @@ Access:
 - Frontend: http://localhost:8000
 - Backend API docs: http://localhost:8001/docs
 
+## Docker Images
+
+### Build Both Services
+```bash
+# Build with specific tag (recommended)
+./build-images.sh v1.0.0
+
+# Build with 'latest' tag (prompts for confirmation)
+./build-images.sh
+```
+
+This creates:
+- `todo-app-fe:TAG` - Frontend service image
+- `todo-app-be:TAG` - Backend service image
+
+### Manual Docker Build
+```bash
+# Frontend
+cd todo-app && docker build -t todo-app-fe:v1.0.0 .
+
+# Backend  
+cd todo-backend && docker build -t todo-app-be:v1.0.0 .
+```
+
 ## Testing
 
 ### Run All Tests

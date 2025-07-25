@@ -365,6 +365,44 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     curl http://localhost:8080/
     ```
 - [2.6]()
+  - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+  - Commands to import images for todo app fe and be:
+    ```bash
+    k3d image import todo-app-fe:2.6
+    k3d image import todo-app-be:2.6
+    ```
+  - Command to create a persistent volume tmp folder:
+    ```bash
+    docker exec k3d-k3s-default-agent-0 mkdir -p /tmp/kube
+    ```
+  - Command to apply namespace manifest:
+    ```bash
+    kubectl apply -f manifests/shared/namespace.yaml
+    ```
+  - Command to switch to the exercises namespace:
+    ```bash
+    kubens project
+    ```
+  - Command to apply shared ingress manifest:
+    ```bash
+    kubectl apply -f manifests/shared/ingress.yaml
+    ```
+  - Command to apply backend manifests:
+    ```bash
+    kubectl apply -f manifests/todo-be/
+    ```
+  - Command to apply frontend manifests:
+    ```bash
+    kubectl apply -f manifests/todo-fe/
+    ```
+  - Command to check that everything is running (kubens project has been run):
+    ```bash
+    kubectl get pods,svc,ingress,pv,pvc -n project
+    ```
+  - Commands to check that the service is working
+    ```bash
+    curl http://localhost:8080/
+    ```
 - [2.7]()
 - [2.8]()
 - [2.9]()

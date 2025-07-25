@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/health")
+@router.get("/be-health")
 async def health_check():
-    """Health check endpoint."""
+    """Backend health check endpoint."""
     todo_service = get_todo_service()
     return {
         "status": "healthy",
