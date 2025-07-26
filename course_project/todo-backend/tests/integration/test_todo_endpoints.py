@@ -10,7 +10,6 @@ This demonstrates microservice API testing:
 - Test the integration between routes and services
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 

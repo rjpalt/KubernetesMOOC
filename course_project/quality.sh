@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Code quality script for todo microservices
-# Runs import sorting, formatting, and linting for both todo-app and todo-backend
+# Runs linting and formatting with ruff for both todo-app and todo-backend
 # Usage: 
-#   ./quality.sh          - Fix mode (default) - fixes formatting and import issues automatically
+#   ./quality.sh          - Fix mode (default) - fixes formatting and linting issues automatically
 #   ./quality.sh --check  - Check only (exits with error if issues found)
 
 # Parse arguments
@@ -27,9 +27,9 @@ FRONTEND_ISSUES=()
 ALL_PASSED=true
 
 if [ "$FIX_MODE" = true ]; then
-    echo "🔧 Running code quality fixes for Todo Microservices..."
+    echo "🔧 Running code quality fixes with ruff for Todo Microservices..."
 else
-    echo "🔧 Running code quality checks for Todo Microservices..."
+    echo "🔧 Running code quality checks with ruff for Todo Microservices..."
 fi
 echo ""
 
@@ -44,44 +44,39 @@ run_quality_checks() {
     
     cd "$project_dir"
     
-    # isort (using shared config)
-    echo "📦 Sorting imports with isort..."
+    # ruff check (linting and import sorting)
+    echo "� Linting and checking imports with ruff..."
     if [ "$FIX_MODE" = true ]; then
-        uv run isort . --settings-path=../pyproject.toml
-        echo -e "${GREEN}✅ Imports sorted${NC}"
-    else
-        if ! uv run isort . --settings-path=../pyproject.toml --check-only --diff; then
-            eval "${issues_array_name}+=(\"${project_name}: Import sorting needed\")"
+        if ! uv run ruff check --fix .; then
+            eval "${issues_array_name}+=(\"${project_name}: Some linting issues couldn't be auto-fixed\")"
             ALL_PASSED=false
-            echo -e "${RED}❌ Import sorting issues found${NC}"
+            echo -e "${YELLOW}⚠️  Some issues were fixed, but manual fixes may be needed${NC}"
         else
-            echo -e "${GREEN}✅ Imports are correctly sorted${NC}"
+            echo -e "${GREEN}✅ Linting and imports checked/fixed${NC}"
+        fi
+    else
+        if ! uv run ruff check .; then
+            eval "${issues_array_name}+=(\"${project_name}: Linting issues found\")"
+            ALL_PASSED=false
+            echo -e "${RED}❌ Linting issues found${NC}"
+        else
+            echo -e "${GREEN}✅ No linting issues${NC}"
         fi
     fi
     
-    # black (using shared config)
-    echo "🎨 Formatting code with black..."
+    # ruff format (code formatting)
+    echo "🎨 Formatting code with ruff..."
     if [ "$FIX_MODE" = true ]; then
-        uv run black . --config=../pyproject.toml
+        uv run ruff format .
         echo -e "${GREEN}✅ Code formatted${NC}"
     else
-        if ! uv run black . --config=../pyproject.toml --check --diff; then
+        if ! uv run ruff format --check .; then
             eval "${issues_array_name}+=(\"${project_name}: Code formatting needed\")"
             ALL_PASSED=false
             echo -e "${RED}❌ Formatting issues found${NC}"
         else
             echo -e "${GREEN}✅ Code is correctly formatted${NC}"
         fi
-    fi
-    
-    # flake8 (using shared config) - always check only, never fix
-    echo "🔍 Linting with flake8..."
-    if ! uv run flake8 . --config=../.flake8; then
-        eval "${issues_array_name}+=(\"${project_name}: Linting issues found\")"
-        ALL_PASSED=false
-        echo -e "${RED}❌ Linting issues found${NC}"
-    else
-        echo -e "${GREEN}✅ No linting issues${NC}"
     fi
     
     cd ..
@@ -105,15 +100,15 @@ echo "========================================="
 
 if [ "$FIX_MODE" = true ]; then
     if [ "$ALL_PASSED" = true ]; then
-        echo -e "${GREEN}🎉 All formatting and imports fixed!${NC}"
+        echo -e "${GREEN}🎉 All formatting, imports, and linting fixed!${NC}"
         echo ""
-        echo "✅ todo-backend: Formatting and imports processed"
-        echo "✅ todo-app: Formatting and imports processed"
+        echo "✅ todo-backend: All ruff checks passed"
+        echo "✅ todo-app: All ruff checks passed"
         echo ""
-        echo -e "${YELLOW}💡 Run in check mode to see what needs fixing:${NC}"
+        echo -e "${YELLOW}💡 Run in check mode to verify:${NC}"
         echo "   ./quality.sh --check"
     else
-        echo -e "${RED}❌ Some linting issues remain (cannot be auto-fixed):${NC}"
+        echo -e "${RED}❌ Some issues remain (may need manual fixing):${NC}"
         echo ""
         
         if [ ${#BACKEND_ISSUES[@]} -gt 0 ]; then
@@ -131,7 +126,7 @@ if [ "$FIX_MODE" = true ]; then
             done
             echo ""
         fi
-        echo -e "${YELLOW}💡 These linting issues need manual fixes${NC}"
+        echo -e "${YELLOW}💡 These issues may need manual fixes${NC}"
         exit 1
     fi
 elif [ "$ALL_PASSED" = true ]; then
@@ -159,12 +154,12 @@ else
         echo ""
     fi
     
-    echo -e "${YELLOW}💡 To fix formatting and import issues automatically:${NC}"
+    echo -e "${YELLOW}💡 To fix formatting and linting issues automatically:${NC}"
     echo "   ./quality.sh"
     echo ""
     echo -e "${YELLOW}💡 Or fix manually:${NC}"
-    echo "   cd todo-backend && uv run isort . --settings-path=../pyproject.toml && uv run black . --config=../pyproject.toml"
-    echo "   cd todo-app && uv run isort . --settings-path=../pyproject.toml && uv run black . --config=../pyproject.toml"
+    echo "   cd todo-backend && uv run ruff check --fix . && uv run ruff format ."
+    echo "   cd todo-app && uv run ruff check --fix . && uv run ruff format ."
     echo ""
     
     exit 1

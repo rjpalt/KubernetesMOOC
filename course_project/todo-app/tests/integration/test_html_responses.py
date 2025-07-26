@@ -6,8 +6,8 @@ because broken HTML is embarrassing.
 
 from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
 from fastapi.testclient import TestClient
+
 from src.models.image import ImageInfo
 from src.models.todo import Todo, TodoStatus
 
@@ -15,8 +15,6 @@ from src.models.todo import Todo, TodoStatus
 def get_sample_todos():
     """Return sample Todo objects for testing."""
     from datetime import datetime
-
-    from src.models.todo import Todo, TodoStatus
 
     return [
         Todo(

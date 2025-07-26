@@ -7,6 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 from fastapi.testclient import TestClient
+
 from src.api import dependencies
 from src.core.cache import ImageCacheManager
 from src.main import create_app
@@ -59,7 +60,6 @@ def test_client(mock_todo_service, mock_image_service, mock_image_cache_manager)
 
     def override_get_templates():
         # For templates, we can use the real one since it's just Jinja2
-        from src.api import dependencies
 
         return dependencies.get_templates_instance()
 

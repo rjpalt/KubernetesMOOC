@@ -1,7 +1,6 @@
 """Todo CRUD endpoints."""
 
 import logging
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -13,7 +12,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/todos", response_model=List[Todo])
+@router.get("/todos", response_model=list[Todo])
 async def get_todos(todo_service: TodoService = Depends(get_todo_service)):
     """Get all todos."""
     logger.info("Fetching all todos")

@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-from typing import Optional
 
 from ..services.image_service import ImageService
 
@@ -14,7 +13,7 @@ class BackgroundTaskManager:
 
     def __init__(self, image_service: ImageService):
         self.image_service = image_service
-        self._image_fetch_task: Optional[asyncio.Task] = None
+        self._image_fetch_task: asyncio.Task | None = None
 
     async def start_background_tasks(self):
         """Start all background tasks."""

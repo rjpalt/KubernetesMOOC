@@ -1,7 +1,6 @@
 """HTTP client for communicating with todo-backend service."""
 
 import logging
-from typing import List
 
 import httpx
 from fastapi import HTTPException
@@ -21,7 +20,7 @@ class TodoBackendClient:
         self.timeout = settings.todo_backend_timeout
         logger.info(f"TodoBackendClient configured for: {self.backend_url}")
 
-    async def get_all_todos(self) -> List[Todo]:
+    async def get_all_todos(self) -> list[Todo]:
         """Fetch all todos from backend service."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:

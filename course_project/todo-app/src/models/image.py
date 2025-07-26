@@ -1,7 +1,5 @@
 """Data models for image operations."""
 
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -18,21 +16,21 @@ class ImageInfo(BaseModel):
     """Information about the current cached image."""
 
     status: str
-    message: Optional[str] = None
-    file_size: Optional[int] = None
-    modified_time: Optional[str] = None
-    metadata: Optional[ImageMetadata] = None
-    last_fetch_time: Optional[str] = None
-    next_auto_fetch: Optional[str] = None
+    message: str | None = None
+    file_size: int | None = None
+    modified_time: str | None = None
+    metadata: ImageMetadata | None = None
+    last_fetch_time: str | None = None
+    next_auto_fetch: str | None = None
 
 
 class FetchResult(BaseModel):
     """Result of an image fetch operation."""
 
     status: str
-    reason: Optional[str] = None
-    error: Optional[str] = None
+    reason: str | None = None
+    error: str | None = None
     timestamp: str
-    size_bytes: Optional[int] = None
-    url: Optional[str] = None
-    last_fetch: Optional[str] = None
+    size_bytes: int | None = None
+    url: str | None = None
+    last_fetch: str | None = None

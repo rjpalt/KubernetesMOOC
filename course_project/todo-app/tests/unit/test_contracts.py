@@ -6,8 +6,8 @@ Only test methods that actually exist in both services.
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
+
 from src.services.todo_backend_client import TodoBackendClient
 
 
@@ -28,7 +28,7 @@ class TestExistingContracts:
 
         # Method should exist
         assert hasattr(client, "get_all_todos")
-        assert callable(getattr(client, "get_all_todos"))
+        assert callable(client.get_all_todos)
 
     @pytest.mark.asyncio
     async def test_create_todo_contract_exists(self):
@@ -37,7 +37,7 @@ class TestExistingContracts:
 
         # Method should exist
         assert hasattr(client, "create_todo")
-        assert callable(getattr(client, "create_todo"))
+        assert callable(client.create_todo)
 
     @pytest.mark.asyncio
     async def test_health_check_contract_exists(self):
@@ -46,7 +46,7 @@ class TestExistingContracts:
 
         # Method should exist
         assert hasattr(client, "health_check")
-        assert callable(getattr(client, "health_check"))
+        assert callable(client.health_check)
 
 
 class TestMinimalWorkingContract:

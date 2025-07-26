@@ -8,7 +8,6 @@ This demonstrates microservice testing principle:
 Each service tests only the models it owns.
 """
 
-import pytest
 
 # TODO: Add Image model tests here when Image models are defined
 # Example structure:
