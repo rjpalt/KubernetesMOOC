@@ -42,16 +42,6 @@ Encrypt Kubernetes secret files with SOPS to safely commit them to version contr
   sops -d manifests/ping-pong/postgres-secret.yaml | kubectl apply -f -
   ```
 
-### Phase 5: Team Collaboration Setup
-- [ ] Share age private key securely with team members (outside of git)
-- [ ] Document how team members should set up their local SOPS configuration
-- [ ] Test that other team members can decrypt and apply secrets
-
-### Phase 6: CI/CD Integration (Future)
-- [ ] Store age private key in GitHub Secrets (when needed)
-- [ ] Update GitHub Actions workflows to use SOPS for secret decryption
-- [ ] Test automated deployments with encrypted secrets
-
 ## Key Commands Reference
 ```bash
 # Encrypt a file in place
