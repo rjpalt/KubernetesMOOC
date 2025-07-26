@@ -404,6 +404,40 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     curl http://localhost:8080/
     ```
 - [2.7]()
+  - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+  - Commands to import images for ping-pong and log-output:
+    ```bash
+    k3d image import ping-pong-app:2.7
+    k3d image import log-output-app:2.7
+    ```
+  - Command to apply namespace manifest:
+    ```bash
+    kubectl apply -f manifests/shared/namespace.yaml
+    ```
+  - Command to switch to the exercises namespace:
+    ```bash
+    kubens exercises
+    ```
+  - Commands to apply secrets first
+    ```bash
+    kubectl apply -f manifests/ping-pong/ping-pong-secret.yaml
+    kubectl apply -f manifests/log-output/postgres-secret.yaml
+    ```
+  - Commands to apply postgres service and statefulset manifests
+    ```bash
+    kubectl apply -f manifests/log-output/postgres-service.yaml
+    kubectl apply -f manifests/log-output/postgres-statefulset.yaml
+    ```
+  - Commands to apply ping-pong manifests (service, deployment):
+    ```bash
+    kubectl apply -f manifests/ping-pong/ping-pong-service.yaml
+    kubectl apply -f manifests/ping-pong/ping-pong-deployment.yaml
+    ```
+  - Command to apply ingress manifest:
+    ```bash
+    kubectl apply -f manifests/shared/ingress.yaml
+    ```
+
 - [2.8]()
 - [2.9]()
 - [2.10]()

@@ -15,10 +15,26 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: ping-pong-app:2.5
+          image: ping-pong-app:2.7
           imagePullPolicy: IfNotPresent
           env:
             - name: PING_PONG_APP_PORT
               value: "3000"
             - name: PING_PONG_LOG_LEVEL
               value: "INFO"
+            - name: PING_PONG_DB_HOST
+              value: "postgres-svc"
+            - name: PING_PONG_DB_PORT
+              value: "5432"
+            - name: PING_PONG_DB_NAME
+              value: "pingpong-db"
+            - name: PING_PONG_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: ping-pong-app-secret
+                  key: DB_USER
+            - name: PING_PONG_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ping-pong-app-secret
+                  key: DB_PASSWORD
