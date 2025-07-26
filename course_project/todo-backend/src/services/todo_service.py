@@ -1,7 +1,5 @@
 """Todo service for managing todo items in memory."""
 
-from typing import List, Optional
-
 from ..models.todo import Todo, TodoCreate, TodoStatus
 
 
@@ -10,7 +8,7 @@ class TodoService:
 
     def __init__(self):
         """Initialize with some sample todos for demo purposes."""
-        self._todos: List[Todo] = [
+        self._todos: list[Todo] = [
             Todo.create_new("Learn Kubernetes service discovery"),
             Todo.create_new("Implement REST API endpoints"),
             Todo.create_new("Test inter-service communication"),
@@ -18,11 +16,11 @@ class TodoService:
         # Mark first todo as done for demo
         self._todos[1].mark_done()
 
-    def get_all_todos(self) -> List[Todo]:
+    def get_all_todos(self) -> list[Todo]:
         """Get all todos."""
         return self._todos.copy()
 
-    def get_todo_by_id(self, todo_id: str) -> Optional[Todo]:
+    def get_todo_by_id(self, todo_id: str) -> Todo | None:
         """Get a todo by ID."""
         return next((todo for todo in self._todos if todo.id == todo_id), None)
 
@@ -32,7 +30,7 @@ class TodoService:
         self._todos.append(new_todo)
         return new_todo
 
-    def update_todo(self, todo_id: str, text: str = None, status: TodoStatus = None) -> Optional[Todo]:
+    def update_todo(self, todo_id: str, text: str = None, status: TodoStatus = None) -> Todo | None:
         """Update an existing todo."""
         todo = self.get_todo_by_id(todo_id)
         if not todo:

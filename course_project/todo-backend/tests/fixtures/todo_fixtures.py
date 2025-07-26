@@ -6,9 +6,9 @@ the actual API responses.
 """
 
 from datetime import datetime
-from typing import Dict, List
 
 import pytest
+
 from src.models.todo import Todo, TodoStatus
 
 

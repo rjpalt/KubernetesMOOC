@@ -2,8 +2,7 @@
 
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import aiofiles
 import httpx
@@ -21,10 +20,10 @@ class ImageCacheManager:
         self.cache_path = settings.image_cache_path
         self.current_image_file = settings.image_current_file
         self.metadata_file = settings.image_metadata_file
-        self._last_fetch_time: Optional[datetime] = None
+        self._last_fetch_time: datetime | None = None
 
     @property
-    def last_fetch_time(self) -> Optional[datetime]:
+    def last_fetch_time(self) -> datetime | None:
         """Get the last fetch time."""
         return self._last_fetch_time
 
@@ -32,14 +31,14 @@ class ImageCacheManager:
         """Fetch a new image from Lorem Picsum and cache it."""
         # Check if we need to fetch (unless forced)
         if not force and self._last_fetch_time:
-            time_since_last = datetime.now(timezone.utc) - self._last_fetch_time
+            time_since_last = datetime.now(UTC) - self._last_fetch_time
             if time_since_last < timedelta(minutes=settings.image_update_interval_minutes):
                 return FetchResult(
                     status="skipped",
                     reason=f"Last fetch was {time_since_last.total_seconds():.0f}s ago, "
-                    f"interval is {settings.image_update_interval_minutes*60}s",
+                    f"interval is {settings.image_update_interval_minutes * 60}s",
                     last_fetch=self._last_fetch_time.isoformat(),
-                    timestamp=datetime.now(timezone.utc).isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                 )
 
         logger.info(f"Fetching new image from {settings.picsum_url}...")
@@ -67,7 +66,7 @@ class ImageCacheManager:
                 temp_file.rename(self.current_image_file)
 
                 # Update metadata
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 self._last_fetch_time = now
 
                 metadata = ImageMetadata(
@@ -94,7 +93,7 @@ class ImageCacheManager:
             return FetchResult(
                 status="error",
                 error=str(e),
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
             )
 
     async def get_current_image_info(self) -> ImageInfo:
@@ -108,7 +107,7 @@ class ImageCacheManager:
         metadata = None
         if self.metadata_file.exists():
             try:
-                async with aiofiles.open(self.metadata_file, "r") as f:
+                async with aiofiles.open(self.metadata_file) as f:
                     lines = (await f.read()).strip().split("\n")
                     if len(lines) >= 3:
                         metadata = ImageMetadata(
@@ -128,7 +127,7 @@ class ImageCacheManager:
         return ImageInfo(
             status="available",
             file_size=stat.st_size,
-            modified_time=datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+            modified_time=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
             metadata=metadata,
             last_fetch_time=self._last_fetch_time.isoformat() if self._last_fetch_time else None,
             next_auto_fetch=next_auto_fetch,

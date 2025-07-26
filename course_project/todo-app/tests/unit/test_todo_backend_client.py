@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 from fastapi import HTTPException
+
 from src.models.todo import Todo, TodoStatus
 from src.services.todo_backend_client import TodoBackendClient
 

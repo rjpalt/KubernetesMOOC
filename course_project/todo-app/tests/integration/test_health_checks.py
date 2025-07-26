@@ -4,7 +4,6 @@ Testing that your health endpoints actually work because
 monitoring is pointless if the health checks are broken.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 

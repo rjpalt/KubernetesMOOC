@@ -5,7 +5,6 @@ These tests verify that the application starts correctly in a container environm
 
 import subprocess
 import time
-from typing import Generator
 
 import httpx
 import pytest

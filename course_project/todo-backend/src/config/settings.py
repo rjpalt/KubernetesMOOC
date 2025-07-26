@@ -1,7 +1,5 @@
 """Backend service configuration settings using Pydantic Settings."""
 
-from typing import List
-
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,7 +23,7 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", description="Logging level")
 
     # CORS configuration
-    cors_origins: List[str] = Field(
+    cors_origins: list[str] = Field(
         default=["*"], description="Allowed CORS origins", json_schema_extra={"env": "CORS_ORIGINS"}
     )
 
@@ -35,7 +33,7 @@ class Settings(BaseSettings):
     api_version: str = Field(default="1.0.0", description="API version")
 
     @property
-    def cors_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> list[str]:
         """Get CORS origins as list, handling string input from environment."""
         if isinstance(self.cors_origins, str):
             return [origin.strip() for origin in self.cors_origins.split(",")]

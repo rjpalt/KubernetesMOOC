@@ -8,11 +8,8 @@ After microservice separation:
 This ensures frontend tests use the same data format the backend actually returns.
 """
 
-from datetime import datetime
-from typing import Dict, List
 
-
-def get_mock_backend_todo_response() -> Dict:
+def get_mock_backend_todo_response() -> dict:
     """Get a single todo in the format the backend returns.
 
     Critical: This must match the exact format todo-backend returns!
@@ -25,7 +22,7 @@ def get_mock_backend_todo_response() -> Dict:
     }
 
 
-def get_mock_backend_todos_list() -> List[Dict]:
+def get_mock_backend_todos_list() -> list[dict]:
     """Get multiple todos in backend response format."""
     return [
         {"id": "mock-todo-1", "text": "First mock todo", "status": "not-done", "created_at": "2025-07-21T10:00:00Z"},
@@ -34,12 +31,12 @@ def get_mock_backend_todos_list() -> List[Dict]:
     ]
 
 
-def get_sample_todos() -> List[Dict]:
+def get_sample_todos() -> list[dict]:
     """Alias for get_mock_backend_todos_list for backward compatibility."""
     return get_mock_backend_todos_list()
 
 
-def get_mock_backend_created_todo_response() -> Dict:
+def get_mock_backend_created_todo_response() -> dict:
     """Get response format for newly created todo from backend."""
     return {
         "id": "newly-created-mock-id",
@@ -49,7 +46,7 @@ def get_mock_backend_created_todo_response() -> Dict:
     }
 
 
-def get_mock_backend_error_response() -> Dict:
+def get_mock_backend_error_response() -> dict:
     """Get error response format from backend."""
     return {"detail": "Mock backend error for testing"}
 

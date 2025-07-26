@@ -1,11 +1,32 @@
 repos:
   - repo: local
     hooks:
-      - id: course-project-quality
-        name: Course Project Code Quality
-        entry: bash -c 'cd course_project && ./quality.sh --check'
+      - id: todo-backend-ruff-check
+        name: Todo Backend Ruff Check
+        entry: bash -c 'cd course_project/todo-backend && uv run ruff check .'
         language: system
-        files: ^course_project/.*\.py$
+        files: ^course_project/todo-backend/.*\.py$
+        pass_filenames: false
+        
+      - id: todo-backend-ruff-format
+        name: Todo Backend Ruff Format
+        entry: bash -c 'cd course_project/todo-backend && uv run ruff format --check .'
+        language: system
+        files: ^course_project/todo-backend/.*\.py$
+        pass_filenames: false
+        
+      - id: todo-app-ruff-check
+        name: Todo App Ruff Check
+        entry: bash -c 'cd course_project/todo-app && uv run ruff check .'
+        language: system
+        files: ^course_project/todo-app/.*\.py$
+        pass_filenames: false
+        
+      - id: todo-app-ruff-format
+        name: Todo App Ruff Format
+        entry: bash -c 'cd course_project/todo-app && uv run ruff format --check .'
+        language: system
+        files: ^course_project/todo-app/.*\.py$
         pass_filenames: false
         
       # You could add other project-specific hooks here later:

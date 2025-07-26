@@ -13,6 +13,7 @@ from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
+
 from src.models.todo import Todo, TodoCreate, TodoStatus, TodoUpdate
 
 

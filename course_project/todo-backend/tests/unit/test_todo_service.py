@@ -11,7 +11,6 @@ This demonstrates microservice testing principle:
 
 from datetime import datetime
 
-import pytest
 from src.models.todo import Todo, TodoCreate, TodoStatus
 from src.services.todo_service import TodoService
 

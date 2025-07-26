@@ -7,7 +7,6 @@ Moved from frontend because: Each service should test its own health endpoints.
 In Kubernetes, each service needs its own health checks for proper orchestration.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 
@@ -34,7 +33,7 @@ class TestBackendHealthEndpoint:
 
     def test_health_endpoint_with_todos(self, test_client: TestClient):
         """Test health endpoint with todos present."""
-        response = test_client.get("/be-health")
+        test_client.get("/be-health")
 
     def test_health_endpoint_todos_count_accurate(self, test_client: TestClient):
         """Test that health endpoint reports accurate todo count."""

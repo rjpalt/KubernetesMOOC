@@ -3,7 +3,6 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -24,8 +23,8 @@ class TodoCreate(BaseModel):
 class TodoUpdate(BaseModel):
     """Model for updating a todo."""
 
-    text: Optional[str] = Field(None, min_length=1, max_length=140, description="Todo text content")
-    status: Optional[TodoStatus] = Field(None, description="Todo status")
+    text: str | None = Field(None, min_length=1, max_length=140, description="Todo text content")
+    status: TodoStatus | None = Field(None, description="Todo status")
 
 
 class Todo(BaseModel):
@@ -35,7 +34,7 @@ class Todo(BaseModel):
     text: str = Field(..., min_length=1, max_length=140, description="Todo text content")
     status: TodoStatus = Field(default=TodoStatus.NOT_DONE, description="Todo completion status")
     created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    updated_at: datetime | None = Field(None, description="Last update timestamp")
 
     @classmethod
     def create_new(cls, text: str) -> "Todo":

@@ -2,7 +2,7 @@
 
 import asyncio
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 
@@ -25,7 +25,7 @@ async def health_check(image_service: ImageService = Depends(get_image_service))
     image_info = await image_service.get_image_info()
     return {
         "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "image_cache_status": image_info.status,
         "cache_path": str(settings.image_cache_path),
         "update_interval_minutes": settings.image_update_interval_minutes,

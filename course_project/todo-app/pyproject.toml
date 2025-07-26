@@ -18,9 +18,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black>=25.1.0",
-    "flake8>=7.3.0",
-    "isort>=5.13.0",
+    "ruff>=0.8.0",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0", 
     "pytest-cov>=5.0.0",
@@ -63,3 +61,27 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "T20"]
+ignore = ["E501", "B008", "B904"]  # B008: FastAPI Depends() in defaults, B904: Exception chaining in HTTP services
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+# Use spaces around operators
+indent-style = "space"
+# Skip magic trailing commas for single-element tuples
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+# Force single line imports for better readability
+force-single-line = false
+# Compatible with black formatting
+combine-as-imports = true
+split-on-trailing-comma = true

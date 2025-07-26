@@ -1,7 +1,7 @@
 """Image service for business logic operations."""
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from ..config.settings import settings
 from ..core.cache import ImageCacheManager
@@ -43,7 +43,7 @@ class ImageService:
 
         return status
 
-    def get_config_for_template(self) -> Dict[str, Any]:
+    def get_config_for_template(self) -> dict[str, Any]:
         """Get configuration data for template rendering."""
         return {
             "cache_path": str(settings.image_cache_path),
