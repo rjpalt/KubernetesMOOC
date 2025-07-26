@@ -42,6 +42,10 @@ docker-volumes/
 # Ignore Kubernetes secrets (local development)
 k8s/secrets/local/
 
+# Ignore all Kubernetes secret YAML files (before SOPS encryption)
+**/manifests/**/*-secret.yaml
+**/*-secret.yaml
+
 # Ignores specification files
 course_project/todo-app/PROJECT_SPECIFICATION.md
 course_project/todo-app/TESTING_PLAN.md

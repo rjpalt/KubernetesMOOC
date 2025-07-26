@@ -1,3 +1,82 @@
+# TODO: SOPS Implementation for Secret Encryption
+
+## Goal
+Encrypt Kubernetes secret files with SOPS to safely commit them to version control while maintaining security.
+
+## Implementation Steps
+
+### Phase 1: Install and Setup SOPS
+- [ ] Install SOPS: `brew install sops` (macOS)
+- [ ] Install age for encryption: `brew install age`
+- [ ] Generate age key pair: `age-keygen -o ~/.config/sops/age/keys.txt`
+- [ ] Note the public key from the output for .sops.yaml configuration
+
+### Phase 2: Configure SOPS for Repository
+- [ ] Create `.sops.yaml` in repository root with encryption rules:
+  ```yaml
+  creation_rules:
+    - path_regex: .*-secret\.yaml$
+      age: age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Your public key
+  ```
+- [ ] Test configuration with a sample secret file
+
+### Phase 3: Encrypt Existing Secrets
+- [ ] Backup current secret files (they're gitignored, so copy them somewhere safe)
+- [ ] Encrypt each secret file in place:
+  ```bash
+  sops -e -i ping-pong/manifests/ping-pong/postgres-secret.yaml
+  sops -e -i ping-pong/manifests/ping-pong/ping-pong-secret.yaml
+  ```
+- [ ] Verify encrypted files look correct (should show encrypted data)
+
+### Phase 4: Update Gitignore and Workflow
+- [ ] Remove secret file patterns from .gitignore:
+  ```diff
+  - # Ignore all Kubernetes secret YAML files (before SOPS encryption)
+  - **/manifests/**/*-secret.yaml
+  - **/*-secret.yaml
+  ```
+- [ ] Commit encrypted secret files to version control
+- [ ] Update deployment workflow to use SOPS decryption:
+  ```bash
+  sops -d manifests/ping-pong/postgres-secret.yaml | kubectl apply -f -
+  ```
+
+### Phase 5: Team Collaboration Setup
+- [ ] Share age private key securely with team members (outside of git)
+- [ ] Document how team members should set up their local SOPS configuration
+- [ ] Test that other team members can decrypt and apply secrets
+
+### Phase 6: CI/CD Integration (Future)
+- [ ] Store age private key in GitHub Secrets (when needed)
+- [ ] Update GitHub Actions workflows to use SOPS for secret decryption
+- [ ] Test automated deployments with encrypted secrets
+
+## Key Commands Reference
+```bash
+# Encrypt a file in place
+sops -e -i your-secret.yaml
+
+# Decrypt and view (without modifying file)
+sops -d your-secret.yaml
+
+# Decrypt and apply to Kubernetes
+sops -d your-secret.yaml | kubectl apply -f -
+
+# Edit encrypted file (decrypts, opens editor, re-encrypts on save)
+sops your-secret.yaml
+```
+
+## Security Notes
+- Never commit the age private key to version control
+- Store private key securely (password manager, encrypted backup)
+- Rotate keys periodically in production environments
+- Consider using cloud KMS (AWS KMS, Azure Key Vault) for production
+
+**Next Steps**: Start with Phase 1 - install SOPS and age, then generate your key pair.
+
+---
+
 # TODO: OpenAPI Documentation Automation
 
 ## Goal
