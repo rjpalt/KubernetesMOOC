@@ -21,6 +21,15 @@ class PingPongSettings(BaseSettings):
     # Logging configuration
     log_level: str = "INFO"
 
+    # Database configuration
+    db_host: str = "localhost"
+    db_port: int = 5432
+    db_name: str = "pingpong"
+    db_user: str = "postgres"
+    db_password: str = "postgres"
+    db_pool_min_size: int = 1
+    db_pool_max_size: int = 10
+
     class Config:
         env_prefix = "PING_PONG_"
         env_file = ".env"
@@ -42,6 +51,19 @@ class PingPongSettings(BaseSettings):
         if not (1 <= v <= 65535):
             raise ValueError("Port must be between 1 and 65535")
         return v
+
+    @field_validator("db_port")
+    @classmethod
+    def validate_db_port(cls, v):
+        """Ensure database port is in valid range"""
+        if not (1 <= v <= 65535):
+            raise ValueError("Database port must be between 1 and 65535")
+        return v
+
+    @property
+    def database_url(self) -> str:
+        """Get the database URL for asyncpg"""
+        return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
 
 # Global settings instance - lazy loaded
@@ -75,3 +97,5 @@ if __name__ == "__main__":
     print(f"  App port: {settings.app_port}")
     print(f"  Log level: {settings.log_level}")
     print(f"  Host: {settings.host}")
+    print(f"  Database URL: {settings.database_url}")
+    print(f"  DB pool size: {settings.db_pool_min_size}-{settings.db_pool_max_size}")

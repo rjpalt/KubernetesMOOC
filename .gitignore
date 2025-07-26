@@ -46,6 +46,7 @@ k8s/secrets/local/
 course_project/todo-app/PROJECT_SPECIFICATION.md
 course_project/todo-app/TESTING_PLAN.md
 course_project/TODO.md
+ping-pong/LOCAL_DEVELOPMENT.md
 
 # Ignore Docker compose backups
 docker-compose.yaml.backup

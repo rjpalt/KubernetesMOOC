@@ -303,6 +303,102 @@ data:
     difficulty=2
 ```
 
+To reference a ConfigMap in a Pod, you can use it as an environment variable or mount it as a volume.
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: example-pod
+spec:
+  containers:
+  - name: example-container
+    image: example-image
+    env:
+    - name: SERVER_CONFIG
+      valueFrom:
+        configMapKeyRef:
+          name: example-configmap
+          key: serverconfig.txt
+    volumeMounts:
+    - name: config-volume
+      mountPath: /etc/config
+  volumes:
+  - name: config-volume
+    configMap:
+      name: example-configmap
+```
+
+# Using StatefulSets #
+- StatefulSets are used for managing stateful applications, providing stable network identities and persistent storage.
+- They ensure that the Pods are created in a specific order and maintain their identity across rescheduling
+
+Requiremenets:
+- Persistent Volumes (PVs) and Persistent Volume Claims (PVCs) for storage.
+- Server that is headless, meaning it does not have a stable IP address or DNS name.
+
+Example of a StatefulSet's service manifest:
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-svc
+  labels:
+    app: redis
+spec:
+  ports:
+  - port: 6379
+    name: web
+  clusterIP: None
+  selector:
+    app: redisapp
+```
+
+Note: `clusterIP: None` creates a headless service, allowing direct access to the Pods instead of routing through a load balancer.
+
+- Creating a StatefulSet manifest:
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis-stset
+spec:
+  serviceName: redis-svc
+  replicas: 2
+  selector:
+    matchLabels:
+      app: redisapp
+  template:
+    metadata:
+      labels:
+        app: redisapp
+    spec:
+      containers:
+        - name: redisfiller
+          image: jakousa/dwk-app5:54203329200143875187753026f4e93a1305ae26
+        - name: redis
+          image: redis:5.0
+          ports:
+            - name: web
+              containerPort: 6379
+          volumeMounts:
+            - name: redis-data-storage
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 100Mi
+```
+
+- Note that the `volumeClaimTemplates` section is used to define the Persistent Volume Claims (PVCs) for each Pod in the StatefulSet. Each Pod will get its own PVC based on this template.
+- `local-path` is a storage class that allows the use of local storage on the node where the Pod is running. This is useful for development and testing purposes. It also forgos the creation of PCVs manually, as they are created automatically when the StatefulSet is applied.
+- Note that the redisfiller app is always deployed in the same Pod as the redis container, so it can access the Redis service directly instead of going through the network.
+- Each replica has a separate PVC, ensuring that data is preserved even if the Pod is rescheduled or restarted.
+- With StatefulSets, pods are guaranteed to have tha same name and network identity (stable qualities) across rescheduling, which is crucial for stateful applications like databases. This means, that they will also get exactly the same PVCs. The content of the PVCs is not guaranteed to be the same, but the names are.
 
 
 ---
