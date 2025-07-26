@@ -17,7 +17,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 # Copy the application files
-COPY main.py settings.py ./
+COPY main.py settings.py database.py ./
 
 # Create shared directory mount point BEFORE switching to non-root user
 RUN mkdir -p /shared
@@ -43,7 +43,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:$PORT/health || exit 1
+    CMD curl -f http://localhost:$PORT/health/ready || exit 1
 
 # Run the application using uv
 CMD ["uv", "run", "python", "main.py"]

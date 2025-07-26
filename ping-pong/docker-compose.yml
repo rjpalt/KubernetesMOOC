@@ -1,12 +1,33 @@
 version: '3.8'
 
-# Docker Compose configuration for ping-pong and log-output integration
-# This setup demonstrates HTTP communication between services
+# Docker Compose configuration for ping-pong, log-output and PostgreSQL
+# This setup demonstrates HTTP communication between services with persistent storage
 
 services:
-  # Ping-pong service: increments counter and provides HTTP endpoint
+  # PostgreSQL database for ping-pong counter storage
+  postgres:
+    image: postgres:15-alpine
+    container_name: ping-pong-postgres
+    environment:
+      POSTGRES_DB: pingpong
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pingpong"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ping_pong_network
+
+  # Ping-pong service: increments counter and provides HTTP endpoint with PostgreSQL storage
   ping-pong:
-    image: ping-pong-app:2.5
+    image: ping-pong-app:2.7
     build:
       context: .
       dockerfile: Dockerfile
@@ -15,21 +36,30 @@ services:
       # Configure ping-pong service
       - PING_PONG_APP_PORT=3000
       - PING_PONG_LOG_LEVEL=INFO
+      # Database configuration
+      - PING_PONG_DB_HOST=postgres
+      - PING_PONG_DB_PORT=5432
+      - PING_PONG_DB_NAME=pingpong
+      - PING_PONG_DB_USER=postgres
+      - PING_PONG_DB_PASSWORD=postgres
     ports:
       # Expose ping-pong on port 3000
       - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health/ready"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 5s
+      start_period: 40s
     networks:
       - ping_pong_network
 
   # Log-output service: gets ping-pong counter via HTTP and displays with logs
   log-output:
-    image: log-output-app:2.5
+    image: log-output-app:2.7
     build:
       context: ../log_output
       dockerfile: Dockerfile
@@ -46,7 +76,8 @@ services:
       - "8000:8000"
     depends_on:
       # Start ping-pong first since log-output communicates with it
-      - ping-pong
+      ping-pong:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -57,6 +88,10 @@ services:
       - ../log_output/config/information.txt:/config/information.txt
     networks:
       - ping_pong_network
+
+volumes:
+  # PostgreSQL data persistence
+  postgres_data:
 
 networks:
   # Custom network for service communication

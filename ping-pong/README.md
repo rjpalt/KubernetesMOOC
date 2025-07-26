@@ -1,33 +1,46 @@
 # Ping-Pong Service
 
-Simple HTTP service that responds with "pong N" and increments counter. The counter is persisted to a shared volume for communication with other services.
+Simple HTTP service that responds with "pong N" and increments counter. The counter is now persisted to a PostgreSQL database for reliable storage and communication with other services.
 
 ## Features
 
-- Responds with "pong N" where N is an incrementing counter
-- Persists counter to shared volume for inter-service communication
+- Responds with "pong N" where N is an incrementing counter stored in PostgreSQL
+- Database-backed persistence for reliable counter storage
 - Configurable via environment variables using Pydantic settings
-- Health check endpoint for monitoring
+- Health check and readiness endpoints for monitoring
+- Docker Compose setup with PostgreSQL integration
 
 ## Local Development
 
+See [LOCAL_DEVELOPMENT.md](LOCAL_DEVELOPMENT.md) for detailed instructions on:
+
+1. **Running server locally with containerized database** - Best for development and debugging
+2. **Running everything in Docker Compose** - Full containerized environment
+
+Quick start:
 ```bash
 # Install dependencies
 uv sync
 
-# Run locally (uses ./shared directory by default)
-uv run main.py
-```
+# Option 1: Local server + containerized DB
+docker run -d --name postgres-local -e POSTGRES_DB=pingpong -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:15-alpine
+uv run python main.py
 
-The application will create a `shared` directory in the project root for local testing.
+# Option 2: Everything in containers
+docker-compose up --build
+```
 
 ## Configuration
 
 The application uses Pydantic settings with environment variable support:
 
-- `PING_PONG_SHARED_VOLUME_PATH` - Path to shared volume (default: "shared")
 - `PING_PONG_APP_PORT` - Application port (default: 3000)
 - `PING_PONG_LOG_LEVEL` - Logging level (default: "INFO")
+- `PING_PONG_DB_HOST` - Database host (default: "localhost")
+- `PING_PONG_DB_PORT` - Database port (default: 5432)
+- `PING_PONG_DB_NAME` - Database name (default: "pingpong")
+- `PING_PONG_DB_USER` - Database user (default: "postgres")
+- `PING_PONG_DB_PASSWORD` - Database password (default: "postgres")
 
 ## Docker
 
