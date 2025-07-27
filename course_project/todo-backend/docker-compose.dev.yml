@@ -1,6 +1,3 @@
-# PostgreSQL 17 for local development and testing
-version: '3.8'
-
 services:
   postgres:
     image: postgres:17

@@ -1,69 +1,39 @@
-# TODO: SOPS Implementation for Secret Encryption
+# TODO: Priority Tasks for Tomorrow's Assessment
 
-## Goal
-Encrypt Kubernetes secret files with SOPS to safely commit them to version control while maintaining security.
+## ⚡ IMMEDIATE PRIORITIES (Next Session)
 
-## Implementation Steps
+### Project Validation & Kubernetes Deployment
+Based on today's async PostgreSQL integration and testing foundation work, tomorrow's focus is on comprehensive project validation and Kubernetes deployment readiness.
 
-### Phase 1: Install and Setup SOPS
-- [ ] Install SOPS: `brew install sops` (macOS)
-- [ ] Install age for encryption: `brew install age`
-- [ ] Generate age key pair: `age-keygen -o ~/.config/sops/age/keys.txt`
-- [ ] Note the public key from the output for .sops.yaml configuration
+#### 1. Foundation Verification
+- [ ] **Verify all project tests work** - Confirm 39/39 tests still passing after any changes
+- [ ] **Test GitHub Actions CI pipeline** - Ensure automated testing works in CI environment
+- [ ] **Review Docker implementations** - Go through Dockerfiles and docker-compose configurations
 
-### Phase 2: Configure SOPS for Repository
-- [ ] Create `.sops.yaml` in repository root with encryption rules:
-  ```yaml
-  creation_rules:
-    - path_regex: .*-secret\.yaml$
-      age: age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Your public key
-  ```
-- [ ] Test configuration with a sample secret file
+#### 2. Local Development Setup
+- [ ] **Validate local database setup** - Confirm PostgreSQL containers work properly
+- [ ] **Test local project execution** - Ensure todo-app + todo-backend + database integration works
+- [ ] **Build complete docker-compose.yaml** - Create unified docker-compose for all services (missing PostgreSQL database service)
+- [ ] **Update quality.sh script** - Ensure code quality checks work with current project structure
+- [ ] **Update GitHub Actions workflow** - Reflect current testing pipeline and project structure
+- [ ] **Verify act commands** - Ensure local GitHub Actions testing works properly
 
-### Phase 3: Encrypt Existing Secrets
-- [ ] Backup current secret files (they're gitignored, so copy them somewhere safe)
-- [ ] Encrypt each secret file in place:
-  ```bash
-  sops -e -i ping-pong/manifests/ping-pong/postgres-secret.yaml
-  sops -e -i ping-pong/manifests/ping-pong/ping-pong-secret.yaml
-  ```
-- [ ] Verify encrypted files look correct (should show encrypted data)
+#### 3. Kubernetes Migration Planning
+- [ ] **Design database Kubernetes manifests** - Create deployment specs for PostgreSQL in K8s
+- [ ] **Update existing Kubernetes manifests** - Reflect current async database architecture
+- [ ] **Remove redundant persistent volumes** - Clean up manifests made obsolete by database service
+- [ ] **Implement SOPS encrypted secrets** - Create proper Secret files for database credentials
+- [ ] **Validate Kubernetes deployment** - Test complete K8s deployment works end-to-end
 
-### Phase 4: Update Gitignore and Workflow
-- [ ] Remove secret file patterns from .gitignore:
-  ```diff
-  - # Ignore all Kubernetes secret YAML files (before SOPS encryption)
-  - **/manifests/**/*-secret.yaml
-  - **/*-secret.yaml
-  ```
-- [ ] Commit encrypted secret files to version control
-- [ ] Update deployment workflow to use SOPS decryption:
-  ```bash
-  sops -d manifests/ping-pong/postgres-secret.yaml | kubectl apply -f -
-  ```
+### Current Project State (After Today's Work)
+✅ **Completed**: 
+- Async PostgreSQL integration (todo-backend)
+- Container-based testing (39/39 tests passing)
+- Test isolation with dependency injection
+- Production-ready CI/CD pipeline
+- Comprehensive testing documentation
 
-## Key Commands Reference
-```bash
-# Encrypt a file in place
-sops -e -i your-secret.yaml
-
-# Decrypt and view (without modifying file)
-sops -d your-secret.yaml
-
-# Decrypt and apply to Kubernetes
-sops -d your-secret.yaml | kubectl apply -f -
-
-# Edit encrypted file (decrypts, opens editor, re-encrypts on save)
-sops your-secret.yaml
-```
-
-## Security Notes
-- Never commit the age private key to version control
-- Store private key securely (password manager, encrypted backup)
-- Rotate keys periodically in production environments
-- Consider using cloud KMS (AWS KMS, Azure Key Vault) for production
-
-**Next Steps**: Start with Phase 1 - install SOPS and age, then generate your key pair.
+🎯 **Ready For**: Kubernetes deployment with proper database architecture
 
 ---
 
@@ -166,18 +136,3 @@ Set up Azure Key Vault for secure secrets management when deploying microservice
 - [ ] Plan Workload Identity setup approach
 
 **Next Steps**: Complete local development, then tackle Azure resource setup and integration concepts.
-
----
-
-# TODO: Exercise 2.5 - ConfigMap Environment Variable Integration
-
-## Current Status
-- ConfigMap created with `information.txt` file mount ✅
-- File-based ConfigMap working correctly ✅
-- Need to migrate `LOG_APP_MESSAGE` environment variable to ConfigMap
-
-## Next Steps
-- [ ] Remove `LOG_APP_MESSAGE` from log-output-deployment.yaml env section
-- [ ] Add ConfigMap reference using `envFrom` or `env.valueFrom.configMapKeyRef`
-- [ ] Test that application reads message from ConfigMap instead of hardcoded env var
-- [ ] Verify deployment works and submit exercise
