@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   todo-app-be:
     image: todo-app-be:2.6
