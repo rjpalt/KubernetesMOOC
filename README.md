@@ -403,7 +403,7 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     curl http://localhost:8080/
     ```
-- [2.7]()
+- [2.7](https://github.com/rjpalt/KubernetesMOOC/tree/2.7/ping-pong)
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Commands to import images for ping-pong and log-output:
     ```bash
