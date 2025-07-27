@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", description="Logging level")
 
     # CORS configuration
-    cors_origins: list[str] = Field(
-        default=["*"], description="Allowed CORS origins", json_schema_extra={"env": "CORS_ORIGINS"}
+    cors_origins: str = Field(
+        default="*", description="Allowed CORS origins (comma-separated)", 
     )
 
     # API configuration
@@ -35,9 +35,9 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         """Get CORS origins as list, handling string input from environment."""
-        if isinstance(self.cors_origins, str):
-            return [origin.strip() for origin in self.cors_origins.split(",")]
-        return self.cors_origins
+        if self.cors_origins == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
 
 # Global settings instance

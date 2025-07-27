@@ -1,14 +1,16 @@
 # Todo Backend API
 
-Backend service for the todo application. Provides REST API endpoints for managing todos.
+Backend service for the todo application. Provides REST API endpoints for managing todos with PostgreSQL database persistence.
 
 ## Features
 
+- **PostgreSQL Database**: Async SQLAlchemy with connection pooling
 - **Pydantic Settings**: Environment-based configuration with validation
 - **Code Quality**: Black formatting and Flake8 linting
 - **REST API**: FastAPI with automatic OpenAPI documentation
 - **CORS Support**: Configurable cross-origin resource sharing
 - **Health Checks**: Built-in health endpoint for monitoring
+- **Database Migration**: Automatic table creation and sample data
 
 ## Endpoints
 
@@ -19,7 +21,62 @@ Backend service for the todo application. Provides REST API endpoints for managi
 - `PUT /todos/{id}` - Update todo (JSON)  
 - `DELETE /todos/{id}` - Delete todo
 
+## Database Setup
+
+### Local Development
+
+1. **Start PostgreSQL containers:**
+   ```bash
+   ./start-db.sh
+   ```
+
+2. **Copy environment variables:**
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   uv sync
+   ```
+
+4. **Run the application:**
+   ```bash
+   uv run python -m src.main
+   ```
+
+### Database Configuration
+
+Environment variables for database connection:
+
+- `DATABASE_URL`: Full PostgreSQL connection string (recommended)
+  - Development: `postgresql+asyncpg://todouser:todopass@localhost:5432/todoapp`
+  - Test: `postgresql+asyncpg://todouser:todopass@localhost:5433/todoapp_test`
+
+**Or use individual components:**
+- `POSTGRES_HOST`: Database host (default: localhost)
+- `POSTGRES_PORT`: Database port (default: 5432)
+- `POSTGRES_DB`: Database name (default: todoapp)
+- `POSTGRES_USER`: Database user (default: todouser)
+- `POSTGRES_PASSWORD`: Database password (default: todopass)
+
+### Testing
+
+1. **Start test database:**
+   ```bash
+   ./start-db.sh  # Starts both dev and test databases
+   ```
+
+2. **Run tests:**
+   ```bash
+   uv run pytest
+   ```
+
+The test database (`todoapp_test` on port 5433) is automatically cleaned between tests.
+
 ## Configuration
+
+### Application Settings
 
 Environment variables (all optional with defaults):
 
@@ -27,6 +84,7 @@ Environment variables (all optional with defaults):
 - `HOST`: Server host (default: 0.0.0.0)
 - `DEBUG`: Debug mode (default: false)
 - `LOG_LEVEL`: Logging level (default: INFO)
+- `SQL_DEBUG`: Enable SQL query logging (default: false)
 - `CORS_ORIGINS`: Comma-separated CORS origins (default: *)
 - `API_TITLE`: API title (default: Todo Backend API)
 - `API_DESCRIPTION`: API description
