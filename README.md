@@ -420,8 +420,8 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```
   - Commands to apply secrets first
     ```bash
-    kubectl apply -f manifests/ping-pong/ping-pong-secret.yaml
-    kubectl apply -f manifests/log-output/postgres-secret.yaml
+    sops --decrypt manifests/ping-pong/ping-pong-secret.enc.yaml | kubectl apply -f -
+    sops --decrypt manifests/log-output/postgres-secret.enc.yaml | kubectl apply -f -
     ```
   - Commands to apply postgres service and statefulset manifests
     ```bash
@@ -437,7 +437,10 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     kubectl apply -f manifests/shared/ingress.yaml
     ```
-
+  - Command to check service is running:
+    ```bash
+    kubectl get pods,svc,ingress,pv,pvc
+    ```
 - [2.8]()
 - [2.9]()
 - [2.10]()
