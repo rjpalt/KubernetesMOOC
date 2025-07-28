@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     postgres_db: str = Field(default="todoapp", description="PostgreSQL database name")
     postgres_user: str = Field(description="PostgreSQL username")
     postgres_password: str = Field(description="PostgreSQL password")
-    
+
     # SQL debugging
     sql_debug: bool = Field(default=False, description="Enable SQL query debugging")
 
