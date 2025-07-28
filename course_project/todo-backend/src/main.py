@@ -2,8 +2,8 @@
 
 import logging
 import sys
-from pathlib import Path
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.api.dependencies import initialize_dependencies, get_todo_service
+from src.api.dependencies import get_todo_service, initialize_dependencies
 from src.api.routes import health, todos
 from src.config.settings import settings
 from src.database.connection import db_manager
@@ -32,29 +32,29 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler for startup and shutdown."""
     # Startup
     logger.info("Starting up todo backend...")
-    
+
     try:
         # Initialize database
         await db_manager.initialize()
-        
+
         # Check database health
         if not await db_manager.health_check():
             logger.error("Database health check failed")
             raise RuntimeError("Database connection failed")
-        
+
         logger.info("Database initialized and health check passed")
-        
+
         # Initialize sample data
         todo_service = get_todo_service()
         await todo_service.initialize_with_sample_data()
         logger.info("Sample data initialized")
-        
+
     except Exception as e:
         logger.error(f"Startup failed: {e}")
         raise
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down todo backend...")
     await db_manager.close()

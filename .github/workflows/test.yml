@@ -36,6 +36,17 @@ jobs:
       with:
         version: "latest"
     
+    - name: Cache uv dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+        key: ${{ runner.os }}-uv-${{ matrix.service }}-${{ hashFiles('course_project/${{ matrix.service }}/uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-${{ matrix.service }}-
+          ${{ runner.os }}-uv-
+    
     - name: Install dependencies
       run: uv sync --group dev
     
@@ -65,6 +76,17 @@ jobs:
       uses: astral-sh/setup-uv@v3
       with:
         version: "latest"
+    
+    - name: Cache uv dependencies  
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+        key: ${{ runner.os }}-uv-backend-${{ hashFiles('course_project/todo-backend/uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-backend-
+          ${{ runner.os }}-uv-
     
     - name: Install dependencies
       run: |
@@ -110,6 +132,17 @@ jobs:
       uses: astral-sh/setup-uv@v3
       with:
         version: "latest"
+    
+    - name: Cache uv dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/uv
+          .venv
+        key: ${{ runner.os }}-uv-frontend-${{ hashFiles('course_project/todo-app/uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-frontend-
+          ${{ runner.os }}-uv-
     
     - name: Install dependencies
       run: |
@@ -159,14 +192,22 @@ jobs:
       uses: docker/setup-buildx-action@v3
     
     - name: Build backend image
-      run: |
-        cd course_project/todo-backend
-        docker build -t todo-backend:test .
+      uses: docker/build-push-action@v5
+      with:
+        context: course_project/todo-backend
+        tags: todo-backend:test
+        load: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
     
     - name: Build frontend image  
-      run: |
-        cd course_project/todo-app
-        docker build -t todo-app:test .
+      uses: docker/build-push-action@v5
+      with:
+        context: course_project/todo-app
+        tags: todo-app:test
+        load: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
     
     - name: Test service communication
       run: |

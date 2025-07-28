@@ -5,12 +5,11 @@ testing the TodoService in isolation with a real database.
 
 This demonstrates microservice testing principles:
 - Test business logic with real database (container-based)
-- Fast, focused tests for core functionality  
+- Fast, focused tests for core functionality
 - Database isolation between tests
 - Async testing patterns for modern applications
 """
 
-import pytest
 from datetime import datetime
 
 from src.models.todo import Todo, TodoCreate, TodoStatus
@@ -35,14 +34,14 @@ class TestTodoService:
     async def test_initialize_with_sample_data(self, test_db_manager):
         """Test that service can initialize with sample data."""
         service = TodoService()
-        
+
         # Should be empty initially
         count = await service.get_todo_count()
         assert count == 0
-        
+
         # Initialize with sample data
         await service.initialize_with_sample_data()
-        
+
         # Should now have sample todos
         todos = await service.get_all_todos()
         assert len(todos) == 3
@@ -80,7 +79,7 @@ class TestTodoService:
         # Verify it was added to the service
         todos = await service.get_all_todos()
         assert len(todos) == initial_count + 1
-        
+
         # Verify it's actually in the database
         found_todo = await service.get_todo_by_id(new_todo.id)
         assert found_todo is not None

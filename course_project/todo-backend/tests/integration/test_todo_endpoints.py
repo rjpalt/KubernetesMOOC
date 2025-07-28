@@ -5,7 +5,7 @@ testing the actual REST endpoints that the frontend will call.
 
 This demonstrates microservice API testing:
 - Test HTTP endpoints with API structure validation
-- Test request/response formats and status codes  
+- Test request/response formats and status codes
 - Test error handling and validation
 - Focus on API contract testing for Kubernetes readiness
 
@@ -14,15 +14,15 @@ and avoid event loop conflicts in FastAPI applications.
 """
 
 import pytest
-import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+
 from src.main import create_app
 
 
 class TestTodoAPIStructure:
     """Test the REST API structure and contracts without database persistence.
-    
+
     This approach is valuable for Kubernetes testing because:
     - It validates API contracts that frontend services depend on
     - It tests middleware, routing, and error handling
@@ -33,7 +33,7 @@ class TestTodoAPIStructure:
     @pytest.fixture
     def simple_client(self):
         """Create a simple test client without database dependency.
-        
+
         This client tests API structure without database operations.
         """
         app = create_app()
@@ -45,21 +45,20 @@ class TestTodoAPIStructure:
             response = simple_client.get("/be-health")
             # The endpoint might fail on database connection, but we can
             # still test that the route exists and has correct structure
-            
+
             # Route exists (not 404)
             assert response.status_code != 404, "Health endpoint should exist"
-            
+
             if response.status_code == 200:
                 data = response.json()
                 assert "status" in data, "Health response should include status"
                 assert "service" in data, "Health response should include service name"
-                print("✅ Health endpoint structure validated")
             else:
-                print(f"⚠️  Health endpoint exists but returns {response.status_code} (expected due to database)")
-                
-        except Exception as e:
+                pass
+
+        except Exception:
             # This is expected due to async database issues
-            print(f"⚠️  Health endpoint async limitation: {type(e).__name__}")
+            pass
 
     def test_todos_endpoint_exists(self, simple_client):
         """Test todos endpoints exist and have correct routing."""
@@ -67,54 +66,50 @@ class TestTodoAPIStructure:
             ("GET", "/todos"),
             ("POST", "/todos"),
         ]
-        
+
         for method, path in endpoints_to_test:
             try:
                 if method == "GET":
                     response = simple_client.get(path)
                 elif method == "POST":
                     response = simple_client.post(path, json={"text": "test"})
-                
+
                 # Route should exist (not 404)
                 assert response.status_code != 404, f"{method} {path} endpoint should exist"
-                print(f"✅ {method} {path} endpoint exists")
-                
-            except Exception as e:
+
+            except Exception:
                 # Expected due to async database limitations
-                print(f"⚠️  {method} {path} async limitation: {type(e).__name__}")
+                pass
 
     def test_todo_validation_works(self, simple_client):
         """Test input validation without database operations."""
         try:
             # Test invalid input - this should work even without database
             response = simple_client.post("/todos", json={})  # Missing required 'text'
-            
+
             # Should get validation error, not 404 or 500
             assert response.status_code in [400, 422], "Should validate input format"
-            print("✅ Input validation working")
-            
-        except Exception as e:
-            print(f"⚠️  Validation test async limitation: {type(e).__name__}")
+
+        except Exception:
+            pass
 
     def test_nonexistent_endpoint_returns_404(self, simple_client):
         """Test that non-existent endpoints return 404."""
         response = simple_client.get("/nonexistent")
         assert response.status_code == 404
-        print("✅ 404 handling works correctly")
 
     def test_cors_headers_present(self, simple_client):
         """Test CORS configuration for microservice communication."""
         try:
-            response = simple_client.options("/todos")
+            simple_client.options("/todos")
             # CORS should be configured (this tests middleware)
-            print(f"✅ CORS test completed (status: {response.status_code})")
-        except Exception as e:
-            print(f"⚠️  CORS test async limitation: {type(e).__name__}")
+        except Exception:
+            pass
 
 
 class TestTodoEndpointsLimited:
     """Limited integration tests focusing on what we can test reliably.
-    
+
     These tests demonstrate the patterns you'd use in Kubernetes environments
     where you want to test service contracts without full database setup.
     """
@@ -123,31 +118,29 @@ class TestTodoEndpointsLimited:
         """Test that API documentation is available."""
         app = create_app()
         client = TestClient(app)
-        
+
         # FastAPI automatically provides OpenAPI docs
         response = client.get("/docs")
         assert response.status_code == 200
-        print("✅ API documentation available at /docs")
 
     def test_openapi_schema_available(self):
         """Test OpenAPI schema for service contract validation."""
         app = create_app()
         client = TestClient(app)
-        
+
         response = client.get("/openapi.json")
         assert response.status_code == 200
-        
+
         schema = response.json()
         assert "paths" in schema
         assert "/todos" in schema["paths"]
-        print("✅ OpenAPI schema includes todos endpoints")
 
     def test_app_startup_successful(self):
         """Test that the FastAPI app can start successfully."""
         app = create_app()
         assert app is not None
         assert hasattr(app, "include_router")
-        print("✅ FastAPI app initialization successful")
+
     """Test the REST API endpoints for todos with database integration."""
 
     async def test_get_todos_returns_empty_list_initially(self, test_client: AsyncClient):
@@ -192,7 +185,7 @@ class TestTodoEndpointsLimited:
         # Verify it appears in the list
         list_response = await test_client.get("/todos")
         todos = list_response.json()
-        
+
         assert len(todos) == 1
         assert todos[0]["id"] == created_todo["id"]
         assert todos[0]["text"] == "Persistent todo"
