@@ -9,12 +9,14 @@ This demonstrates microservice API testing:
 - Test error handling and validation
 - Focus on API contract testing for Kubernetes readiness
 
-Note: For full database integration, see unit tests which provide
-comprehensive async database testing patterns.
+Note: Uses async testing patterns to properly handle async database operations
+and avoid event loop conflicts in FastAPI applications.
 """
 
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from src.main import create_app
 
 
@@ -148,27 +150,27 @@ class TestTodoEndpointsLimited:
         print("✅ FastAPI app initialization successful")
     """Test the REST API endpoints for todos with database integration."""
 
-    def test_get_todos_returns_empty_list_initially(self, test_client: TestClient):
+    async def test_get_todos_returns_empty_list_initially(self, test_client: AsyncClient):
         """Test GET /todos returns empty list with fresh database.
 
         This tests the main endpoint the frontend will call
         to fetch todos for display.
         """
-        response = test_client.get("/todos")
+        response = await test_client.get("/todos")
 
         assert response.status_code == 200
         todos = response.json()
         assert isinstance(todos, list)
         assert len(todos) == 0  # Fresh database should be empty
 
-    def test_create_todo_returns_created_todo(self, test_client: TestClient):
+    async def test_create_todo_returns_created_todo(self, test_client: AsyncClient):
         """Test POST /todos creates and returns new todo.
 
         This tests the endpoint the frontend uses to add new todos.
         """
         new_todo_data = {"text": "Test todo from API"}
 
-        response = test_client.post("/todos", json=new_todo_data)
+        response = await test_client.post("/todos", json=new_todo_data)
 
         assert response.status_code == 201
         created_todo = response.json()
@@ -179,23 +181,23 @@ class TestTodoEndpointsLimited:
         assert "id" in created_todo
         assert "created_at" in created_todo
 
-    def test_create_todo_persists_in_database(self, test_client: TestClient):
+    async def test_create_todo_persists_in_database(self, test_client: AsyncClient):
         """Test that created todos are actually persisted."""
         new_todo_data = {"text": "Persistent todo"}
 
         # Create the todo
-        create_response = test_client.post("/todos", json=new_todo_data)
+        create_response = await test_client.post("/todos", json=new_todo_data)
         created_todo = create_response.json()
 
         # Verify it appears in the list
-        list_response = test_client.get("/todos")
+        list_response = await test_client.get("/todos")
         todos = list_response.json()
         
         assert len(todos) == 1
         assert todos[0]["id"] == created_todo["id"]
         assert todos[0]["text"] == "Persistent todo"
 
-    def test_create_todo_validation_errors(self, test_client: TestClient):
+    async def test_create_todo_validation_errors(self, test_client: AsyncClient):
         """Test POST /todos with invalid data returns validation errors."""
         invalid_data_cases = [
             {},  # Missing required field
@@ -204,18 +206,18 @@ class TestTodoEndpointsLimited:
         ]
 
         for invalid_data in invalid_data_cases:
-            response = test_client.post("/todos", json=invalid_data)
+            response = await test_client.post("/todos", json=invalid_data)
             assert response.status_code == 422  # Validation error
 
-    def test_get_todo_by_id_returns_todo(self, test_client: TestClient):
+    async def test_get_todo_by_id_returns_todo(self, test_client: AsyncClient):
         """Test GET /todos/{id} returns specific todo."""
         # First create a todo
-        create_response = test_client.post("/todos", json={"text": "Findable todo"})
+        create_response = await test_client.post("/todos", json={"text": "Findable todo"})
         created_todo = create_response.json()
         todo_id = created_todo["id"]
 
         # Then get it by ID
-        response = test_client.get(f"/todos/{todo_id}")
+        response = await test_client.get(f"/todos/{todo_id}")
 
         assert response.status_code == 200
         found_todo = response.json()
@@ -223,24 +225,24 @@ class TestTodoEndpointsLimited:
         assert found_todo["id"] == todo_id
         assert found_todo["text"] == "Findable todo"
 
-    def test_get_nonexistent_todo_returns_404(self, test_client: TestClient):
+    async def test_get_nonexistent_todo_returns_404(self, test_client: AsyncClient):
         """Test GET /todos/{id} with non-existent ID returns 404."""
-        response = test_client.get("/todos/nonexistent-id")
+        response = await test_client.get("/todos/nonexistent-id")
 
         assert response.status_code == 404
         error = response.json()
         assert "detail" in error
 
-    def test_update_todo_returns_updated_todo(self, test_client: TestClient):
+    async def test_update_todo_returns_updated_todo(self, test_client: AsyncClient):
         """Test PUT /todos/{id} updates and returns todo."""
         # Create todo first
-        create_response = test_client.post("/todos", json={"text": "Original text"})
+        create_response = await test_client.post("/todos", json={"text": "Original text"})
         created_todo = create_response.json()
         todo_id = created_todo["id"]
 
         # Update it
         update_data = {"text": "Updated text", "status": "done"}
-        response = test_client.put(f"/todos/{todo_id}", json=update_data)
+        response = await test_client.put(f"/todos/{todo_id}", json=update_data)
 
         assert response.status_code == 200
         updated_todo = response.json()
@@ -248,56 +250,56 @@ class TestTodoEndpointsLimited:
         assert updated_todo["status"] == "done"
         assert updated_todo["id"] == todo_id
 
-    def test_update_nonexistent_todo_returns_404(self, test_client: TestClient):
+    async def test_update_nonexistent_todo_returns_404(self, test_client: AsyncClient):
         """Test PUT /todos/{id} with non-existent ID returns 404."""
         update_data = {"text": "Updated text"}
-        response = test_client.put("/todos/nonexistent-id", json=update_data)
+        response = await test_client.put("/todos/nonexistent-id", json=update_data)
 
         assert response.status_code == 404
 
-    def test_delete_todo_returns_success(self, test_client: TestClient):
+    async def test_delete_todo_returns_success(self, test_client: AsyncClient):
         """Test DELETE /todos/{id} removes todo."""
         # Create todo first
-        create_response = test_client.post("/todos", json={"text": "To be deleted"})
+        create_response = await test_client.post("/todos", json={"text": "To be deleted"})
         created_todo = create_response.json()
         todo_id = created_todo["id"]
 
         # Delete it
-        response = test_client.delete(f"/todos/{todo_id}")
+        response = await test_client.delete(f"/todos/{todo_id}")
 
         assert response.status_code == 204  # No content
 
         # Verify it's gone
-        get_response = test_client.get(f"/todos/{todo_id}")
+        get_response = await test_client.get(f"/todos/{todo_id}")
         assert get_response.status_code == 404
 
-    def test_delete_nonexistent_todo_returns_404(self, test_client: TestClient):
+    async def test_delete_nonexistent_todo_returns_404(self, test_client: AsyncClient):
         """Test DELETE /todos/{id} with non-existent ID returns 404."""
-        response = test_client.delete("/todos/nonexistent-id")
+        response = await test_client.delete("/todos/nonexistent-id")
 
         assert response.status_code == 404
 
-    def test_todos_endpoint_integration_workflow(self, test_client: TestClient):
+    async def test_todos_endpoint_integration_workflow(self, test_client: AsyncClient):
         """Test complete CRUD workflow through API.
 
         This integration test verifies the entire todo lifecycle
         through the REST API, simulating what the frontend would do.
         """
         # 1. Get initial todos count
-        initial_response = test_client.get("/todos")
+        initial_response = await test_client.get("/todos")
         initial_count = len(initial_response.json())
 
         # 2. Create a new todo
-        create_response = test_client.post("/todos", json={"text": "Workflow test todo"})
+        create_response = await test_client.post("/todos", json={"text": "Workflow test todo"})
         assert create_response.status_code == 201
         new_todo = create_response.json()
 
         # 3. Verify todos count increased
-        after_create_response = test_client.get("/todos")
+        after_create_response = await test_client.get("/todos")
         assert len(after_create_response.json()) == initial_count + 1
 
         # 4. Update the todo
-        update_response = test_client.put(
+        update_response = await test_client.put(
             f"/todos/{new_todo['id']}", json={"text": "Updated workflow todo", "status": "done"}
         )
         assert update_response.status_code == 200
@@ -305,9 +307,9 @@ class TestTodoEndpointsLimited:
         assert updated_todo["status"] == "done"
 
         # 5. Delete the todo
-        delete_response = test_client.delete(f"/todos/{new_todo['id']}")
+        delete_response = await test_client.delete(f"/todos/{new_todo['id']}")
         assert delete_response.status_code == 204
 
         # 6. Verify todos count back to original
-        final_response = test_client.get("/todos")
+        final_response = await test_client.get("/todos")
         assert len(final_response.json()) == initial_count

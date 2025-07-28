@@ -6,7 +6,7 @@
 Based on today's async PostgreSQL integration and testing foundation work, tomorrow's focus is on comprehensive project validation and Kubernetes deployment readiness.
 
 #### 1. Foundation Verification
-- [ ] **Verify all project tests work** - Confirm 39/39 tests still passing after any changes
+- [x] **Verify all project tests work** - Confirm 39/39 tests still passing after any changes
 - [ ] **Test GitHub Actions CI pipeline** - Ensure automated testing works in CI environment
 - [ ] **Review Docker implementations** - Go through Dockerfiles and docker-compose configurations
 
@@ -43,6 +43,11 @@ Based on today's async PostgreSQL integration and testing foundation work, tomor
 
 ⚠️ **Known Issues**:
 - Port mismatch: Backend runs on 8000, docker-compose expects 8001
+
+📋 **Test Coverage Improvements Needed**:
+- 🔴 **High Priority**: SQL injection prevention, database downtime handling, load/concurrency testing
+- 🟡 **Medium Priority**: Container resource limits, input sanitization, graceful shutdown testing
+- See `course_project/todo-backend/tests/TEST_PLAN.md` for detailed risk assessment and implementation examples
 
 🎯 **Ready For**: Kubernetes deployment with proper database architecture
 
