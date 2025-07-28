@@ -39,6 +39,17 @@ Access:
 
 ## Docker Images
 
+### Environment Configuration
+Before running with Docker Compose, set up your environment:
+
+```bash
+# Copy the example environment file
+cp docker-compose.env.example docker-compose.env
+
+# Edit docker-compose.env with your actual values
+# At minimum, set a secure POSTGRES_PASSWORD
+```
+
 ### Build Both Services
 ```bash
 # Build with specific tag (recommended)
@@ -60,6 +71,33 @@ cd todo-app && docker build -t todo-app-fe:v1.0.0 .
 # Backend  
 cd todo-backend && docker build -t todo-app-be:v1.0.0 .
 ```
+
+## Docker Compose
+
+### Setup & Run
+```bash
+# 1. Set up environment (first time only)
+cp docker-compose.env.example docker-compose.env
+# Edit docker-compose.env with your values
+
+# 2. Build and start all services
+docker-compose up --build
+
+# Or run in background
+docker-compose up -d --build
+```
+
+### Configuration
+The application uses `docker-compose.env` for environment variables:
+- **Security**: File is gitignored to prevent credential leaks
+- **Flexibility**: Easy environment switching (dev/staging/prod)
+- **Centralized**: All services share common configuration
+
+### Services
+- **todo-app-fe**: Frontend on http://localhost:8000
+- **todo-app-be**: Backend API on http://localhost:8001
+- **postgres_prod**: PostgreSQL database on localhost:5432
+- **Persistent data**: Database data persists in Docker volumes
 
 ## Testing
 
