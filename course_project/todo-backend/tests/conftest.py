@@ -145,22 +145,29 @@ async def test_db_manager(test_db_engine):
     src.database.operations.db_manager = original_manager
 
 
-@pytest.fixture
-def test_client(test_db_manager):
-    """Create a FastAPI test client for backend API testing.
+@pytest_asyncio.fixture
+async def test_client(test_db_manager):
+    """Create an async FastAPI test client for backend API testing.
 
-    This fixture provides a test client that:
+    This fixture provides an async test client that:
     - Uses the backend's FastAPI app with test database
-    - Doesn't require running the actual server
-    - Handles async endpoints automatically  
-    - Provides HTTP interface testing
+    - Properly handles async endpoints and database operations
+    - Avoids event loop conflicts with async database operations
+    - Provides HTTP interface testing compatible with async workflows
     
     Important for Kubernetes testing: The test_db_manager fixture already
     replaces the global db_manager, so TodoService will automatically use
     the test database.
+    
+    Using AsyncClient with httpx.ASGITransport instead of TestClient to avoid 
+    event loop conflicts that occur when sync TestClient tries to call async 
+    database operations.
     """
+    from httpx import ASGITransport
     app = create_app()
-    return TestClient(app)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
 
 
 @pytest_asyncio.fixture
