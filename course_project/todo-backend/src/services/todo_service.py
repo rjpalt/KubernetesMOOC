@@ -1,7 +1,7 @@
 """Todo service for managing todo items with database backend."""
 
-from ..models.todo import Todo, TodoCreate, TodoStatus
 from ..database.operations import TodoDatabase
+from ..models.todo import Todo, TodoCreate, TodoStatus
 
 
 class TodoService:
@@ -43,6 +43,6 @@ class TodoService:
             todo1 = await self.create_todo(TodoCreate(text="Learn Kubernetes service discovery"))
             await self.create_todo(TodoCreate(text="Implement REST API endpoints"))
             await self.create_todo(TodoCreate(text="Test inter-service communication"))
-            
+
             # Mark first todo as done for demo
             await self.update_todo(todo1.id, status=TodoStatus.DONE)

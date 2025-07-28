@@ -11,17 +11,15 @@ This conftest.py provides:
 import os
 import subprocess
 import time
-import asyncio
+
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from src.main import create_app
-from src.database.connection import db_manager, DatabaseManager
+from src.database.connection import DatabaseManager
 from src.database.models import Base
-
+from src.main import create_app
 
 # Set test environment variables
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://todouser:todopass@localhost:5433/todoapp_test"
@@ -29,7 +27,7 @@ os.environ["DATABASE_URL"] = "postgresql+asyncpg://todouser:todopass@localhost:5
 
 def ensure_test_database_running():
     """Ensure the test database container is running.
-    
+
     This function demonstrates container lifecycle management patterns
     that are essential for Kubernetes testing scenarios.
     """
@@ -38,46 +36,42 @@ def ensure_test_database_running():
         result = subprocess.run(
             ["docker", "exec", "todo_postgres_test", "pg_isready", "-U", "todouser", "-d", "todoapp_test"],
             capture_output=True,
-            timeout=5
+            timeout=5,
         )
         if result.returncode == 0:
-            print("✅ Test database already running")
             return
     except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
         pass
 
-    print("🚀 Starting test database container...")
-    
     # Start the database containers
     try:
         subprocess.run(
             ["docker-compose", "-f", "docker-compose.dev.yml", "up", "-d", "postgres_test"],
             cwd=os.path.dirname(os.path.dirname(__file__)),  # Go to todo-backend root
             check=True,
-            capture_output=True
+            capture_output=True,
         )
-        
+
         # Wait for database to be ready (with timeout)
         max_attempts = 30
-        for attempt in range(max_attempts):
+        for _attempt in range(max_attempts):
             try:
                 result = subprocess.run(
                     ["docker", "exec", "todo_postgres_test", "pg_isready", "-U", "todouser", "-d", "todoapp_test"],
                     capture_output=True,
-                    timeout=2
+                    timeout=2,
                 )
                 if result.returncode == 0:
-                    print(f"✅ Test database ready after {attempt + 1} attempts")
                     time.sleep(1)  # Give it one more second to be fully ready
                     return
             except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
                 pass
             time.sleep(1)
-        
+
         raise RuntimeError("Test database failed to start within 30 seconds")
-        
+
     except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"Failed to start test database: {e}")
+        raise RuntimeError(f"Failed to start test database: {e}") from e
 
 
 # Ensure database is running at session start
@@ -89,7 +83,7 @@ def pytest_sessionstart(session):
 @pytest_asyncio.fixture(scope="function")
 async def test_db_engine():
     """Create test database engine for each test.
-    
+
     Function-scoped engine to avoid event loop issues.
     Each test gets a completely fresh engine and connection pool.
     """
@@ -101,7 +95,7 @@ async def test_db_engine():
         max_overflow=0,
         pool_timeout=10,
         pool_pre_ping=False,  # Disable ping to avoid loop issues
-        pool_recycle=-1       # Disable connection recycling
+        pool_recycle=-1,  # Disable connection recycling
     )
     yield engine
     await engine.dispose()
@@ -110,7 +104,7 @@ async def test_db_engine():
 @pytest_asyncio.fixture(scope="function")
 async def test_db_manager(test_db_engine):
     """Test database manager with clean state.
-    
+
     This fixture demonstrates proper dependency injection
     for testing database-backed services in containers.
     Each test gets a completely fresh database schema.
@@ -118,28 +112,25 @@ async def test_db_manager(test_db_engine):
     # Store the original global db_manager
     import src.database.connection
     import src.database.operations
+
     original_manager = src.database.connection.db_manager
-    
+
     # Create a test database manager with our test engine
     test_manager = DatabaseManager()
     test_manager.engine = test_db_engine
-    test_manager.session_factory = async_sessionmaker(
-        bind=test_db_engine,
-        class_=AsyncSession,
-        expire_on_commit=False
-    )
-    
+    test_manager.session_factory = async_sessionmaker(bind=test_db_engine, class_=AsyncSession, expire_on_commit=False)
+
     # Replace global db_manager in all modules that import it
     src.database.connection.db_manager = test_manager
     src.database.operations.db_manager = test_manager
-    
+
     # Create fresh tables for this test (simplified approach)
     async with test_db_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield test_manager
-    
+
     # Restore original manager in all modules (cleanup happens with engine disposal)
     src.database.connection.db_manager = original_manager
     src.database.operations.db_manager = original_manager
@@ -154,16 +145,17 @@ async def test_client(test_db_manager):
     - Properly handles async endpoints and database operations
     - Avoids event loop conflicts with async database operations
     - Provides HTTP interface testing compatible with async workflows
-    
+
     Important for Kubernetes testing: The test_db_manager fixture already
     replaces the global db_manager, so TodoService will automatically use
     the test database.
-    
-    Using AsyncClient with httpx.ASGITransport instead of TestClient to avoid 
-    event loop conflicts that occur when sync TestClient tries to call async 
+
+    Using AsyncClient with httpx.ASGITransport instead of TestClient to avoid
+    event loop conflicts that occur when sync TestClient tries to call async
     database operations.
     """
     from httpx import ASGITransport
+
     app = create_app()
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -173,7 +165,7 @@ async def test_client(test_db_manager):
 @pytest_asyncio.fixture
 async def async_test_client(test_db_manager):
     """Create an async HTTP client for testing async endpoints.
-    
+
     This fixture is useful for:
     - Full async testing workflows
     - Testing WebSocket connections

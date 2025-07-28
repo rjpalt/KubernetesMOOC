@@ -24,7 +24,8 @@ class Settings(BaseSettings):
 
     # CORS configuration
     cors_origins: str = Field(
-        default="*", description="Allowed CORS origins (comma-separated)", 
+        default="*",
+        description="Allowed CORS origins (comma-separated)",
     )
 
     # API configuration
