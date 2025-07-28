@@ -18,10 +18,18 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
 - **Local testing**: Use `act` to run GitHub Actions locally
   ```bash
   brew install act  # macOS
-  act --job test-backend # Backend tests
-  act --job test-frontend # Frontend tests
-  act --job test-microservice-integration # Microservice integration tests
-  act # Runs all jobs
+  
+  # Create a .secrets file with test credentials (already gitignored)
+  echo "TEST_POSTGRES_USER=test_user" > .secrets
+  echo "TEST_POSTGRES_PASSWORD=test_password123" >> .secrets
+  
+  # Run specific jobs
+  act --secret-file .secrets --job test-backend # Backend tests
+  act --secret-file .secrets --job test-frontend # Frontend tests
+  act --secret-file .secrets --job test-microservice-integration # Microservice integration tests
+  
+  # Run all jobs
+  act --secret-file .secrets
   ```
 
 ## Exercises
@@ -442,6 +450,57 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     kubectl get pods,svc,ingress,pv,pvc
     ```
 - [2.8]()
+  - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
+  - Commands to import images for todo app fe and be:
+    ```bash
+    k3d image import todo-app-fe:2.8
+    k3d image import todo-app-be:2.8
+    ```
+  - Command to create a persistent volume tmp folder:
+    ```bash
+    docker exec k3d-k3s-default-agent-0 mkdir -p /tmp/kube
+    ```
+  - Command to apply namespace manifest:
+    ```bash
+    kubectl apply -f manifests/shared/namespace.yaml
+    ```
+  - Command to switch to the exercises namespace:
+    ```bash
+    kubens project
+    ```
+  - Command to apply shared ingress manifest:
+    ```bash
+    kubectl apply -f manifests/shared/ingress.yaml
+    ```
+  - Command to apply database secrets manifest:
+    ```bash
+    sops --decrypt manifests/postgres/secret.enc.yaml | kubectl apply -f -
+    ```
+  - Command to apply database service manifest:
+    ```bash
+    kubectl apply -f manifests/postgres/service.yaml
+    ```
+  - Command to apply database statefulset manifest:
+    ```bash
+    kubectl apply -f manifests/postgres/statefulset.yaml
+    ```
+  - Command to apply backend manifests:
+    ```bash
+    kubectl apply -f manifests/todo-be/
+    ```
+  - Command to apply frontend manifests:
+    ```bash
+    kubectl apply -f manifests/todo-fe/
+    ```
+  - COmmadn to apply ingress manifest:
+    ```bash
+    kubectl apply -f manifests/shared/ingress.yaml
+    ```
+  - Command to check that everything is running (kubens project has been run):
+    ```bash
+    kubectl get pods,svc,ingress,pv,pvc -n project
+    ```
+
 - [2.9]()
 - [2.10]()
   
