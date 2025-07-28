@@ -46,6 +46,8 @@ k8s/secrets/local/
 # Ignore all Kubernetes secret YAML files (before SOPS encryption)
 **/manifests/**/*-secret.yaml
 **/*-secret.yaml
+**/manifests/**/secrets.yaml
+secrets.yaml
 
 # Ignores specification files
 course_project/todo-app/PROJECT_SPECIFICATION.md
