@@ -3,6 +3,7 @@
 .env.local
 .env.development
 .env.production
+.secrets
 docker-compose.env
 
 # Ignore Python cache
