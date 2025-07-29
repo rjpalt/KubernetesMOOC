@@ -202,11 +202,25 @@ jobs:
     name: Service Integration Tests
     runs-on: ubuntu-latest
     needs: [code-quality, test-backend, test-frontend]
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: test_todoapp
+          POSTGRES_USER: ${{ secrets.TEST_POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       POSTGRES_USER: ${{ secrets.TEST_POSTGRES_USER }}
       POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
       POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
+      POSTGRES_PORT: 5433
       POSTGRES_DB: test_todoapp
     
     steps:
@@ -246,23 +260,51 @@ jobs:
     
     - name: Test service communication
       run: |
-        # Start backend
-        docker run -d --name backend-test --network host -e PORT=8001 todo-backend:test
+        # Start backend with database environment variables
+        docker run -d --name backend-test --network host \
+          -e PORT=8001 \
+          -e POSTGRES_HOST=localhost \
+          -e POSTGRES_PORT=5433 \
+          -e POSTGRES_DB=test_todoapp \
+          -e POSTGRES_USER="${{ secrets.TEST_POSTGRES_USER }}" \
+          -e POSTGRES_PASSWORD="${{ secrets.TEST_POSTGRES_PASSWORD }}" \
+          todo-backend:test
         
-        # Wait for backend
-        sleep 5
+        # Wait for backend startup and health check
+        echo "Waiting for backend to start..."
+        for i in {1..30}; do
+          if curl -s http://localhost:8001/be-health; then
+            echo "Backend is healthy!"
+            break
+          fi
+          echo "Attempt $i: Backend not ready yet..."
+          sleep 2
+        done
         
-        # Test backend is responding
+        # Verify backend is responding
         curl -f http://localhost:8001/be-health || exit 1
         
         # Start frontend (pointing to backend)
-        docker run -d --name frontend-test --network host -e PORT=8000 -e TODO_BACKEND_URL=http://localhost:8001 todo-app:test
+        docker run -d --name frontend-test --network host \
+          -e PORT=8000 \
+          -e TODO_BACKEND_URL=http://localhost:8001 \
+          todo-app:test
         
-        # Wait for frontend
-        sleep 5
+        # Wait for frontend startup
+        echo "Waiting for frontend to start..."
+        for i in {1..20}; do
+          if curl -s http://localhost:8000/health; then
+            echo "Frontend is healthy!"
+            break
+          fi
+          echo "Attempt $i: Frontend not ready yet..."
+          sleep 2
+        done
         
-        # Test frontend health
+        # Verify frontend is responding
         curl -f http://localhost:8000/health || exit 1
+        
+        echo "Integration test passed: Both services are communicating!"
         
         # TODO: Add more integration tests when contracts are fixed
         
