@@ -17,5 +17,5 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "todo-backend",
-        "todos_count": todo_service.get_todo_count(),
+        "todos_count": await todo_service.get_todo_count(),
     }

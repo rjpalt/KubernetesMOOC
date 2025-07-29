@@ -22,9 +22,20 @@ class Settings(BaseSettings):
     # Logging configuration
     log_level: str = Field(default="INFO", description="Logging level")
 
+    # Database configuration
+    postgres_host: str = Field(default="localhost", description="PostgreSQL host")
+    postgres_port: int = Field(default=5432, description="PostgreSQL port")
+    postgres_db: str = Field(default="todoapp", description="PostgreSQL database name")
+    postgres_user: str = Field(description="PostgreSQL username")
+    postgres_password: str = Field(description="PostgreSQL password")
+
+    # SQL debugging
+    sql_debug: bool = Field(default=False, description="Enable SQL query debugging")
+
     # CORS configuration
-    cors_origins: list[str] = Field(
-        default=["*"], description="Allowed CORS origins", json_schema_extra={"env": "CORS_ORIGINS"}
+    cors_origins: str = Field(
+        default="*",
+        description="Allowed CORS origins (comma-separated)",
     )
 
     # API configuration
@@ -35,9 +46,14 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         """Get CORS origins as list, handling string input from environment."""
-        if isinstance(self.cors_origins, str):
-            return [origin.strip() for origin in self.cors_origins.split(",")]
-        return self.cors_origins
+        if self.cors_origins == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    @property
+    def database_url(self) -> str:
+        """Construct database URL from individual components."""
+        return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
 
 
 # Global settings instance

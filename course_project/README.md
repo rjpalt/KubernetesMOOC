@@ -39,6 +39,17 @@ Access:
 
 ## Docker Images
 
+### Environment Configuration
+Before running with Docker Compose, set up your environment:
+
+```bash
+# Copy the example environment file
+cp docker-compose.env.example docker-compose.env
+
+# Edit docker-compose.env with your actual values
+# At minimum, set a secure POSTGRES_PASSWORD
+```
+
 ### Build Both Services
 ```bash
 # Build with specific tag (recommended)
@@ -60,6 +71,33 @@ cd todo-app && docker build -t todo-app-fe:v1.0.0 .
 # Backend  
 cd todo-backend && docker build -t todo-app-be:v1.0.0 .
 ```
+
+## Docker Compose
+
+### Setup & Run
+```bash
+# 1. Set up environment (first time only)
+cp docker-compose.env.example docker-compose.env
+# Edit docker-compose.env with your values
+
+# 2. Build and start all services
+docker-compose up --build
+
+# Or run in background
+docker-compose up -d --build
+```
+
+### Configuration
+The application uses `docker-compose.env` for environment variables:
+- **Security**: File is gitignored to prevent credential leaks
+- **Flexibility**: Easy environment switching (dev/staging/prod)
+- **Centralized**: All services share common configuration
+
+### Services
+- **todo-app-fe**: Frontend on http://localhost:8000
+- **todo-app-be**: Backend API on http://localhost:8001
+- **postgres_prod**: PostgreSQL database on localhost:5432
+- **Persistent data**: Database data persists in Docker volumes
 
 ## Testing
 
@@ -89,7 +127,33 @@ Sequential testing strategy in `.github/workflows/test.yml`:
 2. **Frontend Tests**: Service integration with mocked backend
 3. **Integration Tests**: Docker containers with real service communication
 
-Local testing with Act: `act --job test-backend` or `act --job test-frontend`
+### Local CI Testing with ACT
+
+Test GitHub Actions pipeline locally using [act](https://github.com/nektos/act):
+
+```bash
+# Test specific jobs
+act --job test-backend
+act --job test-frontend
+act --job code-quality
+```
+
+#### ACT Setup Requirements
+
+ACT requires a `.secrets` file for local testing with GitHub secrets:
+
+```bash
+# Copy the example secrets file
+cp .secrets.example .secrets
+
+# Or create manually (this file is gitignored)
+cat > .secrets << EOF
+TEST_POSTGRES_USER=test_user
+TEST_POSTGRES_PASSWORD=test_password123
+EOF
+```
+
+The workflow automatically detects ACT execution (`github.actor == 'nektos/act'`) and sets appropriate environment variables for database testing.
 
 ## Features
 

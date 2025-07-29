@@ -12,7 +12,7 @@ cd todo-app
 
 # Install dependencies if needed
 echo "📦 Installing dependencies..."
-uv sync --group dev --group test
+uv sync --group dev
 
 # Run tests
 echo "🔍 Running frontend tests..."

@@ -1,69 +1,116 @@
-# TODO: SOPS Implementation for Secret Encryption
+# TODO: Priority Tasks for Tomorrow's Assessment
+
+
+#### 3. Strategic Documentation Review
+- [ ] **Re-read Testing Plan thoughtfully** (`course_project/todo-backend/tests/TESTING_PLAN.md`)
+  - Understand: What test scenarios are covered vs missing
+  - Identify: Any gaps that could cause production issues
+  - Plan: Additional test implementations if needed
+- [ ] **Re-read GitHub Actions workflow with thought** (`.github/workflows/test.yml`)
+  - Understand: Each step and why it's there
+  - Verify: Workflow matches current project architecture
+  - Optimize: Any inefficiencies or redundancies
+
+#### 4. Comprehensive System Testing
+- [ ] **Test complete local development setup**
+  - Verify: docker-compose.yaml works end-to-end
+  - Test: All services communicate properly
+  - Confirm: Database connections and data persistence
+- [ ] **Test Kubernetes deployment end-to-end**
+  - Deploy: All manifests to test cluster
+  - Verify: All pods are running and healthy
+  - Test: Frontend can communicate with backend
+  - Test: Backend can communicate with database
+- [ ] **Run quality checks and fix any issues**
+  - Execute: `./quality.sh` and fix any remaining linting issues
+  - Review: Test coverage reports for gaps
+  - Validate: All tests pass consistently
+
+#### 5. Pre-Commit Validation Checklist
+- [ ] **All GitHub Actions tests passing** ✅
+- [ ] **All Kubernetes manifests deploy successfully** ✅
+- [ ] **Local development environment fully functional** ✅
+- [ ] **Code quality checks all green** ✅
+- [ ] **Documentation updated and accurate** ✅
+
+### 🎯 Success Criteria
+Ready to commit when:
+1. GitHub Actions pipeline is 100% green
+2. Kubernetes manifests deploy without errors
+3. All services communicate properly in K8s
+4. Local development setup is fully functional
+5. Code quality standards are met
+
+---
+
+# TODO: Container Registry Integration for Local Development
 
 ## Goal
-Encrypt Kubernetes secret files with SOPS to safely commit them to version control while maintaining security.
+Optimize development workflow by pushing locally-built Docker images to a container registry, then having CI/CD pull those pre-built images instead of rebuilding from scratch.
 
-## Implementation Steps
+## Current Situation
+- **Local Development**: Build images with `./build-images.sh v1.2.3`
+- **CI/CD Pipeline**: Rebuilds the same images from source code
+- **Inefficiency**: Duplicate build time and compute resources
+- **Feedback Loop**: Slower CI/CD due to build overhead
 
-### Phase 1: Install and Setup SOPS
-- [ ] Install SOPS: `brew install sops` (macOS)
-- [ ] Install age for encryption: `brew install age`
-- [ ] Generate age key pair: `age-keygen -o ~/.config/sops/age/keys.txt`
-- [ ] Note the public key from the output for .sops.yaml configuration
+## Proposed Workflow
+1. **Local Build & Push**: `./build-images.sh v1.2.3 --push`
+2. **CI/CD Pull**: Use pre-built images from registry
+3. **Faster Testing**: Integration tests start immediately
+4. **Consistency**: Test exact same artifacts used locally
 
-### Phase 2: Configure SOPS for Repository
-- [ ] Create `.sops.yaml` in repository root with encryption rules:
-  ```yaml
-  creation_rules:
-    - path_regex: .*-secret\.yaml$
-      age: age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Your public key
-  ```
-- [ ] Test configuration with a sample secret file
+## Implementation Considerations
 
-### Phase 3: Encrypt Existing Secrets
-- [ ] Backup current secret files (they're gitignored, so copy them somewhere safe)
-- [ ] Encrypt each secret file in place:
-  ```bash
-  sops -e -i ping-pong/manifests/ping-pong/postgres-secret.yaml
-  sops -e -i ping-pong/manifests/ping-pong/ping-pong-secret.yaml
-  ```
-- [ ] Verify encrypted files look correct (should show encrypted data)
+### Registry Options
+- **GitHub Container Registry (ghcr.io)**: Free, integrated with repository
+- **Docker Hub**: Popular, but rate limits on free tier
+- **Azure Container Registry**: If planning AKS deployment
+- **Local Registry**: For air-gapped development
 
-### Phase 4: Update Gitignore and Workflow
-- [ ] Remove secret file patterns from .gitignore:
-  ```diff
-  - # Ignore all Kubernetes secret YAML files (before SOPS encryption)
-  - **/manifests/**/*-secret.yaml
-  - **/*-secret.yaml
-  ```
-- [ ] Commit encrypted secret files to version control
-- [ ] Update deployment workflow to use SOPS decryption:
-  ```bash
-  sops -d manifests/ping-pong/postgres-secret.yaml | kubectl apply -f -
-  ```
+### Build Script Enhancements Needed
+- [ ] Add `--push` flag to build-images.sh
+- [ ] Add `--registry` parameter for flexibility
+- [ ] Registry authentication handling
+- [ ] Error handling for push failures
+- [ ] Registry-specific image tagging
 
-## Key Commands Reference
-```bash
-# Encrypt a file in place
-sops -e -i your-secret.yaml
+### CI/CD Workflow Changes
+- [ ] Add step to pull pre-built images instead of building
+- [ ] Handle case where registry images don't exist (fallback to build)
+- [ ] Environment variable to specify image source (registry vs build)
+- [ ] Image existence checking before pull attempts
 
-# Decrypt and view (without modifying file)
-sops -d your-secret.yaml
+### Questions to Resolve
+1. **Authentication Strategy**: How to handle registry login in CI/CD?
+2. **Fallback Mechanism**: What if registry images are missing/corrupted?
+3. **Tag Management**: How to coordinate tags between local and CI/CD?
+4. **Image Cleanup**: How to prevent registry bloat over time?
+5. **Security**: Image vulnerability scanning before use?
+6. **Cost**: Registry storage costs vs build compute costs?
 
-# Decrypt and apply to Kubernetes
-sops -d your-secret.yaml | kubectl apply -f -
+### Development Workflow Impact
+- **Positive**: Faster CI/CD feedback loops
+- **Positive**: Test exact artifacts used in production
+- **Consideration**: Requires registry setup and authentication
+- **Consideration**: Additional complexity in build process
 
-# Edit encrypted file (decrypts, opens editor, re-encrypts on save)
-sops your-secret.yaml
-```
+### Kubernetes Learning Aspects
+- **Registry Integration**: How Kubernetes pulls images in production
+- **Image Management**: Tagging strategies and lifecycle management
+- **Security**: Image scanning and trusted registries
+- **GitOps**: Artifact promotion through environments
 
-## Security Notes
-- Never commit the age private key to version control
-- Store private key securely (password manager, encrypted backup)
-- Rotate keys periodically in production environments
-- Consider using cloud KMS (AWS KMS, Azure Key Vault) for production
+## Implementation Priority
+- **Phase 1**: Research and design decisions
+- **Phase 2**: Enhance build-images.sh with push capability
+- **Phase 3**: Update CI/CD workflow to pull images
+- **Phase 4**: Add fallback mechanisms and error handling
 
-**Next Steps**: Start with Phase 1 - install SOPS and age, then generate your key pair.
+**Status**: Planning phase - need to resolve authentication and workflow questions before implementation.
+
+---
+**Next Steps**: Research registry authentication options and define tag coordination strategy.
 
 ---
 
@@ -166,18 +213,3 @@ Set up Azure Key Vault for secure secrets management when deploying microservice
 - [ ] Plan Workload Identity setup approach
 
 **Next Steps**: Complete local development, then tackle Azure resource setup and integration concepts.
-
----
-
-# TODO: Exercise 2.5 - ConfigMap Environment Variable Integration
-
-## Current Status
-- ConfigMap created with `information.txt` file mount ✅
-- File-based ConfigMap working correctly ✅
-- Need to migrate `LOG_APP_MESSAGE` environment variable to ConfigMap
-
-## Next Steps
-- [ ] Remove `LOG_APP_MESSAGE` from log-output-deployment.yaml env section
-- [ ] Add ConfigMap reference using `envFrom` or `env.valueFrom.configMapKeyRef`
-- [ ] Test that application reads message from ConfigMap instead of hardcoded env var
-- [ ] Verify deployment works and submit exercise
