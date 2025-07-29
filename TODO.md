@@ -1,24 +1,5 @@
 # TODO: Priority Tasks for Tomorrow's Assessment
 
-## ⚡ CRITICAL: GitHub Actions & Kubernetes Validation (Next Session Start)
-
-### 🔥 IMMEDIATE NEXT SESSION TASKS
-When resuming work, complete these tasks in order:
-
-#### 1. GitHub Actions Integration Test Validation ✅ FIXED
-- [x] **Fixed service integration test failure** - Added PostgreSQL service container and proper environment variables
-- [x] **Improved test reliability** - Added retry logic and better health checks for container startup
-- [x] **Enhanced error handling** - More detailed logging and debugging information
-- [ ] **Verify fix works** - Run `act --job test-microservice-integration` to confirm integration tests pass
-
-#### 2. Kubernetes Manifests Review & Validation
-- [ ] **Review ALL Kubernetes manifests with fresh perspective**
-  - Focus on lessons learned from recent endpoint and selector failures
-  - Double-check: Service selectors match Deployment labels exactly
-  - Verify: All port configurations are consistent across manifests
-  - Confirm: Resource requests/limits are appropriate
-- [ ] **Apply manifests to test cluster** - Validate they work without errors
-- [ ] **Test service discovery and connectivity** - Ensure pods can communicate properly
 
 #### 3. Strategic Documentation Review
 - [ ] **Re-read Testing Plan thoughtfully** (`course_project/todo-backend/tests/TESTING_PLAN.md`)
@@ -59,6 +40,77 @@ Ready to commit when:
 3. All services communicate properly in K8s
 4. Local development setup is fully functional
 5. Code quality standards are met
+
+---
+
+# TODO: Container Registry Integration for Local Development
+
+## Goal
+Optimize development workflow by pushing locally-built Docker images to a container registry, then having CI/CD pull those pre-built images instead of rebuilding from scratch.
+
+## Current Situation
+- **Local Development**: Build images with `./build-images.sh v1.2.3`
+- **CI/CD Pipeline**: Rebuilds the same images from source code
+- **Inefficiency**: Duplicate build time and compute resources
+- **Feedback Loop**: Slower CI/CD due to build overhead
+
+## Proposed Workflow
+1. **Local Build & Push**: `./build-images.sh v1.2.3 --push`
+2. **CI/CD Pull**: Use pre-built images from registry
+3. **Faster Testing**: Integration tests start immediately
+4. **Consistency**: Test exact same artifacts used locally
+
+## Implementation Considerations
+
+### Registry Options
+- **GitHub Container Registry (ghcr.io)**: Free, integrated with repository
+- **Docker Hub**: Popular, but rate limits on free tier
+- **Azure Container Registry**: If planning AKS deployment
+- **Local Registry**: For air-gapped development
+
+### Build Script Enhancements Needed
+- [ ] Add `--push` flag to build-images.sh
+- [ ] Add `--registry` parameter for flexibility
+- [ ] Registry authentication handling
+- [ ] Error handling for push failures
+- [ ] Registry-specific image tagging
+
+### CI/CD Workflow Changes
+- [ ] Add step to pull pre-built images instead of building
+- [ ] Handle case where registry images don't exist (fallback to build)
+- [ ] Environment variable to specify image source (registry vs build)
+- [ ] Image existence checking before pull attempts
+
+### Questions to Resolve
+1. **Authentication Strategy**: How to handle registry login in CI/CD?
+2. **Fallback Mechanism**: What if registry images are missing/corrupted?
+3. **Tag Management**: How to coordinate tags between local and CI/CD?
+4. **Image Cleanup**: How to prevent registry bloat over time?
+5. **Security**: Image vulnerability scanning before use?
+6. **Cost**: Registry storage costs vs build compute costs?
+
+### Development Workflow Impact
+- **Positive**: Faster CI/CD feedback loops
+- **Positive**: Test exact artifacts used in production
+- **Consideration**: Requires registry setup and authentication
+- **Consideration**: Additional complexity in build process
+
+### Kubernetes Learning Aspects
+- **Registry Integration**: How Kubernetes pulls images in production
+- **Image Management**: Tagging strategies and lifecycle management
+- **Security**: Image scanning and trusted registries
+- **GitOps**: Artifact promotion through environments
+
+## Implementation Priority
+- **Phase 1**: Research and design decisions
+- **Phase 2**: Enhance build-images.sh with push capability
+- **Phase 3**: Update CI/CD workflow to pull images
+- **Phase 4**: Add fallback mechanisms and error handling
+
+**Status**: Planning phase - need to resolve authentication and workflow questions before implementation.
+
+---
+**Next Steps**: Research registry authentication options and define tag coordination strategy.
 
 ---
 

@@ -12,4 +12,4 @@ spec:
     targetPort: 5432
   clusterIP: None
   selector:
-    app: postgres-svc
+    app: postgres-db
