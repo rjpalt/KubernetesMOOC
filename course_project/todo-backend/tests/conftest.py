@@ -21,8 +21,51 @@ from src.database.connection import DatabaseManager
 from src.database.models import Base
 from src.main import create_app
 
-# Set test environment variables
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://todouser:todopass@localhost:5433/todoapp_test"
+
+def _configure_test_database():
+    """Configure test database based on environment.
+
+    This demonstrates environment-specific configuration patterns
+    that are essential in Kubernetes deployments where different
+    environments (dev, staging, prod) use different credentials.
+    """
+    # Check if running in CI/CD environment (GitHub Actions or act)
+    is_ci = os.getenv("GITHUB_ACTIONS") == "true" or os.getenv("ACT") == "true"
+
+    # Additional check for ACT-specific environment variables
+    has_ci_vars = bool(os.getenv("postgres_user")) and bool(os.getenv("postgres_password"))
+
+    if is_ci and has_ci_vars:
+        # CI environment: use environment variables from secrets
+        postgres_user = os.getenv("postgres_user", "test_user")
+        postgres_password = os.getenv("postgres_password", "test_password123")
+        postgres_host = os.getenv("postgres_host", "localhost")
+        postgres_port = os.getenv("postgres_port", "5433")
+        postgres_db = os.getenv("postgres_db", "test_todoapp")
+
+        database_url = (
+            f"postgresql+asyncpg://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_db}"
+        )
+        os.environ["DATABASE_URL"] = database_url
+
+        # Set individual environment variables for compatibility
+        os.environ["POSTGRES_USER"] = postgres_user
+        os.environ["POSTGRES_PASSWORD"] = postgres_password
+        os.environ["POSTGRES_HOST"] = postgres_host
+        os.environ["POSTGRES_PORT"] = postgres_port
+        os.environ["POSTGRES_DB"] = postgres_db
+    else:
+        # Local development: use local Docker credentials
+        os.environ["DATABASE_URL"] = "postgresql+asyncpg://todouser:todopass@localhost:5433/todoapp_test"
+        os.environ["POSTGRES_USER"] = "todouser"
+        os.environ["POSTGRES_PASSWORD"] = "todopass"
+        os.environ["POSTGRES_HOST"] = "localhost"
+        os.environ["POSTGRES_PORT"] = "5433"
+        os.environ["POSTGRES_DB"] = "todoapp_test"
+
+
+# Configure database based on environment (lazy loading for CI/CD compatibility)
+# _configure_test_database()  # Commented out - will be called from fixtures instead
 
 
 def ensure_test_database_running():
@@ -31,10 +74,20 @@ def ensure_test_database_running():
     This function demonstrates container lifecycle management patterns
     that are essential for Kubernetes testing scenarios.
     """
+    # Skip database container management in CI environments
+    # (database is provided as a service container)
+    is_ci = os.getenv("GITHUB_ACTIONS") == "true" or os.getenv("ACT") == "true"
+    if is_ci:
+        return
+
+    # Get current database configuration
+    postgres_user = os.getenv("POSTGRES_USER", "todouser")
+    postgres_db = os.getenv("POSTGRES_DB", "todoapp_test")
+
     try:
         # Check if test database is accessible
         result = subprocess.run(
-            ["docker", "exec", "todo_postgres_test", "pg_isready", "-U", "todouser", "-d", "todoapp_test"],
+            ["docker", "exec", "todo_postgres_test", "pg_isready", "-U", postgres_user, "-d", postgres_db],
             capture_output=True,
             timeout=5,
         )
@@ -92,8 +145,14 @@ async def test_db_engine():
     Function-scoped engine to avoid event loop issues.
     Each test gets a completely fresh engine and connection pool.
     """
+    # Configure test database based on environment (CI vs local)
+    _configure_test_database()
+
+    # Get database URL from configuration
+    db_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://todouser:todopass@localhost:5433/todoapp_test")
+
     engine = create_async_engine(
-        "postgresql+asyncpg://todouser:todopass@localhost:5433/todoapp_test",
+        db_url,
         echo=False,
         # Minimal pooling for test isolation
         pool_size=1,

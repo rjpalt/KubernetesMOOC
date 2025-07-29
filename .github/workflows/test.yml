@@ -112,6 +112,15 @@ jobs:
       run: |
         uv sync --group dev
     
+    - name: Set ACT environment variables
+      if: github.actor == 'nektos/act'
+      run: |
+        echo "postgres_user=${{ secrets.TEST_POSTGRES_USER }}" >> $GITHUB_ENV
+        echo "postgres_password=${{ secrets.TEST_POSTGRES_PASSWORD }}" >> $GITHUB_ENV
+        echo "postgres_host=localhost" >> $GITHUB_ENV
+        echo "postgres_port=5433" >> $GITHUB_ENV
+        echo "postgres_db=test_todoapp" >> $GITHUB_ENV
+    
     - name: Run backend unit tests
       run: |
         uv run pytest tests/unit/ -v --tb=short

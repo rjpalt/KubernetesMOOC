@@ -127,7 +127,33 @@ Sequential testing strategy in `.github/workflows/test.yml`:
 2. **Frontend Tests**: Service integration with mocked backend
 3. **Integration Tests**: Docker containers with real service communication
 
-Local testing with Act: `act --job test-backend` or `act --job test-frontend`
+### Local CI Testing with ACT
+
+Test GitHub Actions pipeline locally using [act](https://github.com/nektos/act):
+
+```bash
+# Test specific jobs
+act --job test-backend
+act --job test-frontend
+act --job code-quality
+```
+
+#### ACT Setup Requirements
+
+ACT requires a `.secrets` file for local testing with GitHub secrets:
+
+```bash
+# Copy the example secrets file
+cp .secrets.example .secrets
+
+# Or create manually (this file is gitignored)
+cat > .secrets << EOF
+TEST_POSTGRES_USER=test_user
+TEST_POSTGRES_PASSWORD=test_password123
+EOF
+```
+
+The workflow automatically detects ACT execution (`github.actor == 'nektos/act'`) and sets appropriate environment variables for database testing.
 
 ## Features
 
