@@ -26,7 +26,7 @@ spec:
             claimName: image-cache-pvc
       containers:
       - name: todo-app-fe
-        image: todo-app-fe:2.6
+        image: todo-app-fe:2.8
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000

@@ -1,15 +1,16 @@
-version: '3.8'
-
 services:
   todo-app-be:
-    image: todo-app-be:2.6
+    image: todo-app-be:2.8
     build:
       context: ./todo-backend
       dockerfile: Dockerfile
     container_name: todo-app-be
+    env_file:
+      - docker-compose.env
     environment:
       - PORT=8001
-      - LOG_LEVEL=INFO
+      - POSTGRES_HOST=postgres_prod
+      - POSTGRES_PORT=5432
     ports:
       - "8001:8001"
     healthcheck:
@@ -20,17 +21,20 @@ services:
       start_period: 5s
     networks:
       - todo-app-network
+    depends_on:
+      - postgres_prod
 
   todo-app-fe:
-    image: todo-app-fe:2.6
+    image: todo-app-fe:2.8
     build:
       context: ./todo-app
       dockerfile: Dockerfile
     container_name: todo-app-fe
+    env_file:
+      - docker-compose.env
     environment:
       - PORT=8000
       - TODO_BACKEND_URL=http://todo-app-be:8001
-      - LOG_LEVEL=INFO
     ports:
       - "8000:8000"
     volumes:
@@ -46,10 +50,30 @@ services:
     networks:
       - todo-app-network
 
+  postgres_prod:
+    image: postgres:17
+    container_name: postgres_prod
+    env_file:
+      - docker-compose.env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./todo-backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todouser -d todoapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - todo-app-network
+  
+
 # Define volumes for image caching
 volumes:
   todo-images:
     driver: local
+  postgres_data:
 
 networks:
   # Custom network for service communication
