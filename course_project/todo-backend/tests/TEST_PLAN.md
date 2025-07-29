@@ -404,20 +404,67 @@ Tests run automatically on:
 - Changes to `course_project/todo-backend/**`
 - Container image builds
 
-### Local CI Testing
+### Local CI Testing with ACT
+
+Test GitHub Actions workflows locally using [act](https://github.com/nektos/act):
+
 ```bash
-# Test what CI will run (if act is installed)
+# Test backend CI pipeline locally
 act --job test-backend
 
-# Or run the same commands CI uses
-./test-be.sh  # Same script used in CI
+# Test other jobs
+act --job code-quality
+act --job test-frontend
 ```
+
+#### ACT Setup Requirements
+
+1. **Install ACT** (macOS with Homebrew):
+   ```bash
+   brew install act
+   ```
+
+2. **Create secrets file** for database credentials:
+   ```bash
+   # Copy example file (recommended)
+   cp .secrets.example .secrets
+   
+   # Or create manually (automatically gitignored)
+   cat > .secrets << EOF
+   TEST_POSTGRES_USER=test_user
+   TEST_POSTGRES_PASSWORD=test_password123
+   EOF
+   ```
+
+3. **Run tests**:
+   ```bash
+   act --job test-backend  # Runs full backend test suite with PostgreSQL
+   ```
+
+#### How ACT Integration Works
+
+The GitHub Actions workflow automatically detects ACT execution using `github.actor == 'nektos/act'` and:
+- Sets database environment variables from GitHub secrets
+- Uses local PostgreSQL container for testing
+- Maintains identical test behavior between local and CI environments
+
+```yaml
+# Workflow automatically sets these for ACT:
+- name: Set ACT environment variables
+  if: github.actor == 'nektos/act'
+  run: |
+    echo "postgres_user=${{ secrets.TEST_POSTGRES_USER }}" >> $GITHUB_ENV
+    echo "postgres_password=${{ secrets.TEST_POSTGRES_PASSWORD }}" >> $GITHUB_ENV
+```
+
+This ensures local testing with ACT mirrors the exact CI environment without hard-coding credentials.
 
 ### Test Results Integration
 - **Coverage Reports**: Generated and stored as CI artifacts
 - **Test Isolation**: Each CI run gets fresh database containers  
 - **Async Compatibility**: CI environment handles async tests properly
 - **Container Dependencies**: PostgreSQL containers managed automatically
+- **Secret Management**: GitHub secrets used for database credentials in CI, .secrets file for local ACT testing
 
 ## Troubleshooting
 
