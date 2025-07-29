@@ -8,11 +8,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: postgres-svc
+      app: postgres-db
   template:
     metadata:
       labels:
-        app: postgres-svc
+        app: postgres-db
     spec:
       containers:
         - name: postgres
