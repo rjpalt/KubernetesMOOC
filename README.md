@@ -449,7 +449,7 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     kubectl get pods,svc,ingress,pv,pvc
     ```
-- [2.8]()
+- [2.8](https://github.com/rjpalt/KubernetesMOOC/tree/2.8/course_project)
   - Command to start cluster with specific ports: `k3d cluster create -p 8080:80@loadbalancer -a 2`
   - Commands to import images for todo app fe and be:
     ```bash
