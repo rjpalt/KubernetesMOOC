@@ -77,6 +77,11 @@ def ensure_test_database_running():
 # Ensure database is running at session start
 def pytest_sessionstart(session):
     """Called after the Session object has been created."""
+    # Skip Docker setup in CI environments (GitHub Actions provides the database service)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return
+
+    # For local development, start Docker containers
     ensure_test_database_running()
 
 
