@@ -1,55 +1,66 @@
 # TODO: Priority Tasks for Tomorrow's Assessment
 
-## ⚡ IMMEDIATE PRIORITIES (Next Session)
+## ⚡ CRITICAL: GitHub Actions & Kubernetes Validation (Next Session Start)
 
-### Project Validation & Kubernetes Deployment
-Based on today's async PostgreSQL integration and testing foundation work, tomorrow's focus is on comprehensive project validation and Kubernetes deployment readiness.
+### 🔥 IMMEDIATE NEXT SESSION TASKS
+When resuming work, complete these tasks in order:
 
-#### 1. Foundation Verification
-- [x] **Verify all project tests work** - Confirm 39/39 tests still passing after any changes
-- [x] **Test GitHub Actions CI pipeline** - Ensure automated testing works in CI environment
-- [x] **Review Docker implementations** - Go through Dockerfiles and docker-compose configurations
+#### 1. GitHub Actions CI/CD Pipeline Fixes
+- [ ] **Fix remaining GitHub Actions test issues** - Currently failing on database service configuration
+  - Issue: PostgreSQL service added but tests may still have connection issues
+  - Check: Environment variables alignment between workflow and Settings class
+  - Verify: Service health checks are working properly
+- [ ] **Test GitHub Actions workflow thoroughly** - Ensure all test stages pass (unit, integration, coverage)
+- [ ] **Validate CI environment vs local environment** - Confirm test behavior is consistent
 
-#### 2. Local Development Setup
-- [ ] **Validate local database setup** - Confirm PostgreSQL containers work properly ✅ CONFIRMED: Database containers working
-- [ ] **Test local project execution** - Ensure todo-app + todo-backend + database integration works ⚠️ PORT MISMATCH: Backend runs on 8000, docker-compose expects 8001
-- [ ] **Build complete docker-compose.yaml** - Create unified docker-compose for all services (missing PostgreSQL database service)
-- [ ] **Update quality.sh script** - Ensure code quality checks work with current project structure
-- [ ] **Update GitHub Actions workflow** - Reflect current testing pipeline and project structure
-- [ ] **Verify act commands** - Ensure local GitHub Actions testing works properly
-- [ ] **Fix port configuration** - Backend currently runs on port 8000, but docker-compose.yaml configures port 8001
+#### 2. Kubernetes Manifests Review & Validation
+- [ ] **Review ALL Kubernetes manifests with fresh perspective**
+  - Focus on lessons learned from recent endpoint and selector failures
+  - Double-check: Service selectors match Deployment labels exactly
+  - Verify: All port configurations are consistent across manifests
+  - Confirm: Resource requests/limits are appropriate
+- [ ] **Apply manifests to test cluster** - Validate they work without errors
+- [ ] **Test service discovery and connectivity** - Ensure pods can communicate properly
 
-#### 3. Kubernetes Migration Planning
-- [ ] **Design database Kubernetes manifests** - Create deployment specs for PostgreSQL in K8s
-- [ ] **Update existing Kubernetes manifests** - Reflect current async database architecture
-- [ ] **Remove redundant persistent volumes** - Clean up manifests made obsolete by database service
-- [ ] **Implement SOPS encrypted secrets** - Create proper Secret files for database credentials
-- [ ] **Validate Kubernetes deployment** - Test complete K8s deployment works end-to-end
+#### 3. Strategic Documentation Review
+- [ ] **Re-read Testing Plan thoughtfully** (`course_project/todo-backend/tests/TESTING_PLAN.md`)
+  - Understand: What test scenarios are covered vs missing
+  - Identify: Any gaps that could cause production issues
+  - Plan: Additional test implementations if needed
+- [ ] **Re-read GitHub Actions workflow with thought** (`.github/workflows/test.yml`)
+  - Understand: Each step and why it's there
+  - Verify: Workflow matches current project architecture
+  - Optimize: Any inefficiencies or redundancies
 
-### Current Project State (After Today's Work)
-✅ **Completed**: 
-- Async PostgreSQL integration (todo-backend)
-- Container-based testing (39/39 tests passing)
-- Test isolation with dependency injection
-- Production-ready CI/CD pipeline
-- Comprehensive testing documentation
+#### 4. Comprehensive System Testing
+- [ ] **Test complete local development setup**
+  - Verify: docker-compose.yaml works end-to-end
+  - Test: All services communicate properly
+  - Confirm: Database connections and data persistence
+- [ ] **Test Kubernetes deployment end-to-end**
+  - Deploy: All manifests to test cluster
+  - Verify: All pods are running and healthy
+  - Test: Frontend can communicate with backend
+  - Test: Backend can communicate with database
+- [ ] **Run quality checks and fix any issues**
+  - Execute: `./quality.sh` and fix any remaining linting issues
+  - Review: Test coverage reports for gaps
+  - Validate: All tests pass consistently
 
-✅ **Backend Testing Results**:
-- Health endpoint: Working (/be-health returns service status + todo count)
-- GET /todos: Working (retrieves all todos from PostgreSQL)
-- POST /todos: Working (creates new todos in database)
-- GET /todos/{id}: Working (retrieves specific todo by ID)
-- Database integration: Fully functional with async operations
+#### 5. Pre-Commit Validation Checklist
+- [ ] **All GitHub Actions tests passing** ✅
+- [ ] **All Kubernetes manifests deploy successfully** ✅
+- [ ] **Local development environment fully functional** ✅
+- [ ] **Code quality checks all green** ✅
+- [ ] **Documentation updated and accurate** ✅
 
-⚠️ **Known Issues**:
-- Port mismatch: Backend runs on 8000, docker-compose expects 8001
-
-📋 **Test Coverage Improvements Needed**:
-- 🔴 **High Priority**: SQL injection prevention, database downtime handling, load/concurrency testing
-- 🟡 **Medium Priority**: Container resource limits, input sanitization, graceful shutdown testing
-- See `course_project/todo-backend/tests/TEST_PLAN.md` for detailed risk assessment and implementation examples
-
-🎯 **Ready For**: Kubernetes deployment with proper database architecture
+### 🎯 Success Criteria
+Ready to commit when:
+1. GitHub Actions pipeline is 100% green
+2. Kubernetes manifests deploy without errors
+3. All services communicate properly in K8s
+4. Local development setup is fully functional
+5. Code quality standards are met
 
 ---
 
