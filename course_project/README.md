@@ -163,3 +163,4 @@ The workflow automatically detects ACT execution (`github.actor == 'nektos/act'`
 - Automatic image fetching from picsum.photos
 - Health check endpoints for monitoring
 - OpenAPI documentation for both services
+- Codecov on project pages
