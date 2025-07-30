@@ -9,11 +9,41 @@ echo "Starting cleanup process..."
 
 # First, check if kubectl is available and we have a cluster context
 if command -v kubectl &> /dev/null; then
-    echo "Checking for running Kubernetes pods..."
+    echo "Checking for running Kubernetes resources..."
+    
+    # Clean up Helm releases first (Exercise 2.10 monitoring stack)
+    if command -v helm &> /dev/null; then
+        echo "Cleaning up Helm releases..."
+        
+        # Uninstall Prometheus/Grafana stack
+        if helm list -n prometheus 2>/dev/null | grep -q "kube-prometheus-stack"; then
+            echo "Uninstalling Prometheus/Grafana stack..."
+            helm uninstall -n prometheus $(helm list -n prometheus -q) 2>/dev/null || echo "Prometheus stack cleanup completed"
+        fi
+        
+        # Uninstall Loki stack
+        if helm list -n loki-stack 2>/dev/null | grep -q "loki"; then
+            echo "Uninstalling Loki stack..."
+            helm uninstall -n loki-stack loki 2>/dev/null || echo "Loki stack cleanup completed"
+        fi
+        
+        # Clean up any remaining Helm releases in other namespaces
+        ALL_RELEASES=$(helm list --all-namespaces -q 2>/dev/null || echo "")
+        if [ -n "$ALL_RELEASES" ]; then
+            echo "Cleaning up remaining Helm releases..."
+            echo "$ALL_RELEASES" | xargs -I {} helm uninstall {} --namespace $(helm list --all-namespaces | grep {} | awk '{print $2}') 2>/dev/null || echo "Helm cleanup completed"
+        fi
+    else
+        echo "Helm not found, skipping Helm cleanup"
+    fi
+    
+    # Delete monitoring namespaces (this will cascade delete everything in them)
+    echo "Deleting monitoring namespaces..."
+    kubectl delete namespace prometheus loki-stack --ignore-not-found=true --timeout=60s 2>/dev/null || echo "Monitoring namespaces already clean"
     
     # Get all pods across all namespaces
     if kubectl get pods --all-namespaces 2>/dev/null | grep -q -v "^NAMESPACE"; then
-        echo "Found running pods, shutting them down gracefully..."
+        echo "Found remaining pods, shutting them down gracefully..."
         
         # Delete all deployments first (this will scale down pods gracefully)
         echo "Deleting all deployments..."

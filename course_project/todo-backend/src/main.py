@@ -16,6 +16,7 @@ from src.api.dependencies import get_todo_service, initialize_dependencies
 from src.api.routes import health, todos
 from src.config.settings import settings
 from src.database.connection import db_manager
+from src.middleware.request_logging import RequestLoggingMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -73,6 +74,9 @@ def create_app() -> FastAPI:
         version=settings.api_version,
         lifespan=lifespan,
     )
+
+    # Add request logging middleware
+    app.add_middleware(RequestLoggingMiddleware)
 
     # Add CORS middleware
     app.add_middleware(
