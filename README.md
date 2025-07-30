@@ -20,16 +20,15 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
   brew install act  # macOS
   
   # Create a .secrets file with test credentials (already gitignored)
-  echo "TEST_POSTGRES_USER=test_user" > .secrets
-  echo "TEST_POSTGRES_PASSWORD=test_password123" >> .secrets
+  cp .secrets.example .secrets
   
   # Run specific jobs
-  act --secret-file .secrets --job test-backend # Backend tests
-  act --secret-file .secrets --job test-frontend # Frontend tests
-  act --secret-file .secrets --job test-microservice-integration # Microservice integration tests
+  act --job test-backend # Backend tests
+  act --job test-frontend # Frontend tests
+  act --job code-quality # Code quality checks
   
   # Run all jobs
-  act --secret-file .secrets
+  act
   ```
 
 ## Exercises
@@ -500,7 +499,6 @@ The repository includes automated testing via GitHub Actions for the todo-app pr
     ```bash
     kubectl get pods,svc,ingress,pv,pvc -n project
     ```
-
 - [2.9]()
 - [2.10]()
   
