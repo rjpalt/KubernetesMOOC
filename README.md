@@ -63,6 +63,10 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
 - [2.8](https://github.com/rjpalt/KubernetesMOOC/tree/2.8/course_project) - Full stack with PostgreSQL - [Commands](docs/exercises/2.8-commands.md)
 - [2.9](https://github.com/rjpalt/KubernetesMOOC/tree/2.9/course_project) - CronJobs - [Commands](docs/exercises/2.9-commands.md)
 - [2.10](https://github.com/rjpalt/KubernetesMOOC/tree/2.10/course_project) - (Placeholder) - [Commands](docs/exercises/2.10-commands.md)
+  - Note that the installation of Prometheus + Grafana + Loki shows mainly in the commands. Also read carefully: the app is orchestarted to handle form validation in the frontend before calling internally the backend API. To directly test the backend API, you need to forward a port to it directly.
+  - Screenshots of logging and Loki running in Grafana:
+    - [Image of logs to backend](<img width="861" height="692" alt="image" src="https://github.com/user-attachments/assets/a883577e-17bd-465f-aae4-c2c0fc1aa576" />)
+    - [Image of things showing in Grafana/Loki](<img width="1420" height="912" alt="image" src="https://github.com/user-attachments/assets/1cba766c-f513-4b75-8ccc-87f6e7c0d1fb" />) 
 
 ## Cleanup Script
 
