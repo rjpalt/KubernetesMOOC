@@ -89,7 +89,9 @@ jobs:
         run: |
           echo "🧪 Running frontend tests..."
           uv sync --group dev
-          uv run pytest tests/ -v
+          # Exclude container tests since they require Docker images to be built
+          # Generate coverage for documentation
+          uv run pytest tests/unit/ tests/integration/ --cov=src --cov-report=xml --cov-report=html -v
           echo "✅ Frontend tests completed"
       
       # Create documentation structure
@@ -179,12 +181,22 @@ jobs:
           echo "✅ OpenAPI specs created"
       
       # Upload coverage reports to Codecov
-      - name: Upload coverage reports to Codecov
+      - name: Upload backend coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: ./course_project/todo-backend/coverage.xml
           flags: backend
           name: todo-backend-coverage
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+      
+      - name: Upload frontend coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./course_project/todo-app/coverage.xml
+          flags: frontend
+          name: todo-frontend-coverage
           fail_ci_if_error: false
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -205,6 +217,17 @@ jobs:
           if [ -d "course_project/todo-backend/htmlcov" ]; then
             cp -r course_project/todo-backend/htmlcov docs/coverage/backend-html
             echo "✅ Backend HTML coverage report copied"
+          fi
+          
+          # Copy frontend coverage files
+          if [ -f "course_project/todo-app/coverage.xml" ]; then
+            cp course_project/todo-app/coverage.xml docs/coverage/frontend-coverage.xml
+            echo "✅ Frontend coverage report copied"
+          fi
+          
+          if [ -d "course_project/todo-app/htmlcov" ]; then
+            cp -r course_project/todo-app/htmlcov docs/coverage/frontend-html
+            echo "✅ Frontend HTML coverage report copied"
           fi
           
           echo "✅ Coverage processing completed"
