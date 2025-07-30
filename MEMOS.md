@@ -400,6 +400,61 @@ spec:
 - Each replica has a separate PVC, ensuring that data is preserved even if the Pod is rescheduled or restarted.
 - With StatefulSets, pods are guaranteed to have tha same name and network identity (stable qualities) across rescheduling, which is crucial for stateful applications like databases. This means, that they will also get exactly the same PVCs. The content of the PVCs is not guaranteed to be the same, but the names are.
 
+# Using Jobs #
+- Jobs are used to run batch processes or one-time tasks in Kubernetes.
+- They ensure that a specified number of Pods successfully terminate, and they can be used for tasks like database migrations, data processing, or any task that needs to run to completion.
+- They, too are containerized and run in Pods, but they are not meant to be long-running like Deployments or StatefulSets.
+
+Sample Job manifest:
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backup
+spec:
+  template:
+    spec:
+      containers:
+      - name: backup
+        image: jakousa/simple-backup-example
+        env:
+          - name: URL
+            value: "postgres://postgres:example@postgres-svc:5432/postgres"
+      restartPolicy: Never
+```
+
+- The `restartPolicy: Never` ensures that the Job does not restart failed Pods, which is typical for batch jobs.
+- The Job will create a Pod that runs the specified container image and executes the backup task.
+
+We could also add a `backoffLimit` to specify how many times the Job should retry before failing:
+```yaml
+spec:
+  backoffLimit: 4
+```
+
+This means that if the Job fails, it will retry up to 4 times before marking the Job as failed.
+
+## Using CronJobs ##
+- CronJobs are used to run Jobs on a scheduled basis, similar to cron jobs in Linux.
+- They allow you to define a schedule using a cron-like syntax.
+Sample CronJob manifest:
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: daily-backup
+spec:
+  schedule: "0 2 * * *"  # Runs every day at 2
+  template:
+    spec:
+      containers:
+      - name: backup
+        image: jakousa/simple-backup-example
+        env:
+          - name: URL
+            value: "postgres://postgres:example@postgres-svc:5432/postgres"
+      restartPolicy: Never
+```
 
 ---
 # Docker Refresher #

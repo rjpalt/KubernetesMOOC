@@ -5,6 +5,7 @@
 .env.production
 .secrets
 docker-compose.env
+.envrc
 
 # Ignore Python cache
 __pycache__/
@@ -56,6 +57,7 @@ course_project/todo-app/TESTING_PLAN.md
 course_project/TODO.md
 ping-pong/LOCAL_DEVELOPMENT.md
 course_project/docs/AKS.md
+.github/copilot-instructions.md
 
 # Ignore Docker compose backups
 docker-compose.yaml.backup
