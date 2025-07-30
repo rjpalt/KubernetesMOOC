@@ -107,18 +107,20 @@ The application uses `docker-compose.env` for environment variables:
 ./test-all.sh
 
 # Individual services
-./test-be.sh     # Backend tests (27 tests)
+./test-be.sh     # Backend tests (58 tests)
 ./test-fe.sh     # Frontend tests
 
-# Or manually:
+# Or manually (from course_project/todo-backend):
 cd todo-backend && uv run pytest tests/ -v
-cd todo-app && uv run pytest tests/ -v
+cd ../todo-app && uv run pytest tests/ -v
 ```
 
 ### Test Coverage
-- **Backend**: Unit tests, integration tests, API validation
-- **Frontend**: Contract tests, service integration, UI components
+- **Backend**: 58 tests covering unit tests, integration tests, API validation
+- **Frontend**: Contract tests, service integration, UI components  
 - **Philosophy**: Each service tested independently for microservice isolation
+
+See `todo-backend/tests/TEST_PLAN.md` for comprehensive testing documentation.
 
 ## CI/CD Pipeline
 
