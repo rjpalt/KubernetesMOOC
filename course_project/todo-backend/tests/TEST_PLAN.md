@@ -16,7 +16,7 @@ tests/
 └── conftest.py              # Test configuration with async support
 ```
 
-**Status**: 66/66 tests passing
+**Status**: 70/70 tests passing
 
 ## Running Tests
 
@@ -124,7 +124,7 @@ async def test_client(test_db_manager):
 
 ## Test Coverage Analysis
 
-### Test Inventory (66 Tests Total)
+### Test Inventory (70 Tests Total)
 
 #### Unit Tests (35 tests)
 **test_models.py** - Data Model Validation (18 tests)
@@ -139,7 +139,7 @@ async def test_client(test_db_manager):
 - Edge cases (3 tests)
 - Data integrity (4 tests)
 
-#### Integration Tests (31 tests)
+#### Integration Tests (35 tests)
 **test_todo_api_structure.py** - API Infrastructure (7 tests)
 - Health endpoint structure and availability
 - API documentation endpoints (/docs, /openapi.json)
@@ -154,12 +154,15 @@ async def test_client(test_db_manager):
 - DELETE /todos/{id}: Deletion operations, 404 handling
 - Integration workflow: Complete CRUD lifecycle testing
 
-**test_request_logging.py** - Request Logging Middleware (8 tests)
+**test_request_logging.py** - Request Logging Middleware (12 tests)
 - Structured JSON logging for all requests/responses
 - Response time monitoring and performance metrics
 - Error classification (validation, not found, server errors)
 - Client IP extraction and user agent tracking
 - Log format validation for Grafana integration
+- Request correlation ID generation and preservation
+- Request-response correlation tracking
+- Error log correlation ID inclusion
 
 ### Test Category Validation
 
