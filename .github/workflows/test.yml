@@ -1,10 +1,6 @@
 name: Test Pipeline - Microservices
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths:
-      - 'course_project/**'
   pull_request:
     branches: [ main ]
     paths:

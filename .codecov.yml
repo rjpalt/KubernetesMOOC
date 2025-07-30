@@ -1,0 +1,20 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+
+flags:
+  backend:
+    paths:
+      - course_project/todo-backend/src/
+  
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
