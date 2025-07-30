@@ -511,8 +511,6 @@ Stopping and removing services with Docker Compose including volumes:
 docker-compose down -v
 ```
 
-
-
 # Using Busybox for debugging #
 
 ## Setting up a Busybox Pod ##
@@ -559,3 +557,7 @@ Opening a shell in the Busybox Pod:
 ```bash
 kubectl exec -it my-busybox -- sh
 ```
+
+---
+# Setting up Prometehus and Grafana with Helm #
+
