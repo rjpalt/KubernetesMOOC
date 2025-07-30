@@ -63,6 +63,7 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
 - [2.8](https://github.com/rjpalt/KubernetesMOOC/tree/2.8/course_project) - Full stack with PostgreSQL - [Commands](docs/exercises/2.8-commands.md)
 - [2.9](https://github.com/rjpalt/KubernetesMOOC/tree/2.9/course_project) - CronJobs - [Commands](docs/exercises/2.9-commands.md)
 - [2.10](https://github.com/rjpalt/KubernetesMOOC/tree/2.10/course_project) - (Placeholder) - [Commands](docs/exercises/2.10-commands.md)
+
 ## Cleanup Script
 
 The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by properly shutting down Kubernetes resources before cleaning up Docker containers, networks, and the k3d cluster.
