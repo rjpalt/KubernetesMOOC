@@ -68,7 +68,6 @@ services:
     networks:
       - todo-app-network
   
-
 # Define volumes for image caching
 volumes:
   todo-images:
