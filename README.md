@@ -62,13 +62,19 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
 - [2.7](https://github.com/rjpalt/KubernetesMOOC/tree/2.7/ping-pong) - Secrets and database - [Commands](docs/exercises/2.7-commands.md)
 - [2.8](https://github.com/rjpalt/KubernetesMOOC/tree/2.8/course_project) - Full stack with PostgreSQL - [Commands](docs/exercises/2.8-commands.md)
 - [2.9](https://github.com/rjpalt/KubernetesMOOC/tree/2.9/course_project) - CronJobs - [Commands](docs/exercises/2.9-commands.md)
-- [2.10](https://github.com/rjpalt/KubernetesMOOC/tree/2.10/course_project) - (Placeholder) - [Commands](docs/exercises/2.10-commands.md)
+- [2.10](https://github.com/rjpalt/KubernetesMOOC/tree/2.10/course_project) - Monitoring with Prometheus, Grafana, and Loki - [Commands](docs/exercises/2.10-commands.md)
+  - Architecture note: Frontend handles form validation before internal backend API calls. Direct backend testing requires port-forwarding to service.
+  - Screenshots of logging and Loki running in Grafana:
+    - ![Image of logs to backend](https://github.com/user-attachments/assets/a883577e-17bd-465f-aae4-c2c0fc1aa576)
+    - ![Image of things showing in Grafana/Loki](https://github.com/user-attachments/assets/1cba766c-f513-4b75-8ccc-87f6e7c0d1fb) 
 
 ## Cleanup Script
 
 The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by properly shutting down Kubernetes resources before cleaning up Docker containers, networks, and the k3d cluster.
 
 ### What the script does:
+- **Cleans up Helm releases** - Properly uninstalls Prometheus, Grafana, and Loki monitoring stacks
+- **Deletes monitoring namespaces** - Removes prometheus and loki-stack namespaces with cascade cleanup
 - **Gracefully shuts down Kubernetes resources** - Deletes deployments, services, and pods in proper order with graceful termination
 - **Handles stuck pods** - Force deletes any pods that refuse to terminate gracefully
 - **Deletes k3d clusters** - Completely shuts down your Kubernetes cluster after resource cleanup

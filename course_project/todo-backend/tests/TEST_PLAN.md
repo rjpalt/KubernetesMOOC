@@ -11,11 +11,12 @@ tests/
 │   └── test_models.py        # Data model tests
 ├── integration/              # API endpoint tests with database
 │   ├── test_todo_endpoints.py # REST API tests
-│   └── test_todo_api_structure.py # API structure tests
+│   ├── test_todo_api_structure.py # API structure tests
+│   └── test_request_logging.py # Request logging middleware tests
 └── conftest.py              # Test configuration with async support
 ```
 
-**Status**: 58/58 tests passing
+**Status**: 70/70 tests passing
 
 ## Running Tests
 
@@ -111,6 +112,9 @@ async def test_client(test_db_manager):
 - Database integration (Real PostgreSQL operations)
 - Service independence (Backend works without external dependencies)
 - Container readiness (Database connectivity, health checks)
+- Request logging (Comprehensive request/response monitoring)
+- Error monitoring (Structured logging for all HTTP error types)
+- Performance metrics (Response time tracking for SLA monitoring)
 
 ### Excluded Areas
 - Frontend concerns
@@ -120,13 +124,13 @@ async def test_client(test_db_manager):
 
 ## Test Coverage Analysis
 
-### Test Inventory (58 Tests Total)
+### Test Inventory (70 Tests Total)
 
 #### Unit Tests (35 tests)
 **test_models.py** - Data Model Validation (18 tests)
 - TodoStatus enum validation (3 tests)
 - TodoCreate input validation (4 tests)
-- TodoUpdate validation (4 tests)
+- TodoUpdate validation (4 tests)  
 - Todo model behavior (7 tests)
 
 **test_todo_service.py** - Business Logic (17 tests)
@@ -135,7 +139,7 @@ async def test_client(test_db_manager):
 - Edge cases (3 tests)
 - Data integrity (4 tests)
 
-#### Integration Tests (23 tests)
+#### Integration Tests (35 tests)
 **test_todo_api_structure.py** - API Infrastructure (7 tests)
 - Health endpoint structure and availability
 - API documentation endpoints (/docs, /openapi.json)
@@ -149,6 +153,16 @@ async def test_client(test_db_manager):
 - PUT /todos/{id}: Update operations, validation, 404 handling
 - DELETE /todos/{id}: Deletion operations, 404 handling
 - Integration workflow: Complete CRUD lifecycle testing
+
+**test_request_logging.py** - Request Logging Middleware (12 tests)
+- Structured JSON logging for all requests/responses
+- Response time monitoring and performance metrics
+- Error classification (validation, not found, server errors)
+- Client IP extraction and user agent tracking
+- Log format validation for Grafana integration
+- Request correlation ID generation and preservation
+- Request-response correlation tracking
+- Error log correlation ID inclusion
 
 ### Test Category Validation
 
@@ -169,6 +183,14 @@ async def test_client(test_db_manager):
 - API documentation
 - CORS configuration
 - Application bootstrap
+
+#### Request Logging Tests (8 tests)
+- Structured JSON logging format verification
+- Response time measurement accuracy
+- Error classification (validation, not found, client, server errors)
+- Request details capturing (method, path, IP, user agent)
+- Log output format suitable for Grafana parsing
+- Performance impact validation
 
 #### Full API Tests (16 tests)
 - HTTP protocol compliance
@@ -274,7 +296,7 @@ Tests use fixtures matching exact backend response formats:
 
 ### Before Making Changes
 ```bash
-cd .. && ./test-be.sh  # Ensure all 58 tests pass
+cd .. && ./test-be.sh  # Ensure all 66 tests pass
 ```
 
 ### After Making Changes
@@ -392,8 +414,8 @@ def test_new_feature(test_client: TestClient):  # Avoid - causes issues
 
 ### Test Performance
 - Unit tests: ~0.1 seconds (no database)
-- Integration tests: ~0.8 seconds (with PostgreSQL)  
-- Total suite: ~0.9 seconds (58 tests)
+- Integration tests: ~1.0 seconds (with PostgreSQL)  
+- Total suite: ~1.1 seconds (66 tests)
 - Database startup: ~2-3 seconds (only if container not running)
 
 ### Debugging Tests
