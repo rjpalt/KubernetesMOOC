@@ -23,6 +23,7 @@ spec:
           volumeMounts:
             - name: postgres-data-storage
               mountPath: /var/lib/postgresql/data
+              subPath: postgres
           env:
             - name: POSTGRES_DB
               value: pingpong-db
@@ -41,7 +42,7 @@ spec:
         name: postgres-data-storage
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path
+        storageClassName: managed-csi
         resources:
           requests:
             storage: 100Mi
