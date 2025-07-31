@@ -559,5 +559,36 @@ kubectl exec -it my-busybox -- sh
 ```
 
 ---
-# Setting up Prometehus and Grafana with Helm #
+# Azure Kubernetes Service (AKS) #
 
+## Azure CLI Commands ##
+Installing Azure CLI on macOS:
+```bash
+brew install azure-cli
+```
+
+Logging in to Azure:
+```bash
+az login
+```
+
+Checking the account:
+```bash
+az account show
+```
+
+Creating a resource group
+```bash
+az group create --name kubernetes-learning --location northeurope
+```
+
+## Setting up AKS Cluster ##
+Creating an AKS cluster:
+```bash
+az aks create --resource-group kubernetes-learning --name kube-mooc --node-count 1 --enable-addons monitoring --generate-ssh-keys
+```
+
+## Connecting Kubectl to AKS ##
+```bash
+az aks get-credentials --resource-group kubernetes-learning --name kube-mooc
+```
