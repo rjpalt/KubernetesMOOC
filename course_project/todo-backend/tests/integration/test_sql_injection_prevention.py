@@ -4,14 +4,13 @@ Tests to validate that the backend is protected against SQL injection attacks
 through malicious todo text content and parameters. These tests ensure that:
 
 1. Malicious SQL payloads are safely stored as literal text
-2. Server remains stable under SQL injection attempts  
+2. Server remains stable under SQL injection attempts
 3. Database integrity is maintained
 4. SQLAlchemy ORM parameterization provides adequate protection
 
 Following TDD principles to validate security before implementation.
 """
 
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 
@@ -25,7 +24,7 @@ class TestSQLInjectionPrevention:
         # Get current todos
         response = await test_client.get("/todos")
         todos = response.json()
-        
+
         # Delete all existing todos
         for todo in todos:
             await test_client.delete(f"/todos/{todo['id']}")
@@ -45,20 +44,20 @@ class TestSQLInjectionPrevention:
         ]
 
         created_todos = []
-        
+
         for malicious_input in malicious_inputs:
             # Create todo with malicious input
             response = await test_client.post("/todos", json={"text": malicious_input})
-            
+
             # SQLAlchemy ORM should protect us, verify:
             # 1. Request doesn't crash the server
             assert response.status_code in [201, 400, 422], f"Unexpected status for input: {malicious_input}"
-            
+
             # 2. If accepted, data is stored safely
             if response.status_code == 201:
                 created_todo = response.json()
                 created_todos.append(created_todo)
-                
+
                 # Verify the malicious text is stored as-is, not executed
                 todo_id = created_todo["id"]
                 get_response = await test_client.get(f"/todos/{todo_id}")
@@ -70,7 +69,7 @@ class TestSQLInjectionPrevention:
         all_todos_response = await test_client.get("/todos")
         assert all_todos_response.status_code == 200
         all_todos = all_todos_response.json()
-        
+
         # Should only have the todos we created (none injected by malicious SQL)
         assert len(all_todos) == len(created_todos), "Unexpected number of todos - possible SQL injection"
 
@@ -97,7 +96,7 @@ class TestSQLInjectionPrevention:
             # Should return 404 for non-existent/malformed ID, not crash
             assert get_response.status_code in [404, 422], f"Unexpected status for malicious ID: {malicious_id}"
 
-            # Test PUT with malicious ID  
+            # Test PUT with malicious ID
             put_response = await test_client.put(f"/todos/{malicious_id}", json={"text": "Updated text"})
             assert put_response.status_code in [404, 422], f"PUT should fail for malicious ID: {malicious_id}"
 
@@ -129,10 +128,10 @@ class TestSQLInjectionPrevention:
         for malicious_text in malicious_update_texts:
             # Update with malicious text
             response = await test_client.put(f"/todos/{todo_id}", json={"text": malicious_text})
-            
+
             # Should either succeed (storing safely) or reject with validation error
             assert response.status_code in [200, 400, 422], f"Unexpected status for update: {malicious_text}"
-            
+
             if response.status_code == 200:
                 # Verify the malicious text is stored safely
                 get_response = await test_client.get(f"/todos/{todo_id}")
@@ -144,7 +143,7 @@ class TestSQLInjectionPrevention:
         all_todos_response = await test_client.get("/todos")
         assert all_todos_response.status_code == 200
         all_todos = all_todos_response.json()
-        
+
         # Should only have our test todo
         assert len(all_todos) == 1, "Database corruption detected - unexpected number of todos"
 
@@ -158,7 +157,7 @@ class TestSQLInjectionPrevention:
         # Launch multiple injection attempts
         injection_payloads = [
             "'; DROP DATABASE todo_test; --",
-            "'; TRUNCATE TABLE todos; --", 
+            "'; TRUNCATE TABLE todos; --",
             "'; ALTER TABLE todos DROP COLUMN text; --",
             "admin'; DROP TABLE todos; SELECT * FROM todos WHERE 't'='t",
             "1'; DELETE FROM todos; INSERT INTO todos (text) VALUES ('mass_injection'); --",
@@ -187,7 +186,7 @@ class TestSQLInjectionPrevention:
         # Test non-numeric ID values (should be rejected before reaching SQL)
         non_numeric_ids = [
             "abc",
-            "1.5", 
+            "1.5",
             "1e10",
             "null",
             "undefined",
@@ -204,4 +203,6 @@ class TestSQLInjectionPrevention:
             assert put_response.status_code in [404, 422], f"Non-numeric ID should be rejected in PUT: {invalid_id}"
 
             delete_response = await test_client.delete(f"/todos/{invalid_id}")
-            assert delete_response.status_code in [404, 422], f"Non-numeric ID should be rejected in DELETE: {invalid_id}"
+            assert delete_response.status_code in [404, 422], (
+                f"Non-numeric ID should be rejected in DELETE: {invalid_id}"
+            )
