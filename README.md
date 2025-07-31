@@ -68,9 +68,16 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
     - ![Image of logs to backend](https://github.com/user-attachments/assets/a883577e-17bd-465f-aae4-c2c0fc1aa576)
     - ![Image of things showing in Grafana/Loki](https://github.com/user-attachments/assets/1cba766c-f513-4b75-8ccc-87f6e7c0d1fb) 
 
+### Chapter 4
+
+- [3.1]() - Azure resource setup - [Commands](docs/exercises/3.1-commands.md) and [Azure Memos](docs/azure/Azure-memos.md)
+- [3.2]()
+
 ## Cleanup Script
 
 The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by properly shutting down Kubernetes resources before cleaning up Docker containers, networks, and the k3d cluster.
+
+Separate scripts for Azure environment stop and start the AKS cluster from incurring extra costs while not in use. These are found in the root directory as `azure-stop.sh` and `azure-start.sh`.
 
 ### What the script does:
 - **Cleans up Helm releases** - Properly uninstalls Prometheus, Grafana, and Loki monitoring stacks
