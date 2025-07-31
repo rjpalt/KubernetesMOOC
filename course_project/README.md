@@ -99,6 +99,18 @@ The application uses `docker-compose.env` for environment variables:
 - **postgres_prod**: PostgreSQL database on localhost:5432
 - **Persistent data**: Database data persists in Docker volumes
 
+## Azure Deployment
+
+### Azure Resources
+- **Resource Group**: `kubernetes-learning` (North Europe region)
+- **AKS Cluster**: `kube-mooc` (1 node, monitoring enabled)
+- **Location**: North Europe
+
+### Prerequisites
+- Azure CLI installed and authenticated
+- kubectl configured for the AKS cluster
+- Docker images pushed to a container registry
+
 ## Testing
 
 ### Run All Tests
