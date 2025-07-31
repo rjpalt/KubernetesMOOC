@@ -16,7 +16,7 @@ tests/
 └── conftest.py              # Test configuration with async support
 ```
 
-**Status**: 70/70 tests passing
+**Status**: 75/75 tests passing
 
 ## Running Tests
 
@@ -124,7 +124,7 @@ async def test_client(test_db_manager):
 
 ## Test Coverage Analysis
 
-### Test Inventory (70 Tests Total)
+### Test Inventory (75 Tests Total)
 
 #### Unit Tests (35 tests)
 **test_models.py** - Data Model Validation (18 tests)
@@ -139,7 +139,7 @@ async def test_client(test_db_manager):
 - Edge cases (3 tests)
 - Data integrity (4 tests)
 
-#### Integration Tests (35 tests)
+#### Integration Tests (40 tests)
 **test_todo_api_structure.py** - API Infrastructure (7 tests)
 - Health endpoint structure and availability
 - API documentation endpoints (/docs, /openapi.json)
@@ -163,6 +163,13 @@ async def test_client(test_db_manager):
 - Request correlation ID generation and preservation
 - Request-response correlation tracking
 - Error log correlation ID inclusion
+
+**test_sql_injection_prevention.py** - SQL Injection Security (5 tests)
+- SQL injection payload testing in todo text creation
+- Parameter injection testing in todo ID operations
+- Update operation injection testing
+- Database stability under sustained injection attacks
+- Parameter type validation preventing SQL injection
 
 ### Test Category Validation
 
@@ -200,11 +207,99 @@ async def test_client(test_db_manager):
 
 ## Test Gaps
 
-### Security Testing
-- SQL injection prevention
-- Input sanitization  
-- Rate limiting
-- Authentication/authorization
+### Critical Security Vulnerabilities (OWASP Top 10)
+
+#### 1. Broken Authentication & Authorization (OWASP #1)
+- **CRITICAL**: No authentication mechanism implemented
+- **CRITICAL**: No authorization controls on any endpoints  
+- **CRITICAL**: Any user can access/modify any todo
+- **CRITICAL**: No session management
+- **CRITICAL**: No user identity verification
+
+#### 2. Cryptographic Failures (OWASP #2)
+- **HIGH**: Database passwords stored in plain text configuration
+- **HIGH**: No encryption for sensitive data in transit/rest
+- **HIGH**: No password hashing mechanisms
+- **HIGH**: No secure random token generation
+- **MEDIUM**: Default PostgreSQL credentials in development
+
+#### 3. Injection Vulnerabilities (OWASP #3)
+- **IMPLEMENTED**: Comprehensive SQL injection prevention testing
+- **PROTECTION**: SQLAlchemy ORM provides parameterized queries
+- **VALIDATED**: Malicious input stored safely as literal text
+- **TESTED**: Parameter validation and database integrity verification
+- **MEDIUM**: No NoSQL injection testing (not applicable currently)
+
+#### 4. Insecure Design (OWASP #4)
+- **HIGH**: No threat modeling performed
+- **HIGH**: Missing security-by-design principles
+- **HIGH**: No defense in depth architecture
+- **MEDIUM**: No secure development lifecycle
+
+#### 5. Security Misconfiguration (OWASP #5)
+- **CRITICAL**: CORS configured to allow all origins ("*")
+- **HIGH**: Debug mode potentially enabled in production
+- **HIGH**: Default database credentials ("todopass")
+- **HIGH**: No security headers implementation
+- **HIGH**: Detailed error messages expose system information
+- **MEDIUM**: No network security controls
+
+#### 6. Vulnerable and Outdated Components (OWASP #6)
+- **MEDIUM**: No automated vulnerability scanning
+- **MEDIUM**: No dependency version management
+- **MEDIUM**: External CDN dependencies (HTMX) without integrity checks
+- **LOW**: Regular security updates not automated
+
+#### 7. Identification and Authentication Failures (OWASP #7)  
+- **CRITICAL**: No user identification system
+- **CRITICAL**: No authentication failure handling
+- **CRITICAL**: No account lockout mechanisms
+- **CRITICAL**: No password policy enforcement
+
+#### 8. Software and Data Integrity Failures (OWASP #8)
+- **HIGH**: No integrity verification for external dependencies
+- **HIGH**: No secure CI/CD pipeline verification
+- **MEDIUM**: No code signing implementation
+- **MEDIUM**: No tamper detection mechanisms
+
+#### 9. Security Logging and Monitoring Failures (OWASP #9)
+- **HIGH**: No security event logging (authentication failures, access violations)
+- **HIGH**: No audit trails for sensitive operations
+- **HIGH**: No alerting on suspicious activities
+- **MEDIUM**: Request logging exists but lacks security context
+- **MEDIUM**: No intrusion detection capabilities
+
+#### 10. Server-Side Request Forgery (SSRF) (OWASP #10)
+- **HIGH**: External image fetching without URL validation
+- **HIGH**: No allowlist for external domains (picsum.photos)
+- **HIGH**: Potential internal network access via image URLs
+- **MEDIUM**: No timeout/rate limiting on external requests
+
+### Additional Security Concerns
+
+#### Cross-Site Scripting (XSS)
+- **HIGH**: Inline JavaScript in HTML templates
+- **HIGH**: Direct user input rendering without proper escaping
+- **HIGH**: No Content Security Policy (CSP) headers
+- **MEDIUM**: HTMX usage without XSS protection verification
+
+#### Business Logic Vulnerabilities
+- **HIGH**: No rate limiting on todo creation/modification
+- **HIGH**: No size limits on todo content beyond 140 chars
+- **HIGH**: No ownership verification between users and todos
+- **MEDIUM**: No abuse prevention mechanisms
+
+#### Information Disclosure
+- **HIGH**: Detailed error messages reveal system architecture
+- **HIGH**: Debug information potentially exposed in logs
+- **HIGH**: Database schema information accessible
+- **MEDIUM**: System fingerprinting via error responses
+
+#### Denial of Service (DoS)
+- **HIGH**: No rate limiting on API endpoints
+- **HIGH**: No resource consumption limits
+- **HIGH**: No request size limitations
+- **MEDIUM**: Database connection pool exhaustion possible
 
 ### Database Reliability
 - Connection pool exhaustion
@@ -232,41 +327,248 @@ async def test_client(test_db_manager):
 
 ## Risk Assessment
 
-| Risk Area | Current Coverage | Impact | Likelihood | Priority |
+| Risk Area | Current Coverage | Impact | Cloud Risk | Priority |
 |-----------|------------------|---------|------------|----------|
-| SQL Injection | None | High | Medium | High |
-| Database Downtime | None | High | Medium | High |
-| Load/Concurrency | None | High | High | High |
-| Container Limits | None | Medium | High | Medium |
-| Input Sanitization | None | Medium | Medium | Medium |
-| Graceful Shutdown | None | Medium | Low | Low |
+| **IMMEDIATE FOR CLOUD DEPLOYMENT** |
+| CORS Misconfiguration | None | Medium | High | **HIGH** |
+| No Security Headers | None | Medium | High | **HIGH** |
+| Rate Limiting Missing | None | High | High | **HIGH** |
+| **HIGH PRIORITY FIXES** |
+| SQL Injection | **IMPLEMENTED** | High | Medium | **COMPLETE** |
+| XSS Vulnerabilities | None | High | Medium | **HIGH** |
+| SSRF via Image Fetching | None | High | Medium | **HIGH** |
+| Information Disclosure | None | Medium | High | **MEDIUM** |
+| **COURSE PROJECT ACCEPTABLE** |
+| No Authentication | None | Critical | Low* | **FUTURE** |
+| No Authorization | None | Critical | Low* | **FUTURE** |
+| Default Local Credentials | None | Low | Low | **LOW** |
+| **OPERATIONAL CONCERNS** |
+| Database Downtime | None | High | Medium | **MEDIUM** |
+| Load/Concurrency | None | High | High | **MEDIUM** |
+| Security Logging | Partial | Medium | Medium | **MEDIUM** |
+| Container Limits | None | Medium | High | **MEDIUM** |
+
+*Low risk for course project - single-user environment assumed
+
+### Practical Security Risk Matrix
+
+| Security Area | Local Dev Risk | Cloud Risk | Effort | Course Priority |
+|---------------|----------------|------------|---------|-----------------|
+| CORS Configuration | Low | **HIGH** | **LOW** | **IMMEDIATE** |
+| Security Headers | Low | **HIGH** | **LOW** | **IMMEDIATE** |
+| Rate Limiting | Low | **HIGH** | **MEDIUM** | **HIGH** |
+| SQL Injection | Low | **HIGH** | **LOW** | **COMPLETE** |
+| XSS Prevention | Low | **HIGH** | **LOW** | **HIGH** |
+| Authentication | Low | High | **HIGH** | **FUTURE** |
+| SSRF Protection | Low | **MEDIUM** | **LOW** | **MEDIUM** |
 
 ## Recommended Test Additions
 
-### High Priority
-```python
-# SQL Injection Prevention
-async def test_sql_injection_in_todo_text():
-    malicious_input = {"text": "'; DROP TABLE todos; --"}
-    response = await test_client.post("/todos", json=malicious_input)
-    assert response.status_code == 201
+### IMMEDIATE PRIORITY - Cloud Deployment Readiness
 
-# Database Connection Failure
-async def test_database_unavailable_returns_503():
-    with patch('src.database.connection.db_manager') as mock_db:
-        mock_db.get_session.side_effect = ConnectionError()
-        response = await test_client.get("/todos")
-        assert response.status_code == 503
+#### Security Configuration Tests
+```python
+# Test CORS security for cloud deployment
+async def test_cors_configuration_for_production():
+    """Test that CORS is properly configured for production."""
+    response = await test_client.options("/todos")
+    cors_header = response.headers.get("access-control-allow-origin")
+    
+    # For course project, should allow specific domains, not wildcard
+    if os.getenv("ENVIRONMENT") == "production":
+        assert cors_header != "*"
+        # Should be specific domains like:
+        # "https://todo.your-cluster.azure.com"
+        # "http://todo-app-fe:8000"
+
+# Test security headers for cloud deployment
+async def test_security_headers_present():
+    """Test presence of basic security headers."""
+    response = await test_client.get("/todos")
+    headers = response.headers
+    
+    # Basic security headers for cloud deployment
+    assert "x-content-type-options" in headers
+    assert "x-frame-options" in headers  
+    # Note: HSTS only needed if HTTPS is terminated at app level
 ```
 
-### Medium Priority
+#### Rate Limiting Tests
 ```python
-# Load Testing
-async def test_concurrent_todo_creation():
-    tasks = [test_client.post("/todos", json={"text": f"Todo {i}"}) 
-             for i in range(100)]
-    responses = await asyncio.gather(*tasks)
-    assert all(r.status_code == 201 for r in responses)
+# Test basic rate limiting
+async def test_rate_limiting_prevents_abuse():
+    """Test that rapid requests are throttled."""
+    # This is important for cloud deployment
+    tasks = []
+    for i in range(50):  # Reduced from 100 for course project
+        task = test_client.post("/todos", json={"text": f"Test {i}"})
+        tasks.append(task)
+    
+    responses = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Should have some rate limiting mechanism
+    successful = [r for r in responses if hasattr(r, 'status_code') and r.status_code == 201]
+    # For course project: allow more requests but should have some limit
+    assert len(successful) < 50, "Should have some rate limiting in place"
+```
+
+### HIGH PRIORITY - Input Security
+
+#### SQL Injection Prevention Tests (IMPLEMENTED)
+```python
+# Test SQL injection prevention in todo text creation
+async def test_sql_injection_in_todo_text_creation(test_client: AsyncClient):
+    """Test that SQL injection attempts in todo text are safely handled."""
+    malicious_inputs = [
+        "'; DROP TABLE todos; --",
+        "1' OR '1'='1",
+        "'; DELETE FROM todos--",
+        "' UNION SELECT * FROM todos--",
+        "'; INSERT INTO todos (text) VALUES ('hacked'); --",
+    ]
+    
+    for malicious_input in malicious_inputs:
+        response = await test_client.post("/todos", json={"text": malicious_input})
+        
+        # SQLAlchemy ORM protects us - verify safe handling
+        assert response.status_code in [201, 400, 422]
+        
+        if response.status_code == 201:
+            todo_id = response.json()["id"]
+            get_response = await test_client.get(f"/todos/{todo_id}")
+            assert get_response.status_code == 200
+            # Text stored as-is, not executed
+            assert get_response.json()["text"] == malicious_input
+
+# Test SQL injection prevention in ID parameters
+async def test_sql_injection_in_todo_id_parameters(test_client: AsyncClient):
+    """Test SQL injection protection in URL parameters."""
+    malicious_ids = [
+        "1'; DROP TABLE todos; --",
+        "1 OR 1=1",
+        "1; DELETE FROM todos",
+    ]
+    
+    for malicious_id in malicious_ids:
+        get_response = await test_client.get(f"/todos/{malicious_id}")
+        assert get_response.status_code in [404, 422]  # Safe rejection
+
+# Test database stability under injection attacks  
+async def test_database_stability_under_injection_attacks(test_client: AsyncClient):
+    """Test database remains stable under sustained attacks."""
+    # Multiple dangerous payloads processed safely
+    # Database integrity maintained throughout
+```
+
+#### Practical SQL Injection Tests  
+```python
+# Test SQL injection prevention (realistic for course project)
+async def test_sql_injection_prevention():
+    """Test that SQL injection attempts are safely handled."""
+    malicious_inputs = [
+        "'; DROP TABLE todos; --",
+        "1' OR '1'='1",
+        "'; DELETE FROM todos--",
+    ]
+    
+    for malicious_input in malicious_inputs:
+        response = await test_client.post("/todos", json={"text": malicious_input})
+        
+        # SQLAlchemy ORM should protect us, but verify:
+        # 1. Request doesn't crash the server
+        assert response.status_code in [201, 400, 422]
+        
+        # 2. If accepted, data is stored safely
+        if response.status_code == 201:
+            todo_id = response.json()["id"]
+            get_response = await test_client.get(f"/todos/{todo_id}")
+            assert get_response.status_code == 200
+            # Text should be stored as-is, not executed
+            assert get_response.json()["text"] == malicious_input
+```
+
+#### XSS Prevention Tests
+```python
+# Test XSS prevention for course project
+async def test_basic_xss_prevention():
+    """Test that XSS payloads are safely stored."""
+    xss_payloads = [
+        "<script>alert('xss')</script>",
+        "<img src=x onerror=alert('xss')>",
+        "javascript:alert('xss')",
+    ]
+    
+    for payload in xss_payloads:
+        response = await test_client.post("/todos", json={"text": payload})
+        assert response.status_code == 201
+        
+        # Backend should store data safely (frontend handles rendering)
+        todo_id = response.json()["id"]
+        get_response = await test_client.get(f"/todos/{todo_id}")
+        stored_text = get_response.json()["text"]
+        # Data stored as-is - frontend responsible for safe rendering
+        assert stored_text == payload
+```
+
+### MEDIUM PRIORITY - Operational Security
+
+#### Input Validation Tests
+```python
+# Test input size limits
+async def test_input_size_limits():
+    """Test that oversized inputs are rejected."""
+    # Test beyond 140 char limit
+    large_text = "A" * 1000
+    response = await test_client.post("/todos", json={"text": large_text})
+    assert response.status_code == 422  # Validation error
+    
+    # Test empty inputs
+    response = await test_client.post("/todos", json={"text": ""})
+    assert response.status_code == 422
+
+# Test malformed requests
+async def test_malformed_request_handling():
+    """Test that malformed requests are handled gracefully."""
+    # Missing required fields
+    response = await test_client.post("/todos", json={})
+    assert response.status_code == 422
+    
+    # Invalid JSON structure
+    response = await test_client.post("/todos", json={"invalid": "structure"})
+    assert response.status_code == 422
+```
+
+#### Error Handling Tests
+```python
+# Test error information disclosure
+async def test_error_responses_dont_leak_info():
+    """Test that error responses don't expose system details."""
+    # Test with non-existent todo
+    response = await test_client.get("/todos/999999")
+    assert response.status_code == 404
+    
+    error_detail = response.json().get("detail", "")
+    # Should not expose database info, file paths, etc.
+    assert "database" not in error_detail.lower()
+    assert "postgres" not in error_detail.lower()
+    assert "/" not in error_detail  # No file paths
+```
+
+### FUTURE CONSIDERATIONS (Post-Course)
+
+#### Authentication Framework Tests
+```python
+# Placeholder for future authentication implementation
+async def test_authentication_framework():
+    """Future: Test authentication when implemented."""
+    # This would be implemented if the course project evolved to multi-user
+    pass
+
+# Placeholder for authorization tests
+async def test_user_data_isolation():
+    """Future: Test that users can only access their own data."""
+    # Would require user accounts and session management
+    pass
 ```
 
 ## Production Readiness
@@ -414,8 +716,8 @@ def test_new_feature(test_client: TestClient):  # Avoid - causes issues
 
 ### Test Performance
 - Unit tests: ~0.1 seconds (no database)
-- Integration tests: ~1.0 seconds (with PostgreSQL)  
-- Total suite: ~1.1 seconds (66 tests)
+- Integration tests: ~1.5 seconds (with PostgreSQL)  
+- Total suite: ~1.6 seconds (75 tests)
 - Database startup: ~2-3 seconds (only if container not running)
 
 ### Debugging Tests
@@ -439,6 +741,7 @@ uv run pytest tests/ --pdb
 - Container integration: PostgreSQL test database automation
 - Test isolation: Per-test database state management
 - CI/CD integration: Automated testing pipeline
+- **SQL injection prevention: Comprehensive security testing**
 
 ### Planned Enhancements
 - Contract testing
@@ -456,5 +759,5 @@ uv run pytest tests/ --pdb
 
 ---
 
-**Status**: Strong foundation for development and basic deployment. Requires security and performance testing for production readiness.
+**Status**: Strong foundation for development and basic deployment. **SQL injection protection implemented and validated**. Priority security fixes needed for cloud deployment: CORS configuration, basic security headers, rate limiting, and input validation. Authentication can be addressed in future iterations as the project scales beyond single-user course demonstration.
 
