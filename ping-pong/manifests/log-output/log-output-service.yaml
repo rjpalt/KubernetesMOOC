@@ -4,7 +4,7 @@ metadata:
   namespace: exercises
   name: log-output-svc
 spec:
-  type: LoadBalancer
+  type: NodePort
   selector:
     app: log-output     # This is the app as declared in the deployment.
   ports:

@@ -101,6 +101,8 @@ volumeMounts:
         subPath: postgres # Added subPath to ensure a clean directory for PostgreSQL initialization
 ```
 
+More info here: https://learn.microsoft.com/en-us/azure/aks/azure-csi-disk-storage-provision
+
 # Docker changes #
 The AKS does not support mac or Windows images, so we need to build the image on a Linux machine. The Dockerfile is already set up for that. Command to explicitly build the image for Linux:
 ```bash
@@ -120,4 +122,36 @@ docker push kubemooc.azurecr.io/log-output-app:3.1
 Command to check the tags of the images in the ACR:
 ```bash
 az acr repository show-tags --name kubemooc --repository log-output-app --output table
+```
+
+### Enabling AKS App Routing for Ingress ###
+To enable AKS App Routing, you need to create an App Routing add-on. This will allow you to use the Azure Application Gateway for ingress traffic management.
+
+- AKS requires manual ingress controller setup (GKE has it built-in)
+- App Routing add-on provides managed NGINX ingress controller
+- Ingress resource must reference the correct ingress class to be processed
+- External IP provisioning takes 2-3 minutes after proper configuration
+
+```bash
+az aks approuting enable --resource-group kubernetes-learning --name kube-mooc
+```
+
+Check app routing status:
+```bash
+kubectl get pods -n app-routing-system
+```
+
+Check available ingressClass:
+```bash
+kubectl get ingressclass
+```
+
+The deployed ingressClass has to bereferenced in the Ingress manifest. Update the Ingress manifest to use the Azure Application Gateway ingress class:
+```yaml
+spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
+```
+Get the ingress IP address:
+```bash
+kubectl get ingress
 ```

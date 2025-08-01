@@ -4,6 +4,7 @@ metadata:
   namespace: exercises
   name: ping-pong-ingress
 spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
   rules:
   - http:
       paths:
