@@ -37,6 +37,25 @@ Access:
 - Frontend: http://localhost:8000
 - Backend API docs: http://localhost:8001/docs
 
+## Security Features
+
+### XSS Protection ✅
+- **Content Security Policy (CSP)**: Strict CSP headers prevent script injection
+- **Security Headers**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
+- **Template Escaping**: Jinja2 auto-escaping prevents XSS in user content
+- **Input Validation**: Malicious payloads stored safely as literal text
+
+### SQL Injection Protection ✅  
+- **SQLAlchemy ORM**: Parameterized queries prevent SQL injection
+- **Input Validation**: Parameter type validation and sanitization
+- **Database Integrity**: Comprehensive testing against injection attacks
+
+### API Security
+- **Request Logging**: Structured logging with correlation IDs
+- **Error Handling**: Secure error responses without information disclosure
+- **CORS Configuration**: Configurable cross-origin resource sharing
+- **Content Type Validation**: Proper content type enforcement
+
 ## Docker Images
 
 ### Environment Configuration
@@ -128,8 +147,9 @@ cd ../todo-app && uv run pytest tests/ -v
 ```
 
 ### Test Coverage
-- **Backend**: 58 tests covering unit tests, integration tests, API validation
-- **Frontend**: Contract tests, service integration, UI components  
+- **Backend**: 85 tests covering unit tests, integration tests, API validation, security
+- **Frontend**: 49 tests covering contract tests, service integration, UI components, security
+- **Security**: 20 tests specifically for XSS and SQL injection prevention
 - **Philosophy**: Each service tested independently for microservice isolation
 
 See `todo-backend/tests/TEST_PLAN.md` for comprehensive testing documentation.
@@ -175,4 +195,7 @@ The workflow automatically detects ACT execution (`github.actor == 'nektos/act'`
 - Automatic image fetching from picsum.photos
 - Health check endpoints for monitoring
 - OpenAPI documentation for both services
+- **Security**: XSS prevention, SQL injection protection, security headers
+- **Testing**: Comprehensive test coverage including security testing
+- **Observability**: Request logging with correlation IDs
 - Codecov on project pages for front and backend coverage

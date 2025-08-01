@@ -16,7 +16,7 @@ tests/
 └── conftest.py              # Test configuration with async support
 ```
 
-**Status**: 75/75 tests passing
+**Status**: 95/95 tests passing
 
 ## Running Tests
 
@@ -124,7 +124,7 @@ async def test_client(test_db_manager):
 
 ## Test Coverage Analysis
 
-### Test Inventory (75 Tests Total)
+### Test Inventory (95 Tests Total)
 
 #### Unit Tests (35 tests)
 **test_models.py** - Data Model Validation (18 tests)
@@ -139,7 +139,7 @@ async def test_client(test_db_manager):
 - Edge cases (3 tests)
 - Data integrity (4 tests)
 
-#### Integration Tests (40 tests)
+#### Integration Tests (60 tests)
 **test_todo_api_structure.py** - API Infrastructure (7 tests)
 - Health endpoint structure and availability
 - API documentation endpoints (/docs, /openapi.json)
@@ -170,6 +170,21 @@ async def test_client(test_db_manager):
 - Update operation injection testing
 - Database stability under sustained injection attacks
 - Parameter type validation preventing SQL injection
+
+**test_xss_prevention.py** - XSS Prevention Security (10 tests) ✅ NEW
+- XSS payload storage safety testing (7 tests)
+- Security headers implementation (X-Content-Type-Options, X-Frame-Options, CSP)
+- Content type enforcement and validation
+- Error response security (XSS payload reflection prevention)
+- Unicode and encoded payload handling
+- Security headers on all endpoints verification
+
+**test_security_headers.py** - Comprehensive Security Headers (10 tests) ✅ NEW
+- Content Security Policy configuration and validation
+- Security headers presence across all endpoints
+- Referrer Policy implementation
+- X-XSS-Protection header validation
+- Permissions Policy configuration
 
 ### Test Category Validation
 
@@ -207,369 +222,89 @@ async def test_client(test_db_manager):
 
 ## Test Gaps
 
-### Critical Security Vulnerabilities (OWASP Top 10)
+## Security Vulnerabilities Summary
 
-#### 1. Broken Authentication & Authorization (OWASP #1)
-- **CRITICAL**: No authentication mechanism implemented
-- **CRITICAL**: No authorization controls on any endpoints  
-- **CRITICAL**: Any user can access/modify any todo
-- **CRITICAL**: No session management
-- **CRITICAL**: No user identity verification
+### OWASP Top 10 Risk Assessment
 
-#### 2. Cryptographic Failures (OWASP #2)
-- **HIGH**: Database passwords stored in plain text configuration
-- **HIGH**: No encryption for sensitive data in transit/rest
-- **HIGH**: No password hashing mechanisms
-- **HIGH**: No secure random token generation
-- **MEDIUM**: Default PostgreSQL credentials in development
-
-#### 3. Injection Vulnerabilities (OWASP #3)
-- **IMPLEMENTED**: Comprehensive SQL injection prevention testing
-- **PROTECTION**: SQLAlchemy ORM provides parameterized queries
-- **VALIDATED**: Malicious input stored safely as literal text
-- **TESTED**: Parameter validation and database integrity verification
-- **MEDIUM**: No NoSQL injection testing (not applicable currently)
-
-#### 4. Insecure Design (OWASP #4)
-- **HIGH**: No threat modeling performed
-- **HIGH**: Missing security-by-design principles
-- **HIGH**: No defense in depth architecture
-- **MEDIUM**: No secure development lifecycle
-
-#### 5. Security Misconfiguration (OWASP #5)
-- **CRITICAL**: CORS configured to allow all origins ("*")
-- **HIGH**: Debug mode potentially enabled in production
-- **HIGH**: Default database credentials ("todopass")
-- **HIGH**: No security headers implementation
-- **HIGH**: Detailed error messages expose system information
-- **MEDIUM**: No network security controls
-
-#### 6. Vulnerable and Outdated Components (OWASP #6)
-- **MEDIUM**: No automated vulnerability scanning
-- **MEDIUM**: No dependency version management
-- **MEDIUM**: External CDN dependencies (HTMX) without integrity checks
-- **LOW**: Regular security updates not automated
-
-#### 7. Identification and Authentication Failures (OWASP #7)  
-- **CRITICAL**: No user identification system
-- **CRITICAL**: No authentication failure handling
-- **CRITICAL**: No account lockout mechanisms
-- **CRITICAL**: No password policy enforcement
-
-#### 8. Software and Data Integrity Failures (OWASP #8)
-- **HIGH**: No integrity verification for external dependencies
-- **HIGH**: No secure CI/CD pipeline verification
-- **MEDIUM**: No code signing implementation
-- **MEDIUM**: No tamper detection mechanisms
-
-#### 9. Security Logging and Monitoring Failures (OWASP #9)
-- **HIGH**: No security event logging (authentication failures, access violations)
-- **HIGH**: No audit trails for sensitive operations
-- **HIGH**: No alerting on suspicious activities
-- **MEDIUM**: Request logging exists but lacks security context
-- **MEDIUM**: No intrusion detection capabilities
-
-#### 10. Server-Side Request Forgery (SSRF) (OWASP #10)
-- **HIGH**: External image fetching without URL validation
-- **HIGH**: No allowlist for external domains (picsum.photos)
-- **HIGH**: Potential internal network access via image URLs
-- **MEDIUM**: No timeout/rate limiting on external requests
+| Vulnerability | Highest Risk | Status | Priority |
+|---------------|--------------|---------|----------|
+| **1. Authentication & Authorization** | No auth mechanism, any user can access/modify data | **CRITICAL** | **FUTURE** |
+| **2. Cryptographic Failures** | Plain text DB passwords, no encryption | **HIGH** | **MEDIUM** |
+| **3. Injection Attacks** | SQL injection prevention implemented ✅ | **COMPLETE** | **COMPLETE** |
+| **4. Insecure Design** | No threat modeling, missing security principles | **HIGH** | **MEDIUM** |
+| **5. Security Misconfiguration** | CORS wildcard, default credentials | **CRITICAL** | **HIGH** |
+| **6. Vulnerable Components** | No vulnerability scanning, external CDN deps | **MEDIUM** | **MEDIUM** |
+| **7. Authentication Failures** | No user identity system | **CRITICAL** | **FUTURE** |
+| **8. Data Integrity Failures** | No external dependency verification | **HIGH** | **MEDIUM** |
+| **9. Logging & Monitoring** | No security event logging | **HIGH** | **MEDIUM** |
+| **10. SSRF Vulnerabilities** | External image fetching without validation | **HIGH** | **HIGH** |
 
 ### Additional Security Concerns
 
-#### Cross-Site Scripting (XSS)
-- **HIGH**: Inline JavaScript in HTML templates
-- **HIGH**: Direct user input rendering without proper escaping
-- **HIGH**: No Content Security Policy (CSP) headers
-- **MEDIUM**: HTMX usage without XSS protection verification
+| Area | Key Issues | Risk Level | Priority |
+|------|------------|------------|----------|
+| **Cross-Site Scripting (XSS)** | XSS prevention implemented with CSP ✅ | **COMPLETE** | **COMPLETE** |
+| **Business Logic** | No rate limiting, size limits, ownership verification | **HIGH** | **HIGH** |
+| **Information Disclosure** | Detailed error messages expose system info | **HIGH** | **MEDIUM** |
+| **Denial of Service** | No rate limiting, resource limits | **HIGH** | **HIGH** |
 
-#### Business Logic Vulnerabilities
-- **HIGH**: No rate limiting on todo creation/modification
-- **HIGH**: No size limits on todo content beyond 140 chars
-- **HIGH**: No ownership verification between users and todos
-- **MEDIUM**: No abuse prevention mechanisms
+### Operational Gaps
 
-#### Information Disclosure
-- **HIGH**: Detailed error messages reveal system architecture
-- **HIGH**: Debug information potentially exposed in logs
-- **HIGH**: Database schema information accessible
-- **MEDIUM**: System fingerprinting via error responses
-
-#### Denial of Service (DoS)
-- **HIGH**: No rate limiting on API endpoints
-- **HIGH**: No resource consumption limits
-- **HIGH**: No request size limitations
-- **MEDIUM**: Database connection pool exhaustion possible
-
-### Database Reliability
-- Connection pool exhaustion
-- Transaction rollback
-- Database downtime scenarios
-- Data migration testing
-
-### Performance & Scalability
-- Load testing
-- Large dataset performance
-- Memory usage validation
-- Response time SLAs
-
-### Operational Readiness  
-- Graceful shutdown
-- Resource constraints
-- Log format validation
-- Monitoring metrics
-
-### Integration Boundaries
-- Network failures
-- Timeout handling
-- Configuration management
-- Secret management
+| Category | Missing Areas |
+|----------|---------------|
+| **Database Reliability** | Connection pool exhaustion, transaction rollback, downtime scenarios |
+| **Performance & Scalability** | Load testing, large dataset performance, memory validation |
+| **Operational Readiness** | Graceful shutdown, resource constraints, monitoring metrics |
+| **Integration Boundaries** | Network failures, timeout handling, configuration management |
 
 ## Risk Assessment
 
-| Risk Area | Current Coverage | Impact | Cloud Risk | Priority |
-|-----------|------------------|---------|------------|----------|
-| **IMMEDIATE FOR CLOUD DEPLOYMENT** |
-| CORS Misconfiguration | None | Medium | High | **HIGH** |
-| No Security Headers | None | Medium | High | **HIGH** |
-| Rate Limiting Missing | None | High | High | **HIGH** |
-| **HIGH PRIORITY FIXES** |
-| SQL Injection | **IMPLEMENTED** | High | Medium | **COMPLETE** |
-| XSS Vulnerabilities | None | High | Medium | **HIGH** |
-| SSRF via Image Fetching | None | High | Medium | **HIGH** |
-| Information Disclosure | None | Medium | High | **MEDIUM** |
-| **COURSE PROJECT ACCEPTABLE** |
-| No Authentication | None | Critical | Low* | **FUTURE** |
-| No Authorization | None | Critical | Low* | **FUTURE** |
-| Default Local Credentials | None | Low | Low | **LOW** |
-| **OPERATIONAL CONCERNS** |
-| Database Downtime | None | High | Medium | **MEDIUM** |
-| Load/Concurrency | None | High | High | **MEDIUM** |
-| Security Logging | Partial | Medium | Medium | **MEDIUM** |
-| Container Limits | None | Medium | High | **MEDIUM** |
+### Cloud Deployment Priority Matrix
+
+| Priority Level | Risk Area | Current Coverage | Impact | Cloud Risk | Action Required |
+|---------------|-----------|------------------|---------|------------|-----------------|
+| **IMMEDIATE** | CORS Misconfiguration | None | Medium | **HIGH** | Configure specific domains |
+| **IMMEDIATE** | Security Headers | **IMPLEMENTED** | Medium | Low | **COMPLETE** ✅ |
+| **HIGH** | Rate Limiting Missing | None | High | **HIGH** | Implement throttling |
+| **HIGH** | SQL Injection | **IMPLEMENTED** | High | Medium | **COMPLETE** ✅ |
+| **HIGH** | XSS Vulnerabilities | **IMPLEMENTED** | High | Low | **COMPLETE** ✅ |
+| **HIGH** | SSRF via Image Fetching | None | High | **HIGH** | URL validation |
+| **MEDIUM** | Information Disclosure | None | Medium | **HIGH** | Error sanitization |
+| **MEDIUM** | Database Downtime | None | High | Medium | Resilience testing |
+| **MEDIUM** | Security Logging | Partial | Medium | Medium | Event tracking |
+| **FUTURE** | Authentication/Authorization | None | Critical | Low* | Multi-user features |
 
 *Low risk for course project - single-user environment assumed
 
-### Practical Security Risk Matrix
+### Security Implementation Status
 
-| Security Area | Local Dev Risk | Cloud Risk | Effort | Course Priority |
-|---------------|----------------|------------|---------|-----------------|
-| CORS Configuration | Low | **HIGH** | **LOW** | **IMMEDIATE** |
-| Security Headers | Low | **HIGH** | **LOW** | **IMMEDIATE** |
-| Rate Limiting | Low | **HIGH** | **MEDIUM** | **HIGH** |
-| SQL Injection | Low | **HIGH** | **LOW** | **COMPLETE** |
-| XSS Prevention | Low | **HIGH** | **LOW** | **HIGH** |
-| Authentication | Low | High | **HIGH** | **FUTURE** |
-| SSRF Protection | Low | **MEDIUM** | **LOW** | **MEDIUM** |
+| Security Area | Local Dev Risk | Cloud Risk | Implementation Effort | Course Priority | Status |
+|---------------|----------------|------------|---------------------|-----------------|---------|
+| CORS Configuration | Low | **HIGH** | **LOW** | **IMMEDIATE** | **PENDING** |
+| Security Headers | Low | **HIGH** | **LOW** | **IMMEDIATE** | **COMPLETE** ✅ |
+| Rate Limiting | Low | **HIGH** | **MEDIUM** | **HIGH** | **PENDING** |
+| SQL Injection Prevention | Low | **HIGH** | **LOW** | **HIGH** | **COMPLETE** ✅ |
+| XSS Prevention | Low | **LOW** | **LOW** | **HIGH** | **COMPLETE** ✅ |
+| SSRF Protection | Low | **MEDIUM** | **LOW** | **MEDIUM** | **PENDING** |
+| Authentication | Low | High | **HIGH** | **FUTURE** | **DEFERRED** |
 
 ## Recommended Test Additions
 
-### IMMEDIATE PRIORITY - Cloud Deployment Readiness
+### Priority Testing Roadmap
 
-#### Security Configuration Tests
-```python
-# Test CORS security for cloud deployment
-async def test_cors_configuration_for_production():
-    """Test that CORS is properly configured for production."""
-    response = await test_client.options("/todos")
-    cors_header = response.headers.get("access-control-allow-origin")
-    
-    # For course project, should allow specific domains, not wildcard
-    if os.getenv("ENVIRONMENT") == "production":
-        assert cors_header != "*"
-        # Should be specific domains like:
-        # "https://todo.your-cluster.azure.com"
-        # "http://todo-app-fe:8000"
+| Priority | Test Category | Focus Areas | Effort | Status |
+|----------|---------------|-------------|---------|---------|
+| **IMMEDIATE** | Security Configuration | CORS validation, rate limiting | **LOW** | **PENDING** |
+| **HIGH** | Input Security | Size limits, malformed requests | **LOW** | **PENDING** |
+| **MEDIUM** | Operational Security | Error disclosure, graceful degradation | **MEDIUM** | **PENDING** |
+| **FUTURE** | Authentication Framework | User isolation, session management | **HIGH** | **DEFERRED** |
 
-# Test security headers for cloud deployment
-async def test_security_headers_present():
-    """Test presence of basic security headers."""
-    response = await test_client.get("/todos")
-    headers = response.headers
-    
-    # Basic security headers for cloud deployment
-    assert "x-content-type-options" in headers
-    assert "x-frame-options" in headers  
-    # Note: HSTS only needed if HTTPS is terminated at app level
-```
+### Next Implementation Targets
 
-#### Rate Limiting Tests
-```python
-# Test basic rate limiting
-async def test_rate_limiting_prevents_abuse():
-    """Test that rapid requests are throttled."""
-    # This is important for cloud deployment
-    tasks = []
-    for i in range(50):  # Reduced from 100 for course project
-        task = test_client.post("/todos", json={"text": f"Test {i}"})
-        tasks.append(task)
-    
-    responses = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    # Should have some rate limiting mechanism
-    successful = [r for r in responses if hasattr(r, 'status_code') and r.status_code == 201]
-    # For course project: allow more requests but should have some limit
-    assert len(successful) < 50, "Should have some rate limiting in place"
-```
-
-### HIGH PRIORITY - Input Security
-
-#### SQL Injection Prevention Tests (IMPLEMENTED)
-```python
-# Test SQL injection prevention in todo text creation
-async def test_sql_injection_in_todo_text_creation(test_client: AsyncClient):
-    """Test that SQL injection attempts in todo text are safely handled."""
-    malicious_inputs = [
-        "'; DROP TABLE todos; --",
-        "1' OR '1'='1",
-        "'; DELETE FROM todos--",
-        "' UNION SELECT * FROM todos--",
-        "'; INSERT INTO todos (text) VALUES ('hacked'); --",
-    ]
-    
-    for malicious_input in malicious_inputs:
-        response = await test_client.post("/todos", json={"text": malicious_input})
-        
-        # SQLAlchemy ORM protects us - verify safe handling
-        assert response.status_code in [201, 400, 422]
-        
-        if response.status_code == 201:
-            todo_id = response.json()["id"]
-            get_response = await test_client.get(f"/todos/{todo_id}")
-            assert get_response.status_code == 200
-            # Text stored as-is, not executed
-            assert get_response.json()["text"] == malicious_input
-
-# Test SQL injection prevention in ID parameters
-async def test_sql_injection_in_todo_id_parameters(test_client: AsyncClient):
-    """Test SQL injection protection in URL parameters."""
-    malicious_ids = [
-        "1'; DROP TABLE todos; --",
-        "1 OR 1=1",
-        "1; DELETE FROM todos",
-    ]
-    
-    for malicious_id in malicious_ids:
-        get_response = await test_client.get(f"/todos/{malicious_id}")
-        assert get_response.status_code in [404, 422]  # Safe rejection
-
-# Test database stability under injection attacks  
-async def test_database_stability_under_injection_attacks(test_client: AsyncClient):
-    """Test database remains stable under sustained attacks."""
-    # Multiple dangerous payloads processed safely
-    # Database integrity maintained throughout
-```
-
-#### Practical SQL Injection Tests  
-```python
-# Test SQL injection prevention (realistic for course project)
-async def test_sql_injection_prevention():
-    """Test that SQL injection attempts are safely handled."""
-    malicious_inputs = [
-        "'; DROP TABLE todos; --",
-        "1' OR '1'='1",
-        "'; DELETE FROM todos--",
-    ]
-    
-    for malicious_input in malicious_inputs:
-        response = await test_client.post("/todos", json={"text": malicious_input})
-        
-        # SQLAlchemy ORM should protect us, but verify:
-        # 1. Request doesn't crash the server
-        assert response.status_code in [201, 400, 422]
-        
-        # 2. If accepted, data is stored safely
-        if response.status_code == 201:
-            todo_id = response.json()["id"]
-            get_response = await test_client.get(f"/todos/{todo_id}")
-            assert get_response.status_code == 200
-            # Text should be stored as-is, not executed
-            assert get_response.json()["text"] == malicious_input
-```
-
-#### XSS Prevention Tests
-```python
-# Test XSS prevention for course project
-async def test_basic_xss_prevention():
-    """Test that XSS payloads are safely stored."""
-    xss_payloads = [
-        "<script>alert('xss')</script>",
-        "<img src=x onerror=alert('xss')>",
-        "javascript:alert('xss')",
-    ]
-    
-    for payload in xss_payloads:
-        response = await test_client.post("/todos", json={"text": payload})
-        assert response.status_code == 201
-        
-        # Backend should store data safely (frontend handles rendering)
-        todo_id = response.json()["id"]
-        get_response = await test_client.get(f"/todos/{todo_id}")
-        stored_text = get_response.json()["text"]
-        # Data stored as-is - frontend responsible for safe rendering
-        assert stored_text == payload
-```
-
-### MEDIUM PRIORITY - Operational Security
-
-#### Input Validation Tests
-```python
-# Test input size limits
-async def test_input_size_limits():
-    """Test that oversized inputs are rejected."""
-    # Test beyond 140 char limit
-    large_text = "A" * 1000
-    response = await test_client.post("/todos", json={"text": large_text})
-    assert response.status_code == 422  # Validation error
-    
-    # Test empty inputs
-    response = await test_client.post("/todos", json={"text": ""})
-    assert response.status_code == 422
-
-# Test malformed requests
-async def test_malformed_request_handling():
-    """Test that malformed requests are handled gracefully."""
-    # Missing required fields
-    response = await test_client.post("/todos", json={})
-    assert response.status_code == 422
-    
-    # Invalid JSON structure
-    response = await test_client.post("/todos", json={"invalid": "structure"})
-    assert response.status_code == 422
-```
-
-#### Error Handling Tests
-```python
-# Test error information disclosure
-async def test_error_responses_dont_leak_info():
-    """Test that error responses don't expose system details."""
-    # Test with non-existent todo
-    response = await test_client.get("/todos/999999")
-    assert response.status_code == 404
-    
-    error_detail = response.json().get("detail", "")
-    # Should not expose database info, file paths, etc.
-    assert "database" not in error_detail.lower()
-    assert "postgres" not in error_detail.lower()
-    assert "/" not in error_detail  # No file paths
-```
-
-### FUTURE CONSIDERATIONS (Post-Course)
-
-#### Authentication Framework Tests
-```python
-# Placeholder for future authentication implementation
-async def test_authentication_framework():
-    """Future: Test authentication when implemented."""
-    # This would be implemented if the course project evolved to multi-user
-    pass
-
-# Placeholder for authorization tests
-async def test_user_data_isolation():
-    """Future: Test that users can only access their own data."""
-    # Would require user accounts and session management
-    pass
-```
+- **Rate Limiting Tests**: Prevent abuse in cloud deployment
+- **Input Validation Tests**: Size limits and malformed request handling  
+- **Error Handling Tests**: Prevent information disclosure
+- **CORS Security Tests**: Production-ready domain restrictions
 
 ## Production Readiness
 
@@ -759,5 +494,5 @@ uv run pytest tests/ --pdb
 
 ---
 
-**Status**: Strong foundation for development and basic deployment. **SQL injection protection implemented and validated**. Priority security fixes needed for cloud deployment: CORS configuration, basic security headers, rate limiting, and input validation. Authentication can be addressed in future iterations as the project scales beyond single-user course demonstration.
+**Status**: Strong foundation for development and basic deployment. **SQL injection and XSS prevention implemented and validated**. Priority security fixes needed for cloud deployment: CORS configuration, rate limiting, and input validation. Authentication can be addressed in future iterations as the project scales beyond single-user course demonstration.
 
