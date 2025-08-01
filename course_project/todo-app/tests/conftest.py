@@ -3,7 +3,7 @@
 Because apparently you need someone to set up proper testing infrastructure.
 """
 
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -55,8 +55,8 @@ def test_client(mock_todo_service, mock_image_service, mock_image_cache_manager)
         return mock_image_service
 
     def override_get_todo_backend_client():
-        # For the backend client, we can return a mock
-        return Mock(spec=TodoBackendClient)
+        # For the backend client, we need to use AsyncMock since it has async methods
+        return AsyncMock(spec=TodoBackendClient)
 
     def override_get_templates():
         # For templates, we can use the real one since it's just Jinja2

@@ -9,6 +9,7 @@ from .api.dependencies import get_background_task_manager_instance, initialize_d
 from .api.routes import health, images, todos
 from .config.settings import settings
 from .core.lifespan import create_lifespan_manager
+from .middleware.security import FrontendSecurityHeadersMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -33,6 +34,9 @@ def create_app() -> FastAPI:
 
     # Create FastAPI app
     app = FastAPI(title="Todo App with Hourly Images", version="0.2.0", lifespan=lifespan)
+
+    # Add security middleware (should be first)
+    app.add_middleware(FrontendSecurityHeadersMiddleware)
 
     # Include routers
     app.include_router(images.router)
