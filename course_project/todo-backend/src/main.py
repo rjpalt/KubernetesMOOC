@@ -17,6 +17,7 @@ from src.api.routes import health, todos
 from src.config.settings import settings
 from src.database.connection import db_manager
 from src.middleware.request_logging import RequestLoggingMiddleware
+from src.middleware.security import SecurityHeadersMiddleware, XSSProtectionMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -74,6 +75,10 @@ def create_app() -> FastAPI:
         version=settings.api_version,
         lifespan=lifespan,
     )
+
+    # Add security middleware (should be first for security headers)
+    app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(XSSProtectionMiddleware)
 
     # Add request logging middleware
     app.add_middleware(RequestLoggingMiddleware)
