@@ -592,3 +592,14 @@ az aks create --resource-group kubernetes-learning --name kube-mooc --node-count
 ```bash
 az aks get-credentials --resource-group kubernetes-learning --name kube-mooc
 ```
+
+Checking the connection:
+```bash
+kubectl get nodes
+```
+
+Switching between local context and AKS context:
+```bash
+kubectl config get-contexts
+kubectl config use-context <context-name>
+```

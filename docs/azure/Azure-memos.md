@@ -127,6 +127,8 @@ az acr repository show-tags --name kubemooc --repository log-output-app --output
 ### Enabling AKS App Routing for Ingress ###
 To enable AKS App Routing, you need to create an App Routing add-on. This will allow you to use the Azure Application Gateway for ingress traffic management.
 
+See Microsoft Learn documentation for details: https://learn.microsoft.com/en-us/azure/aks/app-routing
+
 - AKS requires manual ingress controller setup (GKE has it built-in)
 - App Routing add-on provides managed NGINX ingress controller
 - Ingress resource must reference the correct ingress class to be processed
