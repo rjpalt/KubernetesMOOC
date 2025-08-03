@@ -603,3 +603,86 @@ Switching between local context and AKS context:
 kubectl config get-contexts
 kubectl config use-context <context-name>
 ```
+
+---
+# Commands for the Gateway API creation #
+1. az extension add --name alb
+2. az extension add --name aks-preview --allow-preview true
+3. RESOURCE_GROUP='kubernetes-learning'
+4. AKS_NAME='kube-mooc'
+5. az ad signed-in-user show --query id -o tsv
+6. az role assignment create --assignee bc93447d-4d22-42bf-8852-88938a57dd5b --role "Contributor" --resource-group kubernetes-learning
+7. az aks update -g $RESOURCE_GROUP -n $AKS_NAME --enable-managed-identity
+8. az aks update -g $RESOURCE_GROUP -n $AKS_NAME --enable-oidc-issuer --enable-workload-identity --no-wait
+9. az aks disable-addons -g $RESOURCE_GROUP -n $AKS_NAME --addons monitoring
+10. az aks enable-addons -g $RESOURCE_GROUP -n $AKS_NAME --addons monitoring
+11. IDENTITY_RESOURCE_NAME='azure-alb-identity'
+12. mcResourceGroup=$(az aks show --resource-group $RESOURCE_GROUP --name $AKS_NAME --query "nodeResourceGroup" -o tsv)
+13. mcResourceGroupId=$(az group show --name $mcResourceGroup --query id -otsv)
+14. echo "Creating identity $IDENTITY_RESOURCE_NAME in resource group $RESOURCE_GROUP"
+15. az identity create --resource-group $RESOURCE_GROUP --name $IDENTITY_RESOURCE_NAME
+16. principalId="$(az identity show -g $RESOURCE_GROUP -n $IDENTITY_RESOURCE_NAME --query principalId -otsv)"
+17. az role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --scope $mcResourceGroupId --role "acdd72a7-3385-48ef-bd42-f606fba81ae7"
+18. AKS_OIDC_ISSUER="$(az aks show -n "$AKS_NAME" -g "$RESOURCE_GROUP" --query "oidcIssuerProfile.issuerUrl" -o tsv)"
+19. HELM_NAMESPACE='azure-alb-system'
+20. CONTROLLER_NAMESPACE='azure-alb-system'
+21. az aks get-credentials --resource-group $RESOURCE_GROUP --name $AKS_NAME
+22. kubectl create namespace azure-alb-system namespace/azure-alb-system created
+23. helm install alb-controller oci://mcr.microsoft.com/application-lb/charts/alb-controller \
+     --namespace $HELM_NAMESPACE \
+     --version 1.7.9 \
+     --set albController.namespace=$CONTROLLER_NAMESPACE \
+     --set albController.podIdentity.clientID=$(az identity show -g $RESOURCE_GROUP -n azure-alb-identity --query clientId -o tsv)
+24. kubectl get pods -n azure-alb-system
+25. helm list -n $HELM_NAMESPACE
+26. kubectl get pod -A -l app=alb-controller
+27. kubectl get gatewayclass azure-alb-external -o yaml
+
+Subnet for ALB Association
+28. MC_RESOURCE_GROUP=$mcResourceGroup
+29. MC_RESOURCE_GROUP_ID=$mcResourceGroupId
+30. CLUSTER_SUBNET_ID=$(az vmss list --resource-group $MC_RESOURCE_GROUP --query '[0].virtualMachineProfile.networkProfile.networkInterfaceConfigurations[0].ipConfigurations[0].subnet.id' -o tsv)
+31. read -d '' VNET_NAME VNET_RESOURCE_GROUP VNET_ID <<< $(az network vnet show --ids $CLUSTER_SUBNET_ID --query '[name, resourceGroup, id]' -o tsv)
+32. echo "VNET_NAME=$VNET_NAME, VNET_RESOURCE_GROUP=$VNET_RESOURCE_GROUP, VNET_ID=$VNET_ID"
+33. ALB_SUBNET_NAME='subnet-alb'
+34. az network vnet show --resource-group $VNET_RESOURCE_GROUP --name $VNET_NAME --query "addressSpace.addressPrefixes" -o tsv
+35. az network vnet subnet list --resource-group $VNET_RESOURCE_GROUP --vnet-name $VNET_NAME --query "[].{Name:name, Prefix:addressPrefix}" -o table
+36. SUBNET_ADDRESS_PREFIX='10.226.0.0/24'
+37. rasmuspaltschik@Rasmuss-MacBook-Pro KubernetesMOOC % az network vnet subnet create \
+  --resource-group $VNET_RESOURCE_GROUP \
+  --vnet-name $VNET_NAME \
+  --name $ALB_SUBNET_NAME \
+  --address-prefixes $SUBNET_ADDRESS_PREFIX \
+  --delegations 'Microsoft.ServiceNetworking/trafficControllers'
+(NetcfgSubnetRangeOutsideVnet) Subnet 'subnet-alb' is not valid because its IP address range is outside the IP address range of virtual network 'aks-vnet-34152116'.
+Code: NetcfgSubnetRangeOutsideVnet
+Message: Subnet 'subnet-alb' is not valid because its IP address range is outside the IP address range of virtual network 'aks-vnet-34152116'.
+38. ALB_SUBNET_ID=$(az network vnet subnet show --name $ALB_SUBNET_NAME --resource-group $VNET_RESOURCE_GROUP --vnet-name $VNET_NAME --query '[id]' --output tsv)
+
+Delegate the subnet to the ALB Controller
+39. az role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --scope $mcResourceGroupId --role "fbc52c3f-28ad-4303-a892-8a056630b8f1"
+40. az role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal --scope $ALB_SUBNET_ID --role "4d97b98b-1d4f-4787-a291-c67834d212e7"
+
+Install Application Load Balancer
+41. ALB='default-alb'
+42. 
+```bash
+tee -a nsa2-alb.yaml > /dev/null <<EOF
+
+apiVersion: alb.networking.azure.io/v1
+kind: ApplicationLoadBalancer
+metadata:
+  name: $ALB
+  namespace: nsa2
+spec:
+  associations:
+  - $ALB_SUBNET_ID
+EOF
+```
+43. kubectl create namespace nsa2
+44.kubectl apply -f nsa2-alb.yaml
+45. kubectl -n nsa2 get applicationloadbalancer
+46. kubectl -n nsa2 get applicationloadbalancer default-alb -o yaml -w
+47. Create the Gateway resource
+48. kubectl apply -f manifests/shared/k8s-nsa2-gateway.yaml
+49. fqdn=$(kubectl get gateway k8s-nsa2-gateway -n nsa2 -o jsonpath='{.status.addresses[0].value}')
