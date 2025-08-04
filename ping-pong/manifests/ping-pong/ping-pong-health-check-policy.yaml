@@ -1,0 +1,17 @@
+apiVersion: alb.networking.azure.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: ping-pong-health-check
+  namespace: exercises
+spec:
+  targetRef:
+    group: ""
+    kind: Service
+    name: ping-pong-svc
+  default:
+    interval: 5s
+    timeout: 2s
+    unhealthyThreshold: 3
+    healthyThreshold: 2
+    http:
+      path: "/health"

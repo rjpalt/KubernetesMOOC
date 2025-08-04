@@ -526,3 +526,53 @@ curl http://$fqdn
 ```
 
 You should see the "Welcome to nginx\!" default page.
+
+## Custom Health Checks for ALB ##
+
+### Troubleshooting "no healthy upstream" Error
+
+When using Azure Application Gateway for Containers, you may encounter the error "no healthy upstream" when trying to access your application through HTTPRoute. This error indicates that the ALB Controller considers your backend service unhealthy.
+
+**Root Cause:**
+By default, Azure ALB performs health checks on the root path (`/`) of your backend services. If your application doesn't implement a root endpoint or returns a non-2xx status code, the ALB marks it as unhealthy and refuses to route traffic to it.
+
+**Diagnostic Steps:**
+1. **Verify service health directly**: Test your service endpoints within the cluster
+   ```bash
+   kubectl run test-pod --image=busybox --rm -it --restart=Never -n exercises -- wget -qO- http://your-service:port/
+   kubectl run test-pod --image=busybox --rm -it --restart=Never -n exercises -- wget -qO- http://your-service:port/health
+   ```
+
+2. **Check ALB Controller logs**: Look for health check failures
+   ```bash
+   kubectl logs -n azure-alb-system -l app=alb-controller --tail=100 | grep -i health
+   ```
+
+**Solution: Custom Health Check Policy**
+Create a `HealthCheckPolicy` resource to specify a custom health check endpoint for services that don't implement the root path:
+
+```yaml
+apiVersion: alb.networking.azure.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: ping-pong-health-check
+  namespace: exercises
+spec:
+  targetRef:
+    group: ""
+    kind: Service
+    name: ping-pong-svc
+  default:
+    interval: 5s
+    timeout: 2s
+    unhealthyThreshold: 3
+    healthyThreshold: 2
+    http:
+      path: "/health"
+```
+
+This policy tells the ALB Controller to use `/health` instead of `/` for health checks on the specified service.
+
+**References:**
+- [Google Cloud troubleshooting guide](https://cloud.google.com/kubernetes-engine/docs/how-to/deploying-gateways#no-healthy-upstream)
+- [Azure ALB health probe configuration](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/custom-health-probe#default-health-probe)
