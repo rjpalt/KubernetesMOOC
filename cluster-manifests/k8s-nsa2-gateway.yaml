@@ -16,4 +16,11 @@ spec:
       allowedRoutes:
         # <2> allow the nsa2 namespace to use this gateway
         namespaces:
-          from: Same
+          from: Selector
+          selector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values: ["exercises", "project", "nsa2"]
+        kinds:
+          - kind: HTTPRoute
