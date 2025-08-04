@@ -73,6 +73,7 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
 - [3.1](https://github.com/rjpalt/KubernetesMOOC/tree/3.1/ping-pong) - Azure resource setup - [Commands](docs/exercises/3.1-commands.md) and [Azure Memos](docs/azure/Azure-memos.md)
 - [3.2](https://github.com/rjpalt/KubernetesMOOC/tree/3.2/ping-pong) - AKS App Routing and Ingress - [Commands](docs/exercises/3.2-commands.md) and [Azure Memos](docs/azure/Azure-memos.md)
   - **Note**: AKS does not come with a default ingress controller. I have added the NGINX ingress controller to the exercises namespace. See the [Azure Memos section Enabling AKS App Routing for Ingress](docs/azure/Azure-memos.md#enabling-aks-app-routing-for-ingress) for details.
+- [3.3](https://github.com/rjpalt/KubernetesMOOC/tree/3.3/ping-pong) - AKS Gateway API - [Commands](docs/exercises/3.3-commands.md) and [Azure Memos](docs/azure/Azure-memos.md)
 
 ## Cleanup Script
 
