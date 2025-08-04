@@ -48,9 +48,9 @@ app = FastAPI(
 )
 
 
-@app.get("/pingpong")
+@app.get("/")
 async def ping_pong():
-    """Endpoint that responds with pong and increments counter"""
+    """Root endpoint that responds with pong and increments counter"""
     try:
         new_counter = await increment_ping_counter()
         response = f"pong {new_counter - 1}"  # Show the value before increment
