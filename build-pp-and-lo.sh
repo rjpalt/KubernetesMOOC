@@ -13,8 +13,8 @@ echo ""
 
 # Build log-output app
 echo "📦 Building log-output application..."
-echo "🔨 Building log-output-app:$TAG from log_output/Dockerfile..."
-docker build -f log_output/Dockerfile -t log-output-app:$TAG log_output/
+echo "🔨 Building log-output-app:$TAG from log_output/Dockerfile (linux/amd64)..."
+docker build --platform linux/amd64 -f log_output/Dockerfile -t log-output-app:$TAG log_output/
 
 if [ $? -eq 0 ]; then
     echo "✅ Successfully built log-output-app:$TAG"
@@ -27,8 +27,8 @@ echo ""
 
 # Build ping-pong app
 echo "📦 Building ping-pong application..."
-echo "🔨 Building ping-pong-app:$TAG from ping-pong/Dockerfile..."
-docker build -f ping-pong/Dockerfile -t ping-pong-app:$TAG ping-pong/
+echo "🔨 Building ping-pong-app:$TAG from ping-pong/Dockerfile (linux/amd64)..."
+docker build --platform linux/amd64 -f ping-pong/Dockerfile -t ping-pong-app:$TAG ping-pong/
 
 if [ $? -eq 0 ]; then
     echo "✅ Successfully built ping-pong-app:$TAG"
@@ -38,16 +38,16 @@ else
 fi
 
 echo ""
-echo "🎉 All images built successfully with tag: $TAG"
+echo "🎉 All images built successfully with tag: $TAG (linux/amd64)"
 echo ""
 echo "Built images:"
-echo "  - log-output-app:$TAG"
-echo "  - ping-pong-app:$TAG"
+echo "  - log-output-app:$TAG (linux/amd64)"
+echo "  - ping-pong-app:$TAG (linux/amd64)"
 echo ""
-echo "To import into k3d cluster, run:"
-echo "  k3d image import log-output-app:$TAG -c <your-cluster-name>"
-echo "  k3d image import ping-pong-app:$TAG -c <your-cluster-name>"
+echo "To tag for ACR:"
+echo "  docker tag log-output-app:$TAG kubemooc.azurecr.io/log-output-app:$TAG"
+echo "  docker tag ping-pong-app:$TAG kubemooc.azurecr.io/ping-pong-app:$TAG"
 echo ""
-echo "To push to registry (if needed):"
-echo "  docker push log-output-app:$TAG"
-echo "  docker push ping-pong-app:$TAG"
+echo "To push to ACR:"
+echo "  docker push kubemooc.azurecr.io/log-output-app:$TAG"
+echo "  docker push kubemooc.azurecr.io/ping-pong-app:$TAG"

@@ -72,7 +72,12 @@ az acr login --name kubemooc
 
 Tagging the image:
 ```bash
-docker tag ping-pong-app:3.1  kubemooc.azurecr.io/ping-pong-app:3.1
+docker tag ping-pong-app:3.1 kubemooc.azurecr.io/ping-pong-app:3.1
+```
+
+Pushing the image to ACR:
+```bash
+docker push kubemooc.azurecr.io/ping-pong-app:3.1
 ```
 
 ## Manifest changes for Azure AKS ##
