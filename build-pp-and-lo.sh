@@ -13,13 +13,13 @@ echo ""
 
 # Build log-output app
 echo "📦 Building log-output application..."
-echo "🔨 Building log-output:$TAG from log_output/Dockerfile..."
-docker build -f log_output/Dockerfile -t log-output:$TAG log_output/
+echo "🔨 Building log-output-app:$TAG from log_output/Dockerfile..."
+docker build -f log_output/Dockerfile -t log-output-app:$TAG log_output/
 
 if [ $? -eq 0 ]; then
-    echo "✅ Successfully built log-output:$TAG"
+    echo "✅ Successfully built log-output-app:$TAG"
 else
-    echo "❌ Failed to build log-output image"
+    echo "❌ Failed to build log-output-app image"
     exit 1
 fi
 
@@ -27,13 +27,13 @@ echo ""
 
 # Build ping-pong app
 echo "📦 Building ping-pong application..."
-echo "🔨 Building ping-pong:$TAG from ping-pong/Dockerfile..."
-docker build -f ping-pong/Dockerfile -t ping-pong:$TAG ping-pong/
+echo "🔨 Building ping-pong-app:$TAG from ping-pong/Dockerfile..."
+docker build -f ping-pong/Dockerfile -t ping-pong-app:$TAG ping-pong/
 
 if [ $? -eq 0 ]; then
-    echo "✅ Successfully built ping-pong:$TAG"
+    echo "✅ Successfully built ping-pong-app:$TAG"
 else
-    echo "❌ Failed to build ping-pong image"
+    echo "❌ Failed to build ping-pong-app image"
     exit 1
 fi
 
@@ -41,13 +41,13 @@ echo ""
 echo "🎉 All images built successfully with tag: $TAG"
 echo ""
 echo "Built images:"
-echo "  - log-output:$TAG"
-echo "  - ping-pong:$TAG"
+echo "  - log-output-app:$TAG"
+echo "  - ping-pong-app:$TAG"
 echo ""
 echo "To import into k3d cluster, run:"
-echo "  k3d image import log-output:$TAG -c <your-cluster-name>"
-echo "  k3d image import ping-pong:$TAG -c <your-cluster-name>"
+echo "  k3d image import log-output-app:$TAG -c <your-cluster-name>"
+echo "  k3d image import ping-pong-app:$TAG -c <your-cluster-name>"
 echo ""
 echo "To push to registry (if needed):"
-echo "  docker push log-output:$TAG"
-echo "  docker push ping-pong:$TAG"
+echo "  docker push log-output-app:$TAG"
+echo "  docker push ping-pong-app:$TAG"
