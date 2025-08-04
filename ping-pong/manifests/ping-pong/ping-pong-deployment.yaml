@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: kubemooc.azurecr.io/ping-pong-app:3.1
+          image: kubemooc.azurecr.io/ping-pong-app:3.4
           imagePullPolicy: IfNotPresent
           env:
             - name: PING_PONG_APP_PORT
