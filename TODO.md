@@ -1,6 +1,18 @@
-# TODO: Priority Tasks for Tomorrow's Assessment
+# TODO: Priority Tasks for Tomorrow
 
+## Exercise 3.4: Gateway API Route Rewriting (IMMEDIATE)
+- [x] **Build and push new images**: `./build-apps.sh 3.4`
+- [x] **Push to registry**: Tag and push to your container registry (ACR or other)
+- [ ] **Update deployment manifests**: Update image tags to use new `3.4` versions
+- [ ] **Update HTTPRoute manifest**: Add `filters` with `URLRewrite` + `ReplacePrefixMatch` to rewrite `/pingpong` → `/`
+- [ ] **Apply changes**: `kubectl apply -f ping-pong/manifests/ping-pong/ping-pong-route.yaml`
+- [ ] **Test**: External `/pingpong` should hit internal `/` (ping-pong app now responds at root path)
 
+**Status**: App-level changes complete (moved `/pingpong` → `/`), Gateway route rewriting pending.
+
+---
+
+## Tomorrow's Assessment
 - [ ] **Re-read GitHub Actions workflow with thought** (`.github/workflows/test.yml`)
   - Understand: Each step and why it's there
   - Verify: Workflow matches current project architecture

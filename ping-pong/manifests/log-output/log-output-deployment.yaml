@@ -24,7 +24,7 @@ spec:
               path: information.txt
       containers:
         - name: log-output
-          image: kubemooc.azurecr.io/log-output-app:3.1
+          image: kubemooc.azurecr.io/log-output-app:3.4
           imagePullPolicy: IfNotPresent
           env:
           - name: LOG_APP_APP_PORT
