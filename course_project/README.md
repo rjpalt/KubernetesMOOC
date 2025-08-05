@@ -1,11 +1,12 @@
 # Todo Application - Microservices Project
 
-Two-service todo application: **todo-backend** (REST API) and **todo-app** (Frontend with image caching).
+Three-service todo application: **todo-backend** (REST API), **todo-app** (Frontend with image caching), and **todo-cron** (Automated Wikipedia todo generation).
 
 ## Architecture
 
 - **todo-backend** (Port 8001): FastAPI REST API for todo CRUD operations
 - **todo-app** (Port 8000): FastAPI frontend with HTMX UI, communicates with backend via HTTP
+- **todo-cron**: CronJob service that creates todos with random Wikipedia articles hourly
 
 ### Data Flow
 
@@ -118,6 +119,69 @@ The application uses `docker-compose.env` for environment variables:
 - **postgres_prod**: PostgreSQL database on localhost:5432
 - **Persistent data**: Database data persists in Docker volumes
 
+## Kubernetes Deployment
+
+### Manifest Structure
+The project uses a hierarchical Kustomization structure for flexible Kubernetes deployments:
+
+```
+manifests/
+├── base/                          # Base configurations for all environments
+│   ├── postgres/                  # PostgreSQL StatefulSet and Service
+│   ├── shared/                    # Namespace and Ingress resources
+│   ├── todo-be/                   # Backend Deployment and Service
+│   ├── todo-cron/                 # CronJob for automated tasks
+│   └── todo-fe/                   # Frontend Deployment, Service, and PVC
+└── overlays/                      # Environment-specific configurations
+    ├── development/               # Development environment overrides
+    ├── staging/                   # Staging environment overrides
+    └── production/                # Production environment overrides
+```
+
+### Deployment Options
+
+**Individual service deployment:**
+```bash
+# Deploy only the backend (when kustomization.yaml files are created)
+kubectl apply -k manifests/base/todo-be/
+
+# Deploy only the database
+kubectl apply -k manifests/base/postgres/
+```
+
+**Full application deployment:**
+```bash
+# Deploy all services (when root kustomization.yaml is created)
+kubectl apply -k manifests/
+
+# Or manually apply each service in dependency order
+kubectl apply -k manifests/base/shared/      # Namespace first
+kubectl apply -k manifests/base/postgres/    # Database second
+kubectl apply -k manifests/base/todo-be/     # Backend third
+kubectl apply -k manifests/base/todo-fe/     # Frontend fourth
+kubectl apply -k manifests/base/todo-cron/   # Cron service last
+```
+
+**Environment-specific deployments:**
+```bash
+# Development environment (when overlay kustomization.yaml files are created)
+kubectl apply -k manifests/overlays/development/
+
+# Production environment with different resource limits and replicas
+kubectl apply -k manifests/overlays/production/
+```
+
+### Kustomization Benefits
+- **Service Independence**: Deploy and update individual microservices
+- **Environment Management**: Different configurations for dev/staging/prod
+- **Resource Customization**: Environment-specific resource limits, replicas, and secrets
+- **GitOps Ready**: Structure supports GitOps deployment patterns
+
+### Service Access
+- **Frontend**: Through Ingress at `/` and `/todos`
+- **Backend API**: Through Ingress at `/docs` for Swagger UI
+- **Health Checks**: `/be-health` endpoint for backend monitoring
+
 ## Azure Deployment
 
 ### Azure Resources
@@ -138,7 +202,7 @@ The application uses `docker-compose.env` for environment variables:
 ./test-all.sh
 
 # Individual services
-./test-be.sh     # Backend tests (58 tests)
+./test-be.sh     # Backend tests (95 tests)
 ./test-fe.sh     # Frontend tests
 
 # Or manually (from course_project/todo-backend):
@@ -147,7 +211,7 @@ cd ../todo-app && uv run pytest tests/ -v
 ```
 
 ### Test Coverage
-- **Backend**: 85 tests covering unit tests, integration tests, API validation, security
+- **Backend**: 95 tests covering unit tests, integration tests, API validation, security
 - **Frontend**: 49 tests covering contract tests, service integration, UI components, security
 - **Security**: 20 tests specifically for XSS and SQL injection prevention
 - **Philosophy**: Each service tested independently for microservice isolation
