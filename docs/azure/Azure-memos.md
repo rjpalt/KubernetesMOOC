@@ -581,3 +581,253 @@ This policy tells the ALB Controller to use `/health` instead of `/` for health 
 **References:**
 - [Google Cloud troubleshooting guide](https://cloud.google.com/kubernetes-engine/docs/how-to/deploying-gateways#no-healthy-upstream)
 - [Azure ALB health probe configuration](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/custom-health-probe#default-health-probe)
+
+# Setting up Kubernetes to use Azure Key Vault for Secrets Management #
+
+## Resource Discovery
+```bash
+# Example pattern - you'll need to adapt with your actual values
+RESOURCE_GROUP="kubernetes-learning"
+AKS_CLUSTER="kube-mooc"
+
+# Fetch and store cluster info
+AKS_RESOURCE_ID=$(az aks show --resource-group $RESOURCE_GROUP --name $AKS_CLUSTER --query id -o tsv)
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+# Echo the values for verification
+echo "AKS Resource ID: $AKS_RESOURCE_ID"
+echo "Subscription ID: $SUBSCRIPTION_ID"
+```
+
+## Identity Management
+```bash
+IDENTITY_NAME="keyvault-identity-kube-mooc"
+
+# Create a Managed Identity for AKS to access Key Vault
+az identity create --resource-group $RESOURCE_GROUP --name $IDENTITY_NAME
+
+# Fetch the created identity details
+IDENTITY_CLIENT_ID=$(az identity show --resource-group $RESOURCE_GROUP --name $IDENTITY_NAME --query clientId -o tsv)
+IDENTITY_PRINCIPAL_ID=$(az identity show --resource-group $RESOURCE_GROUP --name $IDENTITY_NAME --query principalId -o tsv)
+
+# Echo the identity details for verification
+echo "Managed Identity Client ID: $IDENTITY_CLIENT_ID"
+echo "Managed Identity Principal ID: $IDENTITY_PRINCIPAL_ID"
+```
+
+## AKS Cluster Infromation
+```bash
+# Get the managed cluster resource group (where AKS creates its resources)
+MC_RESOURCE_GROUP=$(az aks show --resource-group $RESOURCE_GROUP --name $AKS_CLUSTER --query "nodeResourceGroup" -o tsv)
+echo "MC Resource Group: $MC_RESOURCE_GROUP"
+
+# Get the OIDC issuer URL (needed for workload identity)
+AKS_OIDC_ISSUER=$(az aks show --resource-group $RESOURCE_GROUP --name $AKS_CLUSTER --query "oidcIssuerProfile.issuerUrl" -o tsv)
+echo "OIDC Issuer: $AKS_OIDC_ISSUER"
+```
+
+## AKV Creation and Configuration
+```bash
+KEYVAULT_NAME="kv-kubemooc-$(date +%s)"
+echo "Key Vault Name: $KEYVAULT_NAME"
+```
+
+Create the Key Vault:
+```bash
+# Create the Key Vault
+az keyvault create \
+  --name $KEYVAULT_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --location northeurope \
+  --enable-rbac-authorization
+
+# Get the Key Vault resource ID for future use
+KEYVAULT_ID=$(az keyvault show --name $KEYVAULT_NAME --resource-group $RESOURCE_GROUP --query id -o tsv)
+echo "Key Vault ID: $KEYVAULT_ID"
+```
+
+Assigning yourself permissions into the Key Vault:
+```bash
+# Check your identity
+az account show --query "user.name" -o tsv
+
+# Get your user object ID
+USER_OBJECT_ID=$(az ad signed-in-user show --query id -o tsv)
+
+# Assign yourself Key Vault Contributor role
+az role assignment create \
+  --assignee-object-id $USER_OBJECT_ID \
+  --assignee-principal-type User \
+  --scope $KEYVAULT_ID \
+  --role "Key Vault Secrets Officer"
+```
+
+
+## Storing Postgres Credentials in Key Vault
+First go to the fodler with your secrets and check the secrets you have:
+
+
+Setting the secrets in the Key Vault:
+```bash
+# Set the Postgres admin user
+az keyvault secret set \
+  --vault-name $KEYVAULT_NAME \
+  --name "postgres-user" \
+  --value "$DECODED_USER"
+
+# Set the Postgres admin password
+az keyvault secret set \
+  --vault-name $KEYVAULT_NAME \
+  --name "postgres-password" \
+  --value "$DECODED_PASSWORD"
+
+# Verify secrets are set
+az keyvault secret list --vault-name $KEYVAULT_NAME --query "[].name" -o table
+```
+
+## Granting your AKS Managed Identity Access to Key Vault
+```bash
+az role assignment create \
+  --assignee-object-id $IDENTITY_PRINCIPAL_ID \
+  --assignee-principal-type ServicePrincipal \
+  --scope $KEYVAULT_ID \
+  --role "Key Vault Secrets User"
+```
+
+## Taking the secrets from Key Vault in your AKS cluster
+
+### Enable CSI Secrets Store Driver
+```bash
+az aks enable-addons \
+  --addons azure-keyvault-secrets-provider \
+  --name $AKS_CLUSTER \
+  --resource-group $RESOURCE_GROUP
+```
+
+### Workload identity bridging
+```bash
+# Create a federated credential for the Postgres service account in Azure
+az identity federated-credential create \
+  --name "postgres-workload-identity" \
+  --identity-name $IDENTITY_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --issuer $AKS_OIDC_ISSUER \
+  --subject "system:serviceaccount:project:postgres-service-account"
+```
+
+Key concept: The --subject parameter defines exactly which Kubernetes ServiceAccount Azure will trust. The format is system:serviceaccount:NAMESPACE:SERVICE_ACCOUNT_NAME.
+
+### Creating the Service Account and Secret Provider Class
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-service-account
+  namespace: project
+  annotations:
+    azure.workload.identity/client-id: 9b82dc92-8be2-4de4-90e4-e99eefb44e9f
+```
+
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: postgres-secret-provider
+  namespace: project
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "false"
+    clientID: "9b82dc92-8be2-4de4-90e4-e99eefb44e9f"
+    keyvaultName: "kv-kubemooc-1754386572"
+    tenantId: "b7cff52d-a4ec-4367-903c-5cf05c061aca"
+    objects: |
+      array:
+        - |
+          objectName: postgres-user
+          objectType: secret
+        - |
+          objectName: postgres-password
+          objectType: secret
+  secretObjects:
+  - secretName: postgres-secret
+    type: Opaque
+    data:
+    - objectName: postgres-user
+      key: USER
+    - objectName: postgres-password
+      key: PASSWORD
+
+```
+
+provider: azure - Uses the Azure Key Vault provider
+clientID - Your managed identity that can access Key Vault
+keyvaultName - Which Key Vault to pull from
+objects - Lists which secrets to fetch from Key Vault
+secretObjects - Creates a Kubernetes secret with the exact name and keys your StatefulSet expects
+The critical mapping happens in secretObjects.data:
+
+Key Vault postgres-user becomes Kubernetes secret key USER
+Key Vault postgres-password becomes Kubernetes secret key PASSWORD
+
+### Changes to the Postgres StatefulSet
+```yaml
+      serviceAccountName: postgres-service-account
+      volumes:
+      - name: secrets-store
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: "postgres-secret-provider"
+          ...
+          volumeMounts:
+            - name: secrets-store
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+            - name: postgres-data-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+```
+
+Azure Key Vault Integration with AKS - Big Picture Summary
+What We Accomplished
+Successfully migrated from SOPS-encrypted local secrets to Azure Key Vault integration for the postgres service in our course project.
+
+Architecture Overview
+
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐│   Azure Key     │    │   Kubernetes     │    │   Application   ││     Vault       │◄──►│   CSI Driver     │◄──►│     Pods        ││                 │    │                  │    │                 ││ postgres-user   │    │ postgres-secret  │    │ POSTGRES_USER   ││ postgres-pass   │    │ (K8s Secret)     │    │ POSTGRES_PASS   │└─────────────────┘    └──────────────────┘    └─────────────────┘
+Key Components Created
+Azure Managed Identity (keyvault-identity-kube-mooc)
+
+Identity that can access Key Vault secrets
+Granted "Key Vault Secrets User" role
+Workload Identity Bridge
+
+Federated credential linking Azure identity to Kubernetes ServiceAccount
+Enables passwordless authentication from pods to Azure
+Kubernetes ServiceAccount (postgres-service-account)
+
+Annotated with Azure managed identity client ID
+Used by postgres pods for authentication
+SecretProviderClass (postgres-secret-provider)
+
+Configuration defining which Key Vault secrets to fetch
+Maps Key Vault secret names to Kubernetes secret keys
+Creates standard Kubernetes Secret that applications expect
+StatefulSet Integration
+
+Added ServiceAccount reference
+Added CSI volume mount (triggers secret fetching)
+Environment variables unchanged - complete application transparency
+The Magic
+Application sees no difference: Same environment variables, same secret references
+CSI driver handles complexity: Authentication, fetching, mapping all transparent
+Production-ready security: No secrets stored in containers or manifests
+Centralized management: All secrets managed in Azure Key Vault
+Key Learning
+The CSI Secrets Store driver creates a bridge between Azure Key Vault (cloud-native secret storage) and Kubernetes Secrets (what applications expect), providing enterprise-grade secret management without changing application code.
+
+This pattern eliminates the need for SOPS files, provides automatic secret rotation capabilities, and centralizes secret management in Azure's secure vault service.

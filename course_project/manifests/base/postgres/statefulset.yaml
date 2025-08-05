@@ -14,6 +14,14 @@ spec:
       labels:
         app: postgres-db
     spec:
+      serviceAccountName: postgres-service-account
+      volumes:
+      - name: secrets-store
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: "postgres-secret-provider"      
       containers:
         - name: postgres
           image: postgres:17-alpine
@@ -21,8 +29,12 @@ spec:
             - name: database
               containerPort: 5432
           volumeMounts:
+            - name: secrets-store
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
             - name: postgres-data-storage
               mountPath: /var/lib/postgresql/data
+              subPath: postgres
           env:
             - name: POSTGRES_DB
               value: todoapp
@@ -41,7 +53,7 @@ spec:
         name: postgres-data-storage
       spec:
         accessModes: ["ReadWriteOnce"]
-        storageClassName: local-path
+        storageClassName: managed-csi
         resources:
           requests:
             storage: 100Mi
