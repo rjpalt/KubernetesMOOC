@@ -122,13 +122,13 @@ The application uses `docker-compose.env` for environment variables:
 ## Kubernetes Deployment
 
 ### Manifest Structure
-The project uses a hierarchical Kustomization structure for flexible Kubernetes deployments:
+The project uses a hierarchical Kustomization structure for flexible Kubernetes deployments with production-ready Azure Key Vault integration:
 
 ```
 manifests/
 ├── base/                          # Base configurations for all environments
-│   ├── postgres/                  # PostgreSQL StatefulSet and Service
-│   ├── shared/                    # Namespace and Ingress resources
+│   ├── postgres/                  # PostgreSQL StatefulSet with Azure Key Vault secrets
+│   ├── shared/                    # Namespace and Gateway API resources
 │   ├── todo-be/                   # Backend Deployment and Service
 │   ├── todo-cron/                 # CronJob for automated tasks
 │   └── todo-fe/                   # Frontend Deployment, Service, and PVC
@@ -136,6 +136,21 @@ manifests/
     ├── development/               # Development environment overrides
     ├── staging/                   # Staging environment overrides
     └── production/                # Production environment overrides
+```
+
+### Azure Key Vault Integration
+The deployment uses Azure Key Vault for secure credential management:
+
+- **Azure Managed Identity**: `keyvault-identity-kube-mooc` with Key Vault Secrets User role
+- **Workload Identity**: Federated credential linking Kubernetes ServiceAccount to Azure identity
+- **CSI Secrets Store Driver**: Transparent bridge between Azure Key Vault and Kubernetes Secrets
+- **PostgreSQL Secrets**: Database credentials stored securely in Azure Key Vault, automatically mounted as Kubernetes secrets
+
+**Key Vault Setup:**
+```bash
+# Key Vault: kube-mooc-secrets-[timestamp]
+# Secrets: postgres-user, postgres-password
+# Access: Passwordless authentication via Azure Workload Identity
 ```
 
 ### Deployment Options
@@ -178,21 +193,34 @@ kubectl apply -k manifests/overlays/production/
 - **GitOps Ready**: Structure supports GitOps deployment patterns
 
 ### Service Access
-- **Frontend**: Through Ingress at `/` and `/todos`
-- **Backend API**: Through Ingress at `/docs` for Swagger UI
+- **Frontend**: Through Gateway API at `/` and `/todos`
+- **Backend API**: Through Gateway API at `/docs` for Swagger UI
 - **Health Checks**: `/be-health` endpoint for backend monitoring
+- **Security**: All database credentials managed through Azure Key Vault
 
 ## Azure Deployment
 
 ### Azure Resources
 - **Resource Group**: `kubernetes-learning` (North Europe region)
 - **AKS Cluster**: `kube-mooc` (1 node, monitoring enabled)
+- **Azure Key Vault**: `kube-mooc-secrets-[timestamp]` for secure credential storage
+- **Managed Identity**: `keyvault-identity-kube-mooc` with Key Vault access
+- **Gateway API**: Azure Application Load Balancer integration
 - **Location**: North Europe
+
+### Security Architecture
+- **Passwordless Authentication**: Azure Workload Identity eliminates hard-coded credentials
+- **Secret Rotation**: Azure Key Vault supports automated credential rotation
+- **RBAC**: Fine-grained access control with Azure managed identities
+- **Audit Trail**: All secret access logged in Azure Activity Log
 
 ### Prerequisites
 - Azure CLI installed and authenticated
 - kubectl configured for the AKS cluster
-- Docker images pushed to a container registry
+- Docker images pushed to a container registry (Azure Container Registry)
+- Azure Key Vault configured with database credentials
+- CSI Secrets Store Driver enabled on AKS cluster
+- Azure Workload Identity configured for passwordless authentication
 
 ## Testing
 
