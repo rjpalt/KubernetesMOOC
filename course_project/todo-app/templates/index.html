@@ -20,7 +20,7 @@
 <div class="image-section">
     <h3>📸 Current Image</h3>
     {% if image_info.status == "available" %}
-        <img src="/image" alt="Random image" 
+        <img src="{{ base_path }}/image" alt="Random image" 
              style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
     {% else %}
         <p style="color: #999;">No image cached yet. Click "Fetch New Image" to get one!</p>
@@ -70,7 +70,7 @@
         btn.disabled = true;
         
         try {
-            const url = force ? '/fetch-image?force=true' : '/fetch-image';
+            const url = force ? '{{ base_path }}/fetch-image?force=true' : '{{ base_path }}/fetch-image';
             const response = await fetch(url, { method: 'POST' });
             const result = await response.json();
             
@@ -78,9 +78,9 @@
                 alert('Image fetch result: ' + result.status);
                 if (result.status === 'success') {
                     // Update just the image with cache-busting timestamp
-                    const img = document.querySelector('img[src="/image"]');
+                    const img = document.querySelector('img[src*="/image"]');
                     if (img) {
-                        img.src = `/image?t=${Date.now()}`;
+                        img.src = `{{ base_path }}/image?t=${Date.now()}`;
                     }
                 }
             } else {
@@ -97,7 +97,7 @@
     async function shutdownApp() {
         if (confirm('Are you sure you want to shutdown the container? This is for testing purposes.')) {
             try {
-                await fetch('/shutdown', { method: 'POST' });
+                await fetch('{{ base_path }}/shutdown', { method: 'POST' });
                 alert('Shutdown signal sent. Container should stop shortly.');
             } catch (error) {
                 alert('Shutdown initiated (this is expected behavior)');

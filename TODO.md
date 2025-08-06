@@ -1,93 +1,81 @@
 # TODO: Priority Tasks for Tomorrow
 
-## Exercise 3.4: Gateway API Route Rewriting (IMMEDIATE)
-- [x] **Build and push new images**: `./build-apps.sh 3.4`
-- [x] **Push to registry**: Tag and push to your container registry (ACR or other)
-- [ ] **Update deployment manifests**: Update image tags to use new `3.4` versions
-- [ ] **Update HTTPRoute manifest**: Add `filters` with `URLRewrite` + `ReplacePrefixMatch` to rewrite `/pingpong` → `/`
-- [ ] **Apply changes**: `kubectl apply -f ping-pong/manifests/ping-pong/ping-pong-route.yaml`
-- [ ] **Test**: External `/pingpong` should hit internal `/` (ping-pong app now responds at root path)
+## Goal: Deploy Complete Todo Application Stack to AKS with Kustomization
+**End State**: Individual service deployments + full stack deployment capability using hierarchical Kustomization structure with Azure Key Vault integration.
 
-**Status**: App-level changes complete (moved `/pingpong` → `/`), Gateway route rewriting pending.
+### Phase 1: Container Images & Registry
+- [x] Build application images with consistent versioning (v3.5)
+  ```bash
+  ./build-images.sh v3.5
+  ```
+- [x] Tag images for Azure Container Registry
+  ```bash
+  docker tag todo-app-be:3.5 kubemooc.azurecr.io/todo-app-be:3.5
+  docker tag todo-app-fe:3.5 kubemooc.azurecr.io/todo-app-fe:3.5
+  docker tag todo-app-cron:3.5 kubemooc.azurecr.io/todo-app-cron:3.5
+  ```
+- [x] Push all images to ACR
+  ```bash
+  az acr login --name kubemooc
+  docker push kubemooc.azurecr.io/todo-app-be:3.5
+  docker push kubemooc.azurecr.io/todo-app-fe:3.5
+  docker push kubemooc.azurecr.io/todo-app-cron:3.5
+  ```
 
----
+### Phase 2: Update Kubernetes Manifests
+- [x] **Backend Service** (`manifests/base/todo-be/`)
+  - [x] Update deployment.yaml with ACR image reference
+  - [x] Configure database connection to use Azure Key Vault secrets
+  - [x] Update service.yaml for proper port exposure
+  - [x] Create/verify kustomization.yaml for independent deployment
 
-## Tomorrow's Assessment
-- [ ] **Re-read GitHub Actions workflow with thought** (`.github/workflows/test.yml`)
-  - Understand: Each step and why it's there
-  - Verify: Workflow matches current project architecture
-  - Optimize: Any inefficiencies or redundancies
+- [x] **Frontend Service** (`manifests/base/todo-fe/`)
+  - [x] Update deployment.yaml with ACR image reference
+  - [x] Configure backend API endpoint for AKS internal communication
+  - [x] Update service.yaml for Gateway API routing
+  - [x] Create/verify kustomization.yaml for independent deployment
 
----
+- [x] **Cron Job Service** (`manifests/base/todo-cron/`)
+  - [x] Update cronjob.yaml with ACR image reference
+  - [x] Configure backend API endpoint for internal cluster communication
+  - [x] Create/verify kustomization.yaml for independent deployment
 
-# TODO: Container Registry Integration for Local Development
+### Phase 3: Kustomization Structure Validation
+- [x] **Service-Level Kustomizations**
+  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-be/`
+  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-fe/`
+  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-cron/`
 
-## Goal
-Optimize development workflow by pushing locally-built Docker images to a container registry, then having CI/CD pull those pre-built images instead of rebuilding from scratch.
+- [ ] **Full Stack Kustomization**
+  - [ ] Create root `manifests/kustomization.yaml` that includes all base services
+  - [ ] Define proper deployment order (postgres → backend → frontend → cron)
+  - [ ] Test full stack deployment: `kubectl apply -k manifests/`
 
-## Current Situation
-- **Local Development**: Build images with `./build-images.sh v1.2.3`
-- **CI/CD Pipeline**: Rebuilds the same images from source code
-- **Inefficiency**: Duplicate build time and compute resources
-- **Feedback Loop**: Slower CI/CD due to build overhead
+### Phase 4: Gateway API Integration  
+- [ ] **HTTPRoute Configuration**
+  - [ ] Create/update HTTPRoute for frontend service routing (`/` → todo-frontend-svc)
+  - [ ] Create/update HTTPRoute for backend API routing (`/todos`, `/be-health` → todo-backend-svc)
+  - [ ] Apply Gateway API routes and verify functionality
 
-## Proposed Workflow
-1. **Local Build & Push**: `./build-images.sh v1.2.3 --push`
-2. **CI/CD Pull**: Use pre-built images from registry
-3. **Faster Testing**: Integration tests start immediately
-4. **Consistency**: Test exact same artifacts used locally
+### Phase 5: End-to-End Testing
+- [ ] **Individual Service Testing**
+  - [ ] Deploy and test backend independently
+  - [ ] Deploy and test frontend independently  
+  - [ ] Deploy and test cron job independently
 
-## Implementation Considerations
+- [ ] **Full Stack Testing**
+  - [ ] Deploy complete application stack with single command
+  - [ ] Verify frontend loads and can create todos
+  - [ ] Verify backend API endpoints work through Gateway
+  - [ ] Verify cron job creates Wikipedia todos automatically
+  - [ ] Test data persistence through PostgreSQL with Azure Key Vault credentials
 
-### Registry Options
-- **GitHub Container Registry (ghcr.io)**: Free, integrated with repository
-- **Docker Hub**: Popular, but rate limits on free tier
-- **Azure Container Registry**: If planning AKS deployment
-- **Local Registry**: For air-gapped development
-
-### Build Script Enhancements Needed
-- [ ] Add `--push` flag to build-images.sh
-- [ ] Add `--registry` parameter for flexibility
-- [ ] Registry authentication handling
-- [ ] Error handling for push failures
-- [ ] Registry-specific image tagging
-
-### CI/CD Workflow Changes
-- [ ] Add step to pull pre-built images instead of building
-- [ ] Handle case where registry images don't exist (fallback to build)
-- [ ] Environment variable to specify image source (registry vs build)
-- [ ] Image existence checking before pull attempts
-
-### Questions to Resolve
-1. **Authentication Strategy**: How to handle registry login in CI/CD?
-2. **Fallback Mechanism**: What if registry images are missing/corrupted?
-3. **Tag Management**: How to coordinate tags between local and CI/CD?
-4. **Image Cleanup**: How to prevent registry bloat over time?
-5. **Security**: Image vulnerability scanning before use?
-6. **Cost**: Registry storage costs vs build compute costs?
-
-### Development Workflow Impact
-- **Positive**: Faster CI/CD feedback loops
-- **Positive**: Test exact artifacts used in production
-- **Consideration**: Requires registry setup and authentication
-- **Consideration**: Additional complexity in build process
-
-### Kubernetes Learning Aspects
-- **Registry Integration**: How Kubernetes pulls images in production
-- **Image Management**: Tagging strategies and lifecycle management
-- **Security**: Image scanning and trusted registries
-- **GitOps**: Artifact promotion through environments
-
-## Implementation Priority
-- **Phase 1**: Research and design decisions
-- **Phase 2**: Enhance build-images.sh with push capability
-- **Phase 3**: Update CI/CD workflow to pull images
-- **Phase 4**: Add fallback mechanisms and error handling
-
-**Status**: Planning phase - need to resolve authentication and workflow questions before implementation.
-
----
-**Next Steps**: Research registry authentication options and define tag coordination strategy.
+### Success Criteria
+✅ **Service Independence**: Each service can be deployed/updated individually
+✅ **Full Stack Deployment**: Single command deploys entire application  
+✅ **Azure Integration**: All services use ACR images and Azure Key Vault secrets
+✅ **Gateway API**: External access works through Azure Application Load Balancer
+✅ **Data Persistence**: Todos persist across deployments using Azure Key Vault secured database
 
 ---
 
@@ -167,26 +155,23 @@ course_project/
 
 # TODO: Azure Key Vault Integration for AKS Deployment
 
-## Goal
-Set up Azure Key Vault for secure secrets management when deploying microservices to AKS, replacing current local/SOPS approach with production-ready Azure-native solution.
+## Current Status: COMPLETED ✅
+- [x] Azure Key Vault creation and configuration
+- [x] Workload Identity for pod-to-Azure authentication  
+- [x] CSI Secrets Store Driver for mounting secrets in Kubernetes
+- [x] SecretProviderClass resource definition
+- [x] Database connection string management
+- [x] PostgreSQL StatefulSet deployed and running with Azure Key Vault integration
 
-## Key Concepts to Learn & Implement
-- [ ] Azure Key Vault creation and configuration
-- [ ] Workload Identity for pod-to-Azure authentication
-- [ ] CSI Secrets Store Driver for mounting secrets in Kubernetes
-- [ ] SecretProviderClass resource definition
-- [ ] Database connection string management
+## Implementation Results
+✅ **Azure Key Vault**: `kube-mooc-secrets-[timestamp]` created and configured
+✅ **Managed Identity**: `keyvault-identity-kube-mooc` with proper RBAC
+✅ **Database Secrets**: `postgres-user` and `postgres-password` stored securely
+✅ **Workload Identity**: Federated credential configured for passwordless authentication
+✅ **PostgreSQL Deployment**: Running successfully with Azure Key Vault credentials
 
-## Current Status
-- Services running locally with k3d/Docker
-- Need to determine full specifications for AKS deployment
-- Planning phase - not ready for implementation yet
-- Target secrets: database passwords and connection strings
+**Status**: Production-ready secret management implemented. Ready for application service deployment.
 
-## Implementation Prerequisites
-- [ ] Finalize AKS cluster requirements
-- [ ] Determine database service specifications (Azure SQL, PostgreSQL, etc.)
-- [ ] Design secret structure and naming conventions
-- [ ] Plan Workload Identity setup approach
+---
 
-**Next Steps**: Complete local development, then tackle Azure resource setup and integration concepts.
+# TODO: OpenAPI Documentation Automation (FUTURE)
