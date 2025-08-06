@@ -4,8 +4,8 @@ metadata:
   name: todo-cronjob
   namespace: project
 spec:
-  # Runs every hour at :00
-  schedule: "0 * * * *"
+  # Runs every minute
+  schedule: "* * * * *"
   jobTemplate:
     spec:
       template:
@@ -13,7 +13,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: todo-cronjob
-              image: todo-cron:2.9
+              image: kubemooc.azurecr.io/todo-app-cron:3.5-amd64
               imagePullPolicy: IfNotPresent
               env:
                 - name: TODO_BACKEND_URL

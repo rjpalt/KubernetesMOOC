@@ -40,18 +40,21 @@ COPY templates/ ./templates/
 # Create directories for runtime data
 RUN mkdir -p images
 
-# Create non-root user for security
+# Create non-root user for security with specific UID/GID
 RUN addgroup -g 1001 -S appuser && \
     adduser -S -D -H -u 1001 -s /sbin/nologin -G appuser appuser
 
 # Change /app folder ownership to appuser instead of root
 RUN chown -R appuser:appuser /app
 
-# Run everything as appuser from this point
-USER appuser
+# Set proper permissions for images directory (group writable)
+RUN chmod 775 /app/images
 
 # Create volume mount point for persistent image cache
 VOLUME ["/app/images"]
+
+# Run everything as appuser from this point
+USER appuser
 
 # Set Python path to include current directory for module imports
 ENV PYTHONPATH=/app

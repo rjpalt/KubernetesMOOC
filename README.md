@@ -75,6 +75,7 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - **Note**: AKS does not come with a default ingress controller. I have added the NGINX ingress controller to the exercises namespace. See the [Azure Memos section Enabling AKS App Routing for Ingress](docs/azure/Azure-memos.md#enabling-aks-app-routing-for-ingress) for details.
 - [3.3](https://github.com/rjpalt/KubernetesMOOC/tree/3.3/ping-pong) - AKS Gateway API - [Commands](docs/exercises/3.3-commands.md) and [Azure Memos](docs/azure/Azure-memos.md)
 - [3.4](https://github.com/rjpalt/KubernetesMOOC/tree/3.4/ping-pong) - Gateway API Route Rewriting - [Commands](docs/exercises/3.4-commands.md)
+- [3.5](https://github.com/rjpalt/KubernetesMOOC/tree/3.5/course_project) - Refactor + Gateway API for Course Project - [Commands](docs/exercises/3.5-commands.md) and [Azure Memos](docs/azure/Azure-memos.md)
 
 
 ## Cleanup Script

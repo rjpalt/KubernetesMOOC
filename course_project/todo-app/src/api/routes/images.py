@@ -6,6 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.templating import Jinja2Templates
 
+from ...config.settings import settings
 from ...models.image import FetchResult, ImageInfo
 from ...services.image_service import ImageService
 from ...services.todo_backend_client import TodoBackendClient
@@ -61,6 +62,7 @@ async def read_root(
             "image_status": image_status,
             "config": config,
             "todos": todos,
+            "base_path": settings.api_base_path,
         },
     )
 
