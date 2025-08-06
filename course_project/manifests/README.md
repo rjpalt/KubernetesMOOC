@@ -41,13 +41,42 @@ Services must be deployed in the following order due to dependencies:
 4. **todo-fe/** - Frontend service (depends on backend)
 5. **todo-cron/** - Scheduled tasks (depends on backend API)
 
-## Future Kustomization Files
+## Kustomization Files
 
-Each base directory and overlay will contain `kustomization.yaml` files to define:
+Each service directory contains `kustomization.yaml` files that define their resources:
 
-- **Base kustomizations**: Resource lists and common labels
-- **Overlay kustomizations**: Environment-specific patches, resource limits, replicas
-- **Root kustomization**: Full application deployment
+### Individual Service Deployment
+
+Deploy individual services:
+```bash
+# Deploy shared resources first
+kubectl apply -k manifests/base/shared/
+
+# Deploy database
+kubectl apply -k manifests/base/postgres/
+
+# Deploy backend
+kubectl apply -k manifests/base/todo-be/
+
+# Deploy frontend  
+kubectl apply -k manifests/base/todo-fe/
+
+# Deploy cron job
+kubectl apply -k manifests/base/todo-cron/
+```
+
+### Full Stack Deployment
+
+Deploy the entire application with a single command:
+```bash
+# Deploy all services at once (recommended)
+kubectl apply -k manifests/base/
+
+# Or using explicit path
+kubectl apply -k course_project/manifests/base/
+```
+
+The full-stack kustomization automatically handles deployment order and applies common labels to all resources.
 
 ## Service Communication
 
