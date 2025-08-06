@@ -6,6 +6,7 @@ Tests that the base path configuration works correctly in different deployment s
 """
 
 import os
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 from fastapi.testclient import TestClient
@@ -123,10 +124,12 @@ print("All base path prefix checks passed!")
 """
 
         # Run the test script with API_BASE_PATH="/project"
+        # Use Path to get the current test file directory and navigate to the project root
+        project_root = Path(__file__).parent.parent.parent
         result = subprocess.run(
             [sys.executable, "-c", test_script],
             env={**os.environ, "API_BASE_PATH": "/project"},
-            cwd="/Users/rasmuspaltschik/Projects/HY/KubernetesMOOC/course_project/todo-app",
+            cwd=str(project_root),
             capture_output=True,
             text=True,
         )
