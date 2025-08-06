@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     # Template configuration
     template_directory: str = Field(default="templates", description="Template directory path")
 
+    # API base path configuration (for Gateway API deployment)
+    api_base_path: str = Field(
+        default="", description="Base path prefix for API endpoints (e.g., '/project' for Gateway API)"
+    )
+
     # Todo backend service configuration
     todo_backend_url: str = Field(default="http://localhost:8001", description="Todo backend service URL")
     todo_backend_timeout: float = Field(default=10.0, description="Todo backend request timeout in seconds")

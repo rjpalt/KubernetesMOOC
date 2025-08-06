@@ -2,7 +2,7 @@
     <div class="todo-content">
         <input type="checkbox" 
                {% if todo.status == "done" %}checked{% endif %}
-               hx-put="/todos/{{ todo.id }}/toggle" 
+               hx-put="{{ base_path }}/todos/{{ todo.id }}/toggle" 
                hx-target="#todo-{{ todo.id }}" 
                hx-swap="outerHTML">
         <span class="todo-text {% if todo.status == 'done' %}completed{% endif %}">
@@ -16,7 +16,7 @@
         </small>
     </div>
     <button class="delete-btn" 
-            hx-delete="/todos/{{ todo.id }}" 
+            hx-delete="{{ base_path }}/todos/{{ todo.id }}" 
             hx-target="#todo-{{ todo.id }}" 
             hx-swap="outerHTML"
             hx-confirm="Delete this todo?">×</button>

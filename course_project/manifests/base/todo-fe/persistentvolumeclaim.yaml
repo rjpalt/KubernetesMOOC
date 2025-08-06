@@ -4,7 +4,7 @@ metadata:
   name: image-cache-pvc
   namespace: project
 spec:
-  storageClassName: image-cache-pv
+  storageClassName: managed-csi
   accessModes:
     - ReadWriteOnce
   resources:

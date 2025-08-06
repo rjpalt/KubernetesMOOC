@@ -25,6 +25,7 @@ else
 fi
 
 echo "Building Docker images with tag: $TAG"
+echo "Platform: linux/amd64 (AKS compatible)"
 echo "=========================================="
 
 # Build frontend image
@@ -35,7 +36,7 @@ if [ ! -f "Dockerfile" ]; then
     exit 1
 fi
 
-docker build -t todo-app-fe:$TAG .
+docker build --platform linux/amd64 -t todo-app-fe:$TAG .
 if [ $? -eq 0 ]; then
     echo "✓ Frontend image built successfully: todo-app-fe:$TAG"
 else
@@ -52,11 +53,28 @@ if [ ! -f "Dockerfile" ]; then
     exit 1
 fi
 
-docker build -t todo-app-be:$TAG .
+docker build --platform linux/amd64 -t todo-app-be:$TAG .
 if [ $? -eq 0 ]; then
     echo "✓ Backend image built successfully: todo-app-be:$TAG"
 else
     echo "✗ Backend image build failed"
+    exit 1
+fi
+
+# Build cron job image
+echo ""
+echo "Building cron job image (todo-app-cron:$TAG)..."
+cd ../todo-cron
+if [ ! -f "Dockerfile" ]; then
+    echo "Error: Dockerfile not found in todo-cron directory"
+    exit 1
+fi
+
+docker build --platform linux/amd64 -t todo-app-cron:$TAG .
+if [ $? -eq 0 ]; then
+    echo "✓ Cron job image built successfully: todo-app-cron:$TAG"
+else
+    echo "✗ Cron job image build failed"
     exit 1
 fi
 
@@ -76,6 +94,7 @@ if [ -f "docker-compose.yaml" ]; then
     # Update image tags using sed
     sed -i.tmp "s/image: todo-app-be:[^[:space:]]*/image: todo-app-be:$TAG/" docker-compose.yaml
     sed -i.tmp "s/image: todo-app-fe:[^[:space:]]*/image: todo-app-fe:$TAG/" docker-compose.yaml
+    sed -i.tmp "s/image: todo-app-cron:[^[:space:]]*/image: todo-app-cron:$TAG/" docker-compose.yaml
     rm docker-compose.yaml.tmp  # Remove sed backup file
     
     # Validate YAML syntax
@@ -99,6 +118,7 @@ echo "✓ All images built successfully!"
 echo "Images created:"
 echo "  - todo-app-fe:$TAG"
 echo "  - todo-app-be:$TAG"
+echo "  - todo-app-cron:$TAG"
 echo ""
 echo "✓ docker-compose.yaml updated to use tag: $TAG"
 echo "You can now use these images in your Kubernetes manifests or run with docker-compose."
