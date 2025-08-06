@@ -25,7 +25,7 @@
 | 2025-08-03 | 3 | Chapter 4: 3.3 | 58.5 |
 | 2025-08-04 | 3.5 | Chapter 4: 3.3 & 3.4: AKS + Gateway API | 62 |
 | 2025-08-05 | 2 | Chapter 4: 3.5: Azure Key Vault integration | 64 |
-| 2025-08-06 | 3 | Chapter 4: 3.7: AKS + Gateway API | 67 |
+| 2025-08-06 | 3 | Chapter 4: 3.5: Refactor + Gateway API for Course Project | 67 |
 | 2025-08-07 | 0 | Chapter 4: 3.8: AKS + Gateway API | 67 |
 | 2025-08-08 | 0 | Chapter 4: 3.9: AKS + Gateway API | 67 |
 | 2025-08-09 | 0 | Chapter 4: 3.10: AKS + Gateway API | 67 |
