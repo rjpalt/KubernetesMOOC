@@ -25,63 +25,110 @@ else
 fi
 
 echo "Building Docker images with tag: $TAG"
-echo "Platform: linux/amd64 (AKS compatible)"
-echo "=========================================="
+echo "Architectures: ARM64 (local development) + AMD64 (AKS deployment)"
+echo "=================================================================="
 
-# Build frontend image
-echo "Building frontend image (todo-app-fe:$TAG)..."
+# Build ARM64 images (for local development)
+echo "Building ARM64 images for local development..."
+echo "----------------------------------------------"
+
+# Build frontend ARM64 image
+echo "Building frontend ARM64 image (todo-app-fe:$TAG-arm64)..."
 cd todo-app
 if [ ! -f "Dockerfile" ]; then
     echo "Error: Dockerfile not found in todo-app directory"
     exit 1
 fi
 
-docker build --platform linux/amd64 -t todo-app-fe:$TAG .
+docker build --platform linux/arm64 -t todo-app-fe:$TAG-arm64 .
 if [ $? -eq 0 ]; then
-    echo "✓ Frontend image built successfully: todo-app-fe:$TAG"
+    echo "✓ Frontend ARM64 image built successfully: todo-app-fe:$TAG-arm64"
 else
-    echo "✗ Frontend image build failed"
+    echo "✗ Frontend ARM64 image build failed"
     exit 1
 fi
 
-# Build backend image
+# Build backend ARM64 image
 echo ""
-echo "Building backend image (todo-app-be:$TAG)..."
+echo "Building backend ARM64 image (todo-app-be:$TAG-arm64)..."
 cd ../todo-backend
 if [ ! -f "Dockerfile" ]; then
     echo "Error: Dockerfile not found in todo-backend directory"
     exit 1
 fi
 
-docker build --platform linux/amd64 -t todo-app-be:$TAG .
+docker build --platform linux/arm64 -t todo-app-be:$TAG-arm64 .
 if [ $? -eq 0 ]; then
-    echo "✓ Backend image built successfully: todo-app-be:$TAG"
+    echo "✓ Backend ARM64 image built successfully: todo-app-be:$TAG-arm64"
 else
-    echo "✗ Backend image build failed"
+    echo "✗ Backend ARM64 image build failed"
     exit 1
 fi
 
-# Build cron job image
+# Build cron job ARM64 image
 echo ""
-echo "Building cron job image (todo-app-cron:$TAG)..."
+echo "Building cron job ARM64 image (todo-app-cron:$TAG-arm64)..."
 cd ../todo-cron
 if [ ! -f "Dockerfile" ]; then
     echo "Error: Dockerfile not found in todo-cron directory"
     exit 1
 fi
 
-docker build --platform linux/amd64 -t todo-app-cron:$TAG .
+docker build --platform linux/arm64 -t todo-app-cron:$TAG-arm64 .
 if [ $? -eq 0 ]; then
-    echo "✓ Cron job image built successfully: todo-app-cron:$TAG"
+    echo "✓ Cron job ARM64 image built successfully: todo-app-cron:$TAG-arm64"
 else
-    echo "✗ Cron job image build failed"
+    echo "✗ Cron job ARM64 image build failed"
+    exit 1
+fi
+
+# Build AMD64 images (for AKS deployment)
+echo ""
+echo "Building AMD64 images for AKS deployment..."
+echo "-------------------------------------------"
+
+# Build frontend AMD64 image
+echo "Building frontend AMD64 image (todo-app-fe:$TAG-amd64)..."
+cd ../todo-app
+
+docker build --platform linux/amd64 -t todo-app-fe:$TAG-amd64 .
+if [ $? -eq 0 ]; then
+    echo "✓ Frontend AMD64 image built successfully: todo-app-fe:$TAG-amd64"
+else
+    echo "✗ Frontend AMD64 image build failed"
+    exit 1
+fi
+
+# Build backend AMD64 image
+echo ""
+echo "Building backend AMD64 image (todo-app-be:$TAG-amd64)..."
+cd ../todo-backend
+
+docker build --platform linux/amd64 -t todo-app-be:$TAG-amd64 .
+if [ $? -eq 0 ]; then
+    echo "✓ Backend AMD64 image built successfully: todo-app-be:$TAG-amd64"
+else
+    echo "✗ Backend AMD64 image build failed"
+    exit 1
+fi
+
+# Build cron job AMD64 image
+echo ""
+echo "Building cron job AMD64 image (todo-app-cron:$TAG-amd64)..."
+cd ../todo-cron
+
+docker build --platform linux/amd64 -t todo-app-cron:$TAG-amd64 .
+if [ $? -eq 0 ]; then
+    echo "✓ Cron job AMD64 image built successfully: todo-app-cron:$TAG-amd64"
+else
+    echo "✗ Cron job AMD64 image build failed"
     exit 1
 fi
 
 # Update docker-compose.yaml with new tag
 echo ""
-echo "Updating docker-compose.yaml with tag: $TAG"
-echo "============================================"
+echo "Updating docker-compose.yaml with ARM64 images for local development"
+echo "=================================================================="
 
 # Go back to project root
 cd ..
@@ -91,16 +138,16 @@ if [ -f "docker-compose.yaml" ]; then
     cp docker-compose.yaml docker-compose.yaml.backup
     echo "✓ Backup created: docker-compose.yaml.backup"
     
-    # Update image tags using sed
-    sed -i.tmp "s/image: todo-app-be:[^[:space:]]*/image: todo-app-be:$TAG/" docker-compose.yaml
-    sed -i.tmp "s/image: todo-app-fe:[^[:space:]]*/image: todo-app-fe:$TAG/" docker-compose.yaml
-    sed -i.tmp "s/image: todo-app-cron:[^[:space:]]*/image: todo-app-cron:$TAG/" docker-compose.yaml
+    # Update image tags using sed (use ARM64 variants for local development)
+    sed -i.tmp "s/image: todo-app-be:[^[:space:]]*/image: todo-app-be:$TAG-arm64/" docker-compose.yaml
+    sed -i.tmp "s/image: todo-app-fe:[^[:space:]]*/image: todo-app-fe:$TAG-arm64/" docker-compose.yaml
+    sed -i.tmp "s/image: todo-app-cron:[^[:space:]]*/image: todo-app-cron:$TAG-arm64/" docker-compose.yaml
     rm docker-compose.yaml.tmp  # Remove sed backup file
     
     # Validate YAML syntax
     python3 -c "import yaml; yaml.safe_load(open('docker-compose.yaml'))" 2>/dev/null
     if [ $? -eq 0 ]; then
-        echo "✓ docker-compose.yaml updated successfully"
+        echo "✓ docker-compose.yaml updated successfully with ARM64 images"
         echo "✓ YAML validation passed"
     else
         echo "✗ YAML validation failed! Restoring backup..."
@@ -113,12 +160,17 @@ else
 fi
 
 echo ""
-echo "=========================================="
+echo "=================================================================="
 echo "✓ All images built successfully!"
-echo "Images created:"
-echo "  - todo-app-fe:$TAG"
-echo "  - todo-app-be:$TAG"
-echo "  - todo-app-cron:$TAG"
+echo "ARM64 images (for local development):"
+echo "  - todo-app-fe:$TAG-arm64"
+echo "  - todo-app-be:$TAG-arm64"
+echo "  - todo-app-cron:$TAG-arm64"
 echo ""
-echo "✓ docker-compose.yaml updated to use tag: $TAG"
-echo "You can now use these images in your Kubernetes manifests or run with docker-compose."
+echo "AMD64 images (for AKS deployment):"
+echo "  - todo-app-fe:$TAG-amd64"
+echo "  - todo-app-be:$TAG-amd64"
+echo "  - todo-app-cron:$TAG-amd64"
+echo ""
+echo "✓ docker-compose.yaml updated to use ARM64 images for local development"
+echo "Use the AMD64 images in your Kubernetes manifests for AKS deployment."
