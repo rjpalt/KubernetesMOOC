@@ -12,15 +12,19 @@ Three-service todo application: **todo-backend** (REST API), **todo-app** (Front
 
 ```mermaid
 graph TD
-    UserBrowser -->|HTMX POST| Ingress
-    Ingress -->|/todos to Frontend| Frontend
-    Frontend -->|API Call| Backend
+    UserBrowser -->|HTMX POST /project/todos| Gateway
+    Gateway -->|/todos to Frontend| Frontend
+    Frontend -->|JSON API Call| Backend
     Backend -->|JSON Response| Frontend
     Frontend -->|HTML Fragment| UserBrowser
 
-    UserBrowser -->|/docs| Ingress
-    Ingress -->|/docs to Backend| Backend
+    UserBrowser -->|GET /project/docs| Gateway
+    Gateway -->|/docs to Backend| Backend
     Backend -->|Swagger UI| UserBrowser
+    
+    UserBrowser -->|GET /project/be-health| Gateway
+    Gateway -->|/be-health to Backend| Backend
+    Backend -->|JSON Health Status| UserBrowser
 ```
 
 ## Quick Start
@@ -210,10 +214,19 @@ kubectl apply -k manifests/overlays/production/
 - **GitOps Ready**: Structure supports GitOps deployment patterns
 
 ### Service Access
-- **Frontend**: Through Gateway API at `/` and `/todos`
-- **Backend API**: Through Gateway API at `/docs` for Swagger UI
-- **Health Checks**: `/be-health` endpoint for backend monitoring
+- **Frontend**: Through Gateway API at `/project/` (main UI and form submissions)
+- **Backend API**: Through Gateway API at `/project/docs` for Swagger UI and `/project/be-health` for monitoring
+- **Todo Operations**: Form submissions via `/project/todos` route to frontend, which proxies to backend as JSON
+- **Health Checks**: `/project/be-health` endpoint routes directly to backend for monitoring
 - **Security**: All database credentials managed through Azure Key Vault
+
+### Gateway API Routing
+The HTTPRoute configuration provides intelligent routing:
+- `/project/todos` → Frontend service (handles form data conversion to JSON)
+- `/project/be-health` → Backend service (direct health check access)
+- `/project/docs` → Backend service (API documentation)
+- `/project/image*` → Frontend service (image caching functionality)
+- `/project/` → Frontend service (main UI and catch-all)
 
 ## Azure Deployment
 
