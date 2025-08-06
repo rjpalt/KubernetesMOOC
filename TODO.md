@@ -4,47 +4,47 @@
 **End State**: Individual service deployments + full stack deployment capability using hierarchical Kustomization structure with Azure Key Vault integration.
 
 ### Phase 1: Container Images & Registry
-- [ ] Build application images with consistent versioning (v3.5)
+- [x] Build application images with consistent versioning (v3.5)
   ```bash
   ./build-images.sh v3.5
   ```
-- [ ] Tag images for Azure Container Registry
+- [x] Tag images for Azure Container Registry
   ```bash
-  docker tag todo-backend:3.5 kubemooc.azurecr.io/todo-backend:3.5
-  docker tag todo-frontend:3.5 kubemooc.azurecr.io/todo-frontend:3.5  
-  docker tag todo-cron:3.5 kubemooc.azurecr.io/todo-cron:3.5
+  docker tag todo-app-be:3.5 kubemooc.azurecr.io/todo-app-be:3.5
+  docker tag todo-app-fe:3.5 kubemooc.azurecr.io/todo-app-fe:3.5
+  docker tag todo-app-cron:3.5 kubemooc.azurecr.io/todo-app-cron:3.5
   ```
-- [ ] Push all images to ACR
+- [x] Push all images to ACR
   ```bash
   az acr login --name kubemooc
-  docker push kubemooc.azurecr.io/todo-backend:3.5
-  docker push kubemooc.azurecr.io/todo-frontend:3.5
-  docker push kubemooc.azurecr.io/todo-cron:3.5
+  docker push kubemooc.azurecr.io/todo-app-be:3.5
+  docker push kubemooc.azurecr.io/todo-app-fe:3.5
+  docker push kubemooc.azurecr.io/todo-app-cron:3.5
   ```
 
 ### Phase 2: Update Kubernetes Manifests
-- [ ] **Backend Service** (`manifests/base/todo-be/`)
-  - [ ] Update deployment.yaml with ACR image reference
-  - [ ] Configure database connection to use Azure Key Vault secrets
-  - [ ] Update service.yaml for proper port exposure
-  - [ ] Create/verify kustomization.yaml for independent deployment
+- [x] **Backend Service** (`manifests/base/todo-be/`)
+  - [x] Update deployment.yaml with ACR image reference
+  - [x] Configure database connection to use Azure Key Vault secrets
+  - [x] Update service.yaml for proper port exposure
+  - [x] Create/verify kustomization.yaml for independent deployment
 
-- [ ] **Frontend Service** (`manifests/base/todo-fe/`)
-  - [ ] Update deployment.yaml with ACR image reference
-  - [ ] Configure backend API endpoint for AKS internal communication
-  - [ ] Update service.yaml for Gateway API routing
-  - [ ] Create/verify kustomization.yaml for independent deployment
+- [x] **Frontend Service** (`manifests/base/todo-fe/`)
+  - [x] Update deployment.yaml with ACR image reference
+  - [x] Configure backend API endpoint for AKS internal communication
+  - [x] Update service.yaml for Gateway API routing
+  - [x] Create/verify kustomization.yaml for independent deployment
 
-- [ ] **Cron Job Service** (`manifests/base/todo-cron/`)
-  - [ ] Update cronjob.yaml with ACR image reference
-  - [ ] Configure backend API endpoint for internal cluster communication
-  - [ ] Create/verify kustomization.yaml for independent deployment
+- [x] **Cron Job Service** (`manifests/base/todo-cron/`)
+  - [x] Update cronjob.yaml with ACR image reference
+  - [x] Configure backend API endpoint for internal cluster communication
+  - [x] Create/verify kustomization.yaml for independent deployment
 
 ### Phase 3: Kustomization Structure Validation
-- [ ] **Service-Level Kustomizations**
-  - [ ] Test individual service deployment: `kubectl apply -k manifests/base/todo-be/`
-  - [ ] Test individual service deployment: `kubectl apply -k manifests/base/todo-fe/`
-  - [ ] Test individual service deployment: `kubectl apply -k manifests/base/todo-cron/`
+- [x] **Service-Level Kustomizations**
+  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-be/`
+  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-fe/`
+  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-cron/`
 
 - [ ] **Full Stack Kustomization**
   - [ ] Create root `manifests/kustomization.yaml` that includes all base services

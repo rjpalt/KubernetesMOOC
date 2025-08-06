@@ -686,3 +686,16 @@ EOF
 47. Create the Gateway resource
 48. kubectl apply -f manifests/shared/k8s-nsa2-gateway.yaml
 49. fqdn=$(kubectl get gateway k8s-nsa2-gateway -n nsa2 -o jsonpath='{.status.addresses[0].value}')
+
+---
+# Kustomization #
+## Kustomization Basics ##
+Apply a kustomization with kubectl:
+```bash
+kubectl apply -k .
+```
+
+Check what kustomization would apply:
+```bash
+kubectl kustomize .
+```

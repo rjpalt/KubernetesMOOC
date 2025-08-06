@@ -1,0 +1,17 @@
+apiVersion: alb.networking.azure.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: todo-frontend-health-check
+  namespace: project
+spec:
+  targetRef:
+    group: ""
+    kind: Service
+    name: todo-app-fe-svc
+  default:
+    interval: 10s
+    timeout: 3s
+    unhealthyThreshold: 3
+    healthyThreshold: 2
+    http:
+      path: "/health"  # Frontend has dedicated health endpoint

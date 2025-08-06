@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from ...config.settings import settings
 from ...models.todo import TodoStatus
 from ...services.todo_backend_client import TodoBackendClient
 
@@ -31,7 +32,9 @@ async def get_todos_html(
     """Get todos as HTML fragment for HTMX."""
     try:
         todos = await backend_client.get_all_todos()
-        return templates.TemplateResponse(request, "components/todo_list.html", {"todos": todos})
+        return templates.TemplateResponse(
+            request, "components/todo_list.html", {"todos": todos, "base_path": settings.api_base_path}
+        )
     except HTTPException as e:
         return templates.TemplateResponse(request, "components/error.html", {"error": e.detail})
 
@@ -53,7 +56,9 @@ async def create_todo_html(
         new_todo = await backend_client.create_todo(text.strip())
 
         # Return the new todo as HTML fragment
-        return templates.TemplateResponse(request, "components/todo_item.html", {"todo": new_todo})
+        return templates.TemplateResponse(
+            request, "components/todo_item.html", {"todo": new_todo, "base_path": settings.api_base_path}
+        )
     except HTTPException as e:
         return templates.TemplateResponse(request, "components/error.html", {"error": e.detail})
 
@@ -79,7 +84,9 @@ async def toggle_todo_html(
         updated_todo = await backend_client.update_todo(todo_id, status=new_status)
 
         # Return updated todo as HTML fragment
-        return templates.TemplateResponse(request, "components/todo_item.html", {"todo": updated_todo})
+        return templates.TemplateResponse(
+            request, "components/todo_item.html", {"todo": updated_todo, "base_path": settings.api_base_path}
+        )
     except HTTPException as e:
         return templates.TemplateResponse(request, "components/error.html", {"error": e.detail})
 

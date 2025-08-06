@@ -1,0 +1,77 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: todo-app
+  namespace: project
+spec:
+  parentRefs:
+    - name: k8s-nsa2-gateway
+      namespace: nsa2
+  rules:
+    # Most specific routes first for better performance
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /project/be-health
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /be-health
+      backendRefs:
+        - name: todo-app-be-svc
+          port: 2506
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /project/docs/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /docs
+      backendRefs:
+        - name: todo-app-be-svc
+          port: 2506
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /project/image
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /image
+      backendRefs:
+        - name: todo-app-fe-svc
+          port: 2507
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /project/todos
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /todos
+      backendRefs:
+        - name: todo-app-be-svc
+          port: 2506
+    # Most general route last (catch-all)
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /project/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: todo-app-fe-svc
+          port: 2507

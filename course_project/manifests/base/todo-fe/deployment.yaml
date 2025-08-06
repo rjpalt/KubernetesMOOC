@@ -26,7 +26,7 @@ spec:
             claimName: image-cache-pvc
       containers:
       - name: todo-app-fe
-        image: todo-app-fe:2.10
+        image: kubemooc.azurecr.io/todo-app-fe:3.5
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
@@ -37,6 +37,8 @@ spec:
           value: "http://todo-app-be-svc:2506"
         - name: LOG_LEVEL
           value: "INFO"
+        - name: API_BASE_PATH
+          value: "/project"
         volumeMounts:
           - name: image-cache-volume
             mountPath: /images
