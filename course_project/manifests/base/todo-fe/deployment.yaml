@@ -26,7 +26,7 @@ spec:
             claimName: image-cache-pvc
       containers:
       - name: todo-app-fe
-        image: kubemooc.azurecr.io/todo-app-fe:3.5
+        image: kubemooc.azurecr.io/todo-app-fe:3.5-amd64
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
