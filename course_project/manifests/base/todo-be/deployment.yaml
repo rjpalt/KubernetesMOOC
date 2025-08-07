@@ -14,8 +14,10 @@ spec:
         app: todo-app-be
     spec:
       containers:
-        - name: todo-app-be
-          image: kubemooc.azurecr.io/todo-app-be:3.5-amd64
+        - name: todo-backend
+          # WARNING: This image tag is automatically updated by CI/CD pipeline
+          # DO NOT manually edit - tag gets replaced with commit SHA during deployment
+          image: kubemooc.azurecr.io/todo-app-be:PLACEHOLDER-UPDATED-BY-CICD
           imagePullPolicy: IfNotPresent
           env:
             - name: PORT
