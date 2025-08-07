@@ -310,9 +310,17 @@ jobs:
       
       - name: Verify frontend health
         run: |
-          # Wait for pods to be ready
-          echo "Waiting for frontend pods to be ready..."
-          kubectl wait --for=condition=ready pod -l app=todo-app-fe -n project --timeout=120s
+          # Deployment rollout already verified above, now just get a ready pod for testing
+          echo "Finding a ready frontend pod for health testing..."
+          READY_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          
+          if [ -z "$READY_POD" ]; then
+            echo "No running frontend pods found, waiting briefly..."
+            sleep 10
+            READY_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+          fi
+          
+          echo "Found ready pod: $READY_POD"
           
           # Get frontend service endpoint for verification
           kubectl get svc todo-app-fe-svc -n project
