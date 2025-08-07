@@ -1,6 +1,7 @@
 """Main application entry point - clean and modular."""
 
 # Trigger CI/CD pipeline test - Azure Files storage update
+# Testing azurefile-csi ReadWriteMany PVC deployment
 import logging
 
 import uvicorn

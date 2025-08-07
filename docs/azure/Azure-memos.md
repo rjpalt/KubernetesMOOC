@@ -1215,3 +1215,41 @@ This pattern is used by many organizations to **prevent deployment accidents** a
 
 **Why azurefile-csi for Image Cache:**
 The frontend image cache stores random images from the internet that multiple pods can safely share. Since the content is non-critical and read-heavy, Azure Files' ReadWriteMany capability allows smooth rolling updates without deployment downtime, unlike Azure Disk's single-pod limitation.
+
+### Troubleshooting PVC Storage Class Changes
+
+**Problem:** Cannot change storage class or access mode of an existing PVC - "spec is immutable after creation"
+
+**Root Cause:** Kubernetes PVCs are immutable after creation. You cannot change `storageClassName` or `accessModes` on an existing PVC.
+
+**Solution Process:**
+1. **Delete the deployment first**: The PVC will be stuck in "Terminating" state if any pods are still using it
+   ```bash
+   kubectl delete deployment todo-app-fe -n project
+   ```
+
+2. **Delete the PVC**: Once no pods are using it, the PVC can be deleted
+   ```bash
+   kubectl delete pvc image-cache-pvc -n project
+   ```
+
+3. **Redeploy with new configuration**: Apply the updated manifests with the correct storage class
+   ```bash
+   kubectl apply -k course_project/manifests/base/todo-fe/
+   ```
+
+**Expected Results:**
+- Old PVC: `managed-csi` with `RWO` (ReadWriteOnce)
+- New PVC: `azurefile-csi` with `RWX` (ReadWriteMany)
+
+**Diagnostic Commands:**
+```bash
+# Check PVC status and what's using it
+kubectl describe pvc image-cache-pvc -n project
+
+# Check if pods are still using the PVC
+kubectl get pods -n project -o wide
+
+# Verify new PVC has correct storage class
+kubectl get pvc -n project
+```
