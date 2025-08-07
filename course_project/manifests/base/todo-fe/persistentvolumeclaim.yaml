@@ -4,9 +4,9 @@ metadata:
   name: image-cache-pvc
   namespace: project
 spec:
-  storageClassName: managed-csi
+  storageClassName: azurefile-csi  # Azure Files supports ReadWriteMany
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany  # Allow multiple pods to share image cache
   resources:
     requests:
       storage: 1Gi

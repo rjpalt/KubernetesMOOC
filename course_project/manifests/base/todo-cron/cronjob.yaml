@@ -12,8 +12,10 @@ spec:
         spec:
           restartPolicy: OnFailure
           containers:
-            - name: todo-cronjob
-              image: kubemooc.azurecr.io/todo-app-cron:3.5-amd64
+            - name: todo-cron
+              # WARNING: This image tag is automatically updated by CI/CD pipeline
+              # DO NOT manually edit - tag gets replaced with commit SHA during deployment  
+              image: kubemooc.azurecr.io/todo-app-cron:PLACEHOLDER-UPDATED-BY-CICD
               imagePullPolicy: IfNotPresent
               env:
                 - name: TODO_BACKEND_URL

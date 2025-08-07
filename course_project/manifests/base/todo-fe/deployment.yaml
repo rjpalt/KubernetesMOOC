@@ -26,7 +26,9 @@ spec:
             claimName: image-cache-pvc
       containers:
       - name: todo-app-fe
-        image: kubemooc.azurecr.io/todo-app-fe:3.5-amd64
+        # WARNING: This image tag is automatically updated by CI/CD pipeline  
+        # DO NOT manually edit - tag gets replaced with commit SHA during deployment
+        image: kubemooc.azurecr.io/todo-app-fe:PLACEHOLDER-UPDATED-BY-CICD
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000

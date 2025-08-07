@@ -931,6 +931,287 @@ persistentVolumeClaim:
 # CSI driver handles all the Azure-specific magic behind the scenes
 ```
 
-CSI makes Kubernetes truly cloud-agnostic while giving cloud providers the flexibility to innovate on their storage solutions! 🎯
+CSI makes Kubernetes truly cloud-agnostic while giving cloud providers the flexibility to innovate on their storage solutions!
 
 Similar code found with 2 license types
+
+# GitHub Deployment Pipeline Creation with Azure Cloud #
+
+Implementing Workload Identity authentication for GitHub Actions to enable secure, passwordless CI/CD pipelines with Azure Container Registry (ACR) and Azure Kubernetes Service (AKS).
+
+**Why Workload Identity?** Traditional CI/CD authentication uses long-lived service principal credentials stored as GitHub secrets. Workload Identity eliminates this security risk by using OpenID Connect (OIDC) federation - GitHub Actions receives temporary JWT tokens that Azure validates in real-time without storing any secrets.
+
+**The Authentication Flow:**
+1. GitHub Actions requests a JWT token from GitHub's OIDC issuer
+2. Azure validates the token against the trusted relationship we establish
+3. Azure grants temporary access to the specified resources
+4. No credentials stored in GitHub repository
+
+## Create Managed Identity for GitHub Actions ##
+
+Creates a dedicated Azure identity that GitHub Actions will assume during pipeline execution.
+
+```bash
+az identity create \
+  --resource-group kubernetes-learning \
+  --name github-actions-todo-cd \
+  --location northeurope
+```
+
+**Why a dedicated identity?** Separation of concerns - this identity has only the permissions needed for CI/CD operations, following the principle of least privilege.
+
+## Assign Permissions to Managed Identity ##
+
+Grant the minimum required permissions for the CI/CD pipeline: container image push and Kubernetes deployment.
+
+### 1. Capture the Subscription ID
+```bash
+SUBSCRIPTION_ID=$(az account show --query id --output tsv)
+```
+
+### 2. Get the Managed Identity Client ID
+```bash
+GITHUB_IDENTITY=$(az identity show --resource-group kubernetes-learning --name github-actions-todo-cd --query clientId --output tsv)
+```
+
+### 3. Assign ACR Push Role to Managed Identity
+```bash
+az role assignment create \
+  --assignee $GITHUB_IDENTITY \
+  --role AcrPush \
+  --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/kubernetes-learning/providers/Microsoft.ContainerRegistry/registries/kubemooc
+```
+
+**What this enables:** The identity can push Docker images to the `kubemooc` registry. The `AcrPush` role includes permissions to authenticate, push images, and manage repository metadata.
+
+### 4. Grant AKS Contributor Role to Managed Identity
+```bash
+az role assignment create \
+  --assignee $GITHUB_IDENTITY \
+  --role "Azure Kubernetes Service Contributor Role" \
+  --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/kubernetes-learning/providers/Microsoft.ContainerService/managedClusters/kube-mooc
+```
+
+**What this enables:** The identity can connect to the AKS cluster, retrieve kubeconfig credentials, and execute kubectl commands for deployment operations.
+
+## Configuring Federated Credential Trust ##
+
+Establishes the OIDC trust relationship between your GitHub repository and the Azure Managed Identity.
+
+```bash
+az identity federated-credential create \
+  --name "github-actions-ci-cd" \
+  --identity-name "github-actions-todo-cd" \
+  --resource-group "kubernetes-learning" \
+  --issuer "https://token.actions.githubusercontent.com" \
+  --subject "repo:rjpalt/KubernetesMOOC:ref:refs/heads/main"
+```
+
+**Critical Security Configuration:**
+- `--issuer`: GitHub's OIDC endpoint that Azure will trust
+- `--subject`: Restricts access to only the `main` branch of the specified repository
+- This prevents unauthorized access from forks, pull requests, or other branches
+
+**Alternative subjects for different use cases:**
+- `repo:owner/repo:pull_request` - Allow from pull requests
+- `repo:owner/repo:ref:refs/heads/dev` - Allow from specific branch
+- `repo:owner/repo:environment:production` - Allow from specific environment
+
+## Collect Information for GitHub Repository Configuration ##
+
+Gather the values needed to configure GitHub repository secrets and workflow files.
+
+```bash
+echo "=== GitHub Repository Secrets ==="
+echo "AZURE_CLIENT_ID: $(az identity show --resource-group kubernetes-learning --name github-actions-todo-cd --query clientId --output tsv)"
+echo "AZURE_TENANT_ID: $(az account show --query tenantId --output tsv)"
+echo "AZURE_SUBSCRIPTION_ID: $(az account show --query id --output tsv)"
+echo ""
+echo "=== Azure Resource Information ==="
+echo "ACR_LOGIN_SERVER: kubemooc.azurecr.io"
+echo "AKS_CLUSTER_NAME: kube-mooc"
+echo "AKS_RESOURCE_GROUP: kubernetes-learning"
+```
+
+**Required GitHub Secrets:**
+- `AZURE_CLIENT_ID`: Managed Identity identifier for authentication
+- `AZURE_TENANT_ID`: Azure Active Directory tenant identifier
+- `AZURE_SUBSCRIPTION_ID`: Azure subscription scope identifier
+
+**Workflow Variables:**
+- `ACR_LOGIN_SERVER`: Container registry endpoint for image operations
+- `AKS_CLUSTER_NAME`: Target Kubernetes cluster for deployments
+- `AKS_RESOURCE_GROUP`: Azure resource group containing the cluster
+
+**Security Note:** Unlike Service Principal authentication, no `AZURE_CLIENT_SECRET` is required. The OIDC token serves as the authentication mechanism.
+
+### GitHub Actions and Azure Credentials ###
+```yaml
+name: Deploy to AKS - Todo Application
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'course_project/**'
+
+permissions:
+  id-token: write  # This permission allows GitHub Actions to request and write OIDC tokens
+  contents: read   # Required for checkout
+
+  [... other parts of pipeline ...]
+
+- name: Azure Login via Workload Identity
+  uses: azure/login@v2
+  with:
+    client-id: ${{ secrets.AZURE_CLIENT_ID }}
+    tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  
+  [... other parts of pipeline ...]
+```
+
+**OIDC Authentication Flow:**
+1. GitHub Actions generates an OIDC token (using id-token: write)
+2. `azure/login` action sends this token + the three IDs to Azure
+3. Azure validates the token against your federated credential (github-actions-ci-cd)
+4. Azure returns a temporary access token for the managed identity (github-actions-todo-cd)
+5. The action sets Azure CLI authentication context
+
+**Key Insights:**
+- The "identity" is your Azure Managed Identity (github-actions-todo-cd). GitHub Actions doesn't have its own managed identity - it uses OIDC to assume your Azure Managed Identity.
+- **Session-based permissions**: Once authenticated, the pipeline receives ALL permissions of the managed identity for the duration of the JWT session (typically 30-60 minutes max).
+- **No persistent credentials**: JWT expires, session ends, no stored secrets anywhere.
+
+### Manifest Handling in CI/CD ###
+
+**Important**: The pipeline does NOT modify the main branch. Here's what actually happens:
+
+1. `checkout` action creates a **local copy** of your repo in the runner's temporary workspace
+2. `kustomize edit set image` modifies **only the local copy** in the runner
+3. `kubectl apply -k .` deploys from **the modified local copy**
+4. **No changes are pushed back** to the main branch
+
+**The flow:**
+```
+GitHub Repo (main) → Runner Workspace → Modify Locally → Deploy to AKS
+                   ↑                                   ↑
+              (read-only)                      (deploy only)
+```
+
+This approach maintains **GitOps principles** while enabling **dynamic image tag updates** at deployment time.
+
+### Deployment Tracking (Stopgap Solution) ###
+
+**Current Approach Limitations:**
+- Git repository shows static image tags (`latest` or fixed versions)
+- Actual deployments use dynamic commit SHA tags
+- Configuration drift between repo and cluster state
+
+**Stopgap Monitoring Commands:**
+```bash
+# Check currently deployed image tags
+kubectl get deployment todo-backend -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl get deployment todo-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+# View deployment history
+kubectl rollout history deployment/todo-backend
+kubectl rollout history deployment/todo-app
+
+# Compare repo vs cluster state
+echo "Repo kustomization:"
+cat course_project/manifests/base/kustomization.yaml | grep -A5 images
+echo "Deployed images:"
+kubectl get deployments -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.template.spec.containers[0].image}{"\n"}{end}'
+```
+
+**Acceptable for Learning Because:**
+- Pipeline functionality and security remain intact
+- Easy to verify actual deployed state when needed
+- Focuses learning on Kubernetes rather than complex GitOps tooling
+- Common development pattern before full GitOps implementation
+
+### Making Configuration Drift Explicit ###
+
+**Problem:** Git manifests show static/placeholder tags while deployments use dynamic commit SHAs, creating confusion about what's actually deployed.
+
+**Solution:** Use **intentionally obvious placeholder tags** that make it clear the manifests are managed by automation:
+
+```yaml
+# Example from manifests/base/todo-be/deployment.yaml
+containers:
+- name: todo-backend
+  # WARNING: This image tag is automatically updated by CI/CD pipeline
+  # DO NOT manually edit - tag gets replaced with commit SHA during deployment
+  image: kubemooc.azurecr.io/todo-app-be:PLACEHOLDER-UPDATED-BY-CICD
+```
+
+**Why This Works:**
+- **Prevents manual edits**: Obvious placeholder prevents accidental manual changes
+- **Self-documenting**: Comments explain the CI/CD replacement behavior
+- **Kustomize compatible**: Pipeline still uses `kustomize edit set image` normally
+- **Deployment verification**: Forces developers to check actual cluster state
+
+**Pipeline behavior remains unchanged:**
+```bash
+# CI/CD still works exactly the same way
+kustomize edit set image kubemooc.azurecr.io/todo-app-be:abc123def
+kubectl apply -k .
+```
+
+**Alternative approaches for "latest" behavior:**
+- Use ACR webhook triggers (advanced Azure Container Registry feature)
+- Implement image digest references instead of tags (most reliable)
+- Use Flux/ArgoCD image reflector controllers (full GitOps solution)
+
+### Enforcing CI/CD-Only Deployments ###
+
+**Architectural Benefit:** Using placeholder tags **intentionally breaks** local `kubectl apply` commands, enforcing proper development workflows:
+
+```bash
+# Local development (correct approach)
+cd course_project
+docker-compose up --build              # ✅ Works - proper local testing
+
+# Direct Kubernetes deployment (now prevented)
+kubectl apply -k manifests/base/       # ❌ Fails - placeholder tag doesn't exist
+```
+
+**Why This Is Good Practice:**
+- **Prevents configuration drift**: No accidental local deployments with wrong tags
+- **Enforces testing workflow**: Developers must use docker-compose for local testing
+- **Maintains audit trail**: All production deployments go through Git + CI/CD
+- **Security compliance**: No bypassing authentication and approval processes
+- **Consistency**: Same deployment process for all environments
+
+**The Proper Workflow:**
+1. **Local development**: `docker-compose up` for rapid iteration
+2. **Integration testing**: Push to feature branch → CI runs tests
+3. **Production deployment**: Merge to main → CI/CD deploys with real image tags
+
+**Emergency Override (if needed):**
+```bash
+# Only for emergencies - temporarily fix placeholder tag
+kubectl set image deployment/todo-app-fe todo-app-fe=kubemooc.azurecr.io/todo-app-fe:actual-tag
+```
+
+This pattern is used by many organizations to **prevent deployment accidents** and ensure **proper process compliance**.
+
+## Handling Volumes with Azure CSI Driver ##
+
+### Azure Storage Classes Comparison
+
+**managed-csi (Azure Disk):**
+- Uses Azure Disk storage (SSD/HDD volumes)
+- Access mode: ReadWriteOnce only (single pod attachment)
+- Best for: Database storage, application data requiring persistence
+- Deployment strategy: Requires `Recreate` for rolling updates
+
+**azurefile-csi (Azure Files):**
+- Uses Azure File Share storage (SMB/NFS network file system)
+- Access mode: ReadWriteMany supported (multiple pod sharing)
+- Best for: Shared content, logs, configuration files, image caches
+- Deployment strategy: Supports `RollingUpdate` (zero downtime)
+
+**Why azurefile-csi for Image Cache:**
+The frontend image cache stores random images from the internet that multiple pods can safely share. Since the content is non-critical and read-heavy, Azure Files' ReadWriteMany capability allows smooth rolling updates without deployment downtime, unlike Azure Disk's single-pod limitation.
