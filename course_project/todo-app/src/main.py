@@ -1,5 +1,6 @@
 """Main application entry point - clean and modular."""
 
+# Trigger CI/CD pipeline test - Azure Files storage update
 import logging
 
 import uvicorn

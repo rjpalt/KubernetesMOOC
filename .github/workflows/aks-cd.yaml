@@ -39,8 +39,8 @@ jobs:
             echo "backend=false" >> $GITHUB_OUTPUT
           fi
           
-          # Check if frontend files changed
-          if git diff --name-only HEAD~1 HEAD | grep -q "^course_project/todo-frontend/"; then
+          # Check if frontend files changed (corrected path)
+          if git diff --name-only HEAD~1 HEAD | grep -q "^course_project/todo-app/"; then
             echo "frontend=true" >> $GITHUB_OUTPUT
           else
             echo "frontend=false" >> $GITHUB_OUTPUT
