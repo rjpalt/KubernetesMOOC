@@ -79,7 +79,7 @@
 
 ---
 
-# TODO: OpenAPI Documentation Automation
+# TODO: OpenAPI Documentation Automation (FUTURE)
 
 ## Goal
 Automatically extract OpenAPI specs from todo-app and todo-backend services, centralize them in course_project root, and publish via GitHub Pages with automatic updates on main branch merges.
@@ -171,6 +171,48 @@ course_project/
 ✅ **PostgreSQL Deployment**: Running successfully with Azure Key Vault credentials
 
 **Status**: Production-ready secret management implemented. Ready for application service deployment.
+
+---
+
+# TODO: GitOps Repository Implementation (FUTURE)
+
+## Problem Statement
+**Current Issue**: Manifests use placeholder tags that drift from actual deployed state. Local deployments intentionally broken to enforce CI/CD-only workflow.
+
+## GitOps Solution Overview
+**Concept**: Separate application code repository from configuration repository, with CI/CD pipeline automatically updating config repo with real image tags.
+
+### Architecture
+```
+App Repo (this one)           Config Repo (separate)
+├── src/                     ├── manifests/
+├── Dockerfile              │   ├── todo-backend/
+└── .github/workflows/      │   ├── todo-frontend/
+    └── build.yml           │   └── todo-cron/
+                            └── .github/workflows/
+                                └── deploy.yml
+```
+
+### Implementation Plan
+- [ ] **Create separate config repository** (`KubernetesMOOC-config`)
+- [ ] **Move manifests** from app repo to config repo
+- [ ] **Update CI/CD pipeline** to commit real image tags to config repo
+- [ ] **Deploy ArgoCD/Flux** to watch config repo and auto-deploy changes
+- [ ] **Remove placeholder tags** - config repo always has real, deployable manifests
+
+### Benefits
+✅ **Git reflects reality**: Config repo always shows actual deployed state  
+✅ **Local deployment works**: Real tags mean `kubectl apply` works again  
+✅ **Audit trail**: All changes tracked in Git history  
+✅ **Rollback capability**: Git revert = instant rollback  
+✅ **Multi-environment**: Same pattern for dev/staging/prod with different branches
+
+### Learning Progression
+```
+Current: App Repo + Placeholder Tags → GitOps: App Repo + Config Repo + ArgoCD
+```
+
+**Status**: Planned for later exercises after mastering basic Kubernetes concepts.
 
 ---
 
