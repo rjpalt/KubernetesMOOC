@@ -1253,3 +1253,36 @@ kubectl get pods -n project -o wide
 # Verify new PVC has correct storage class
 kubectl get pvc -n project
 ```
+
+### CI/CD Pipeline Health Check Issues
+
+**Problem:** `kubectl wait --for=condition=ready pod` timing out during rolling deployments, even when pods are actually ready.
+
+**Root Cause:** During rolling updates, there can be multiple pods with the same label selector:
+- Old pods in "Terminating" state
+- New pods in "Running" state
+- The `kubectl wait` command waits for ALL pods matching the selector to be ready
+
+**Symptoms:**
+```bash
+# CI/CD shows timeout
+timed out waiting for the condition on pods/todo-app-fe-567c49c6cd-z6dv5
+
+# But pods are actually ready
+kubectl describe pod → Status: Running, Ready: True
+```
+
+**Solution:** Replace individual pod waits with deployment-focused verification:
+```yaml
+# Instead of waiting for all pods with a label
+kubectl wait --for=condition=ready pod -l app=todo-app-fe -n project --timeout=120s
+
+# Use deployment rollout status (already in pipeline) + find ready pod
+kubectl rollout status deployment/todo-app-fe -n project --timeout=300s
+READY_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+```
+
+**Why This Works:**
+- `kubectl rollout status` waits for deployment to be stable
+- Field selector filters only running pods
+- Avoids race conditions with terminating pods during rolling updates
