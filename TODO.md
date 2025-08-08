@@ -216,4 +216,29 @@ Current: App Repo + Placeholder Tags → GitOps: App Repo + Config Repo + ArgoCD
 
 ---
 
+# TODO: Playwright E2E Testing with Feature Branch Environments
+
+## High-Level Implementation
+- **CI/CD Extension**: Add E2E job after feature environment deployment
+- **Test Target**: Live feature environments via Gateway API (not mocks)
+- **Pipeline Flow**: CI → Deploy → E2E Tests → Block/Allow PR merge
+- **Kubernetes Integration**: Test against real services in isolated namespaces
+
+## Key Benefits
+- Validates complete user workflows before production
+- Leverages existing feature environment infrastructure
+- Fast feedback loop (~10-15 minutes from push to results)
+- Production-like testing with real Gateway API routing
+
+## Implementation Steps
+1. Add Playwright tests in `course_project/e2e-tests/`
+2. Extend `ci.yml` with E2E job after deployment
+3. Configure tests to target feature environment URLs
+4. Set up test result reporting and PR blocking
+
+**Priority**: HIGH - Natural next step for production readiness
+**Effort**: MEDIUM - Builds on existing infrastructure
+
+---
+
 # TODO: OpenAPI Documentation Automation (FUTURE)

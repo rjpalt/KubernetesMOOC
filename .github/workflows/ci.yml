@@ -244,21 +244,25 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: Build backend image
+    - name: Build and cache backend image
       uses: docker/build-push-action@v5
       with:
         context: course_project/todo-backend
-        tags: todo-backend:test
-        load: true
+        tags: |
+          todo-backend:test
+          ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+        load: true  # Load to local Docker for testing
         cache-from: type=gha
         cache-to: type=gha,mode=max
     
-    - name: Build frontend image  
+    - name: Build and cache frontend image  
       uses: docker/build-push-action@v5
       with:
         context: course_project/todo-app
-        tags: todo-app:test
-        load: true
+        tags: |
+          todo-app:test
+          ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+        load: true  # Load to local Docker for testing
         cache-from: type=gha
         cache-to: type=gha,mode=max
     
@@ -317,7 +321,7 @@ jobs:
         docker rm backend-test frontend-test
 
   build-and-push-images:
-    name: Build and Push Tested Images
+    name: Push Tested Images to ACR
     runs-on: ubuntu-latest
     needs: [code-quality, test-backend, test-frontend, test-microservice-integration]
     if: github.actor != 'nektos/act'  # Skip when running with act locally
@@ -329,7 +333,7 @@ jobs:
     - name: Azure Login via Workload Identity
       uses: azure/login@v2
       with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        client-id: ${{ secrets.AZURE_CI_CLIENT_ID }}
         tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     
@@ -339,24 +343,24 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: Build and push backend image
+    - name: Push tested backend image to ACR
       uses: docker/build-push-action@v5
       with:
         context: course_project/todo-backend
         platforms: linux/amd64
         push: true
         tags: ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.sha }}
-        cache-from: type=gha
+        cache-from: type=gha  # Reuse the exact same build from test job
         cache-to: type=gha,mode=max
     
-    - name: Build and push frontend image
+    - name: Push tested frontend image to ACR
       uses: docker/build-push-action@v5
       with:
         context: course_project/todo-app
         platforms: linux/amd64
         push: true
         tags: ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.sha }}
-        cache-from: type=gha
+        cache-from: type=gha  # Reuse the exact same build from test job
         cache-to: type=gha,mode=max
     
     - name: Image build summary
