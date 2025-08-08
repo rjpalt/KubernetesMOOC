@@ -340,7 +340,7 @@ graph TD
     C -->|No| J[Pipeline fails - no deployment]
 ```
 
-### CI Pipeline (`ci.yml`)
+### CI Pipeline (`ci.yml`) ###
 Sequential testing strategy with secure image building:
 1. **Code Quality**: Ruff linting and formatting for both services
 2. **Backend Tests**: Unit and integration tests with PostgreSQL
