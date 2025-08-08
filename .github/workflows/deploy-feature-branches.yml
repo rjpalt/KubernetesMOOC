@@ -110,6 +110,24 @@ jobs:
         
         echo "✅ Namespace ${{ env.NAMESPACE }} created and configured"
     
+    - name: Copy database secret to feature namespace
+      run: |
+        # Copy postgres secret from project namespace to feature namespace
+        # This allows feature environments to use the same database as production
+        echo "Copying postgres-secret from project to ${{ env.NAMESPACE }} namespace..."
+        
+        kubectl get secret postgres-secret -n project -o yaml | \
+          sed 's/namespace: project/namespace: ${{ env.NAMESPACE }}/' | \
+          sed '/resourceVersion:/d' | \
+          sed '/uid:/d' | \
+          sed '/creationTimestamp:/d' | \
+          sed '/ownerReferences:/,+4d' | \
+          kubectl apply -f -
+        
+        # Verify the secret was created
+        kubectl get secret postgres-secret -n ${{ env.NAMESPACE }}
+        echo "✅ Database secret copied successfully"
+    
     - name: Deploy feature environment
       run: |
         cd course_project/manifests/overlays/feature
