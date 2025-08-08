@@ -1,11 +1,41 @@
 # TODO: Exercise 3.7 Completion
 
-## URGENT: Debug Current Issues
-- [ ] **Backend pods failing**: CreateContainerConfigError (todo-app-be)
-- [ ] **Postgres not starting**: ContainerCreating stuck
-- [ ] **Cron job spam**: ImagePullBackOff every minute (disable cronjob)
-- [ ] Check which namespace this is (main or feature-ex-3-7)
-- [ ] Debug secrets/config issues
+## URGENT: Debug Current Issues - DIAGNOSED ✅
+- [x] **Backend pods failing**: CreateContainerConfigError → Missing postgres-secret in feature namespace
+- [x] **Postgres not starting**: ContainerCreating stuck → Azure Key Vault auth failure (wrong namespace)
+- [x] **Cron job spam**: ImagePullBackOff every minute → Disabled cronjob ✅
+- [x] **Check which namespace**: feature-ex-3-7 ✅
+- [x] **Debug secrets/config issues**: Root cause identified ✅
+
+## Root Cause Analysis ✅
+**Problem**: Azure Key Vault Workload Identity only configured for `project` namespace, but feature environments use `feature-*` namespaces.
+
+**Error**: `No matching federated identity record found for presented assertion subject 'system:serviceaccount:feature-ex-3-7:postgres-service-account'`
+
+**Solution**: Copy `postgres-secret` from `project` namespace to feature namespace in deployment workflow.
+
+## Fixed in Workflow ✅
+Added step in `deploy-feature-branches.yml` to copy database secret:
+```yaml
+- name: Copy database secret to feature namespace
+  run: |
+    kubectl get secret postgres-secret -n project -o yaml | \
+      sed 's/namespace: project/namespace: ${{ env.NAMESPACE }}/' | \
+      sed '/resourceVersion:/d' | sed '/uid:/d' | sed '/creationTimestamp:/d' | \
+      sed '/ownerReferences:/,+4d' | kubectl apply -f -
+```
+
+## ⚠️ Current Limitation: Shared Database
+**Current Setup**: All feature environments share the same PostgreSQL database as production.
+
+**Problem**: Data isolation issues - feature tests can affect each other and production data.
+
+**Future Enhancement**: Each feature environment should have its own database instance:
+- **Option 1**: Azure Database for PostgreSQL per feature branch
+- **Option 2**: PostgreSQL pods with persistent volumes per namespace  
+- **Option 3**: In-memory databases for testing (fastest, ephemeral)
+
+**Implementation Priority**: MEDIUM - Current shared setup works for learning/demo purposes, but proper isolation needed for real development workflows.
 
 ## Debug Commands
 ```bash
@@ -165,6 +195,58 @@ Current: App Repo + Placeholder Tags → GitOps: App Repo + Config Repo + ArgoCD
 ```
 
 **Status**: Planned for later exercises after mastering basic Kubernetes concepts.
+
+---
+
+# TODO: Feature Environment Database Isolation (FUTURE)
+
+## Current Limitation
+All feature environments share the same PostgreSQL database as production, creating potential data conflicts and test isolation issues.
+
+## Proposed Solutions
+
+### Option 1: Azure Database for PostgreSQL per Feature Branch
+```yaml
+# In deployment workflow
+- name: Create feature database
+  run: |
+    # Create Azure Database for PostgreSQL Flexible Server
+    az postgres flexible-server create \
+      --name "todo-db-feature-${BRANCH_NAME}" \
+      --resource-group kubernetes-learning \
+      --sku-name Standard_B1ms \
+      --storage-size 32 \
+      --tier Burstable \
+      --database-name todoapp
+```
+
+### Option 2: PostgreSQL StatefulSet per Namespace
+```yaml
+# Deploy dedicated postgres instance in each feature namespace
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-statefulset
+  namespace: feature-branch-name
+```
+
+### Option 3: Ephemeral In-Memory Database
+```yaml
+# Use SQLite or in-memory postgres for fast, isolated testing
+env:
+  - name: DATABASE_URL
+    value: "sqlite:///tmp/feature_test.db"
+```
+
+## Implementation Considerations
+- **Cost**: Option 1 most expensive, Option 3 cheapest
+- **Speed**: Option 3 fastest startup, Option 1 slowest
+- **Isolation**: All options provide full isolation
+- **Persistence**: Options 1&2 persist data, Option 3 ephemeral
+- **Production Similarity**: Option 1 most similar to production
+
+## Recommended Approach
+Start with **Option 2** (StatefulSet per namespace) for good balance of isolation, cost, and production similarity.
 
 ---
 
