@@ -2,7 +2,7 @@ name: Feature Branch Deployment
 
 on:
   workflow_run:
-    workflows: ["Test Pipeline - Microservices"]
+    workflows: ["CI Pipeline - Microservices"]
     types: [completed]
     branches-ignore: [main]
 

@@ -305,7 +305,7 @@ Modern GitOps-style pipeline with separate testing and deployment phases:
 ### Pipeline Architecture
 ```mermaid
 graph TD
-    A[Push/PR to any branch] --> B[Test Pipeline - Microservices]
+    A[Push/PR to any branch] --> B[CI Pipeline - Microservices]
     B --> C{All tests pass?}
     C -->|Yes| D[Build & Push Images to ACR]
     D --> E{Branch type?}
@@ -316,7 +316,7 @@ graph TD
     C -->|No| J[Pipeline fails - no deployment]
 ```
 
-### Test Pipeline (`test.yml`)
+### CI Pipeline (`ci.yml`)
 Sequential testing strategy with image building:
 1. **Code Quality**: Ruff linting and formatting for both services
 2. **Backend Tests**: Unit and integration tests with PostgreSQL
