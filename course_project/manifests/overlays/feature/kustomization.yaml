@@ -19,5 +19,3 @@ images:
     newTag: latest
   - name: kubemooc.azurecr.io/todo-app-fe
     newTag: latest
-  - name: kubemooc.azurecr.io/todo-app-cron
-    newTag: latest
