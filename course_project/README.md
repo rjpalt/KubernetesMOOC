@@ -407,7 +407,7 @@ Two separate deployment pipelines ensure proper isolation:
 - **E2E Testing Foundation**: Perfect environment for automated end-to-end tests
 - **No Duplicate Work**: Uses images that were already tested in CI
 
-### Identity Architecture Benefits
+### Identity Architecture Benefits ###
 
 **Current Shared Infrastructure:**
 - Both CI and CD use same ACR (`kubemooc.azurecr.io`) and AKS cluster (`kube-mooc`)
