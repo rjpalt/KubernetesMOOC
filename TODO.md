@@ -1,81 +1,33 @@
-# TODO: Priority Tasks for Tomorrow
+# TODO: Exercise 3.7 Completion
 
-## Goal: Deploy Complete Todo Application Stack to AKS with Kustomization
-**End State**: Individual service deployments + full stack deployment capability using hierarchical Kustomization structure with Azure Key Vault integration.
+## URGENT: Debug Current Issues
+- [ ] **Backend pods failing**: CreateContainerConfigError (todo-app-be)
+- [ ] **Postgres not starting**: ContainerCreating stuck
+- [ ] **Cron job spam**: ImagePullBackOff every minute (disable cronjob)
+- [ ] Check which namespace this is (main or feature-ex-3-7)
+- [ ] Debug secrets/config issues
 
-### Phase 1: Container Images & Registry
-- [x] Build application images with consistent versioning (v3.5)
-  ```bash
-  ./build-images.sh v3.5
-  ```
-- [x] Tag images for Azure Container Registry
-  ```bash
-  docker tag todo-app-be:3.5 kubemooc.azurecr.io/todo-app-be:3.5
-  docker tag todo-app-fe:3.5 kubemooc.azurecr.io/todo-app-fe:3.5
-  docker tag todo-app-cron:3.5 kubemooc.azurecr.io/todo-app-cron:3.5
-  ```
-- [x] Push all images to ACR
-  ```bash
-  az acr login --name kubemooc
-  docker push kubemooc.azurecr.io/todo-app-be:3.5
-  docker push kubemooc.azurecr.io/todo-app-fe:3.5
-  docker push kubemooc.azurecr.io/todo-app-cron:3.5
-  ```
+## Debug Commands
+```bash
+kubectl describe pod <backend-pod-name>
+kubectl describe pod postgres-statefulset-0
+kubectl get events --sort-by=.metadata.creationTimestamp
+kubectl get namespaces
+```
 
-### Phase 2: Update Kubernetes Manifests
-- [x] **Backend Service** (`manifests/base/todo-be/`)
-  - [x] Update deployment.yaml with ACR image reference
-  - [x] Configure database connection to use Azure Key Vault secrets
-  - [x] Update service.yaml for proper port exposure
-  - [x] Create/verify kustomization.yaml for independent deployment
+## Next Steps (After Debugging)
+- [ ] Wait for CI completion on PR #15
+- [ ] Verify feature deployment works (namespace: feature-ex-3-7)
+- [ ] Merge PR #15 to main
+- [ ] Verify main branch deployment still works
+- [ ] Submit exercise 3.7
 
-- [x] **Frontend Service** (`manifests/base/todo-fe/`)
-  - [x] Update deployment.yaml with ACR image reference
-  - [x] Configure backend API endpoint for AKS internal communication
-  - [x] Update service.yaml for Gateway API routing
-  - [x] Create/verify kustomization.yaml for independent deployment
+## What We Fixed
+- Image tagging (head SHA consistency)
+- Branch naming (ex-3.7 → ex-3-7 for Kubernetes)
+- Deployment names in workflow
+- Workflow file location (pushed to main)
 
-- [x] **Cron Job Service** (`manifests/base/todo-cron/`)
-  - [x] Update cronjob.yaml with ACR image reference
-  - [x] Configure backend API endpoint for internal cluster communication
-  - [x] Create/verify kustomization.yaml for independent deployment
-
-### Phase 3: Kustomization Structure Validation
-- [x] **Service-Level Kustomizations**
-  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-be/`
-  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-fe/`
-  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-cron/`
-
-- [ ] **Full Stack Kustomization**
-  - [ ] Create root `manifests/kustomization.yaml` that includes all base services
-  - [ ] Define proper deployment order (postgres → backend → frontend → cron)
-  - [ ] Test full stack deployment: `kubectl apply -k manifests/`
-
-### Phase 4: Gateway API Integration  
-- [ ] **HTTPRoute Configuration**
-  - [ ] Create/update HTTPRoute for frontend service routing (`/` → todo-frontend-svc)
-  - [ ] Create/update HTTPRoute for backend API routing (`/todos`, `/be-health` → todo-backend-svc)
-  - [ ] Apply Gateway API routes and verify functionality
-
-### Phase 5: End-to-End Testing
-- [ ] **Individual Service Testing**
-  - [ ] Deploy and test backend independently
-  - [ ] Deploy and test frontend independently  
-  - [ ] Deploy and test cron job independently
-
-- [ ] **Full Stack Testing**
-  - [ ] Deploy complete application stack with single command
-  - [ ] Verify frontend loads and can create todos
-  - [ ] Verify backend API endpoints work through Gateway
-  - [ ] Verify cron job creates Wikipedia todos automatically
-  - [ ] Test data persistence through PostgreSQL with Azure Key Vault credentials
-
-### Success Criteria
-✅ **Service Independence**: Each service can be deployed/updated individually
-✅ **Full Stack Deployment**: Single command deploys entire application  
-✅ **Azure Integration**: All services use ACR images and Azure Key Vault secrets
-✅ **Gateway API**: External access works through Azure Application Load Balancer
-✅ **Data Persistence**: Todos persist across deployments using Azure Key Vault secured database
 
 ---
 
