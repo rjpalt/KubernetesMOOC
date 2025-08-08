@@ -1,4 +1,4 @@
-name: Test Pipeline - Microservices
+name: CI Pipeline - Microservices
 
 on:
   pull_request:
