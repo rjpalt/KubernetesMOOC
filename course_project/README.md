@@ -298,6 +298,48 @@ cd ../todo-app && uv run pytest tests/ -v
 
 See `todo-backend/tests/TEST_PLAN.md` for comprehensive testing documentation.
 
+## Feature Branch Deployment Strategy
+
+### Current Implementation: Dynamic Azure Workload Identity
+The current GitHub Actions workflow (`deploy-feature-branches.yml`) creates dedicated Azure federated identity credentials for each feature branch:
+
+**Pros:**
+- Complete isolation between feature environments
+- Proper Azure security model with exact subject matching
+- Easy cleanup when feature branches are deleted
+
+**Cons:**
+- Increased Azure AD resource creation overhead
+- Complex credential lifecycle management
+- Potential security concerns with dynamic identity creation in CI/CD
+
+### Alternative Approach: Shared Database with Logical Isolation
+An alternative architecture would use a shared database with multiple workload identities:
+
+**Concept:**
+- Single PostgreSQL instance shared across all feature environments
+- Multiple Azure Workload Identity credentials with naming pattern `feature-*-workload-identity`
+- Logical separation using database schemas or prefixed table names
+- Reduced Azure resource overhead
+
+**Implementation Considerations:**
+```bash
+# Create multiple federated credentials upfront
+az identity federated-credential create \
+  --name "feature-database-access" \
+  --subject "system:serviceaccount:feature-*:postgres-service-account" \
+  --identity-name keyvault-identity-kube-mooc
+
+# Note: Azure doesn't support wildcard subjects, so this would require
+# pre-provisioning credentials for expected feature branch patterns
+```
+
+**Trade-offs:**
+- **Pros**: Reduced credential management, shared database resources, simpler Key Vault access
+- **Cons**: Less isolation, potential data bleed between environments, complex cleanup
+
+**Status**: Current implementation uses per-branch credentials for maximum isolation. The shared database approach could be evaluated for future optimization if the credential overhead becomes problematic.
+
 ## CI/CD Pipeline
 
 Modern GitOps-style pipeline with **separate Azure identities** for CI and CD stages, following security best practices:
