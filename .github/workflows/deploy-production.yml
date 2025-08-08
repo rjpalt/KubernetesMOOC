@@ -1,4 +1,4 @@
-name: Deploy to AKS - Todo Application
+name: Production Deployment - Todo Application
 
 on:
   push:
