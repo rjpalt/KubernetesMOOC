@@ -365,6 +365,19 @@ Sequential testing strategy with secure image building:
 - **Build cache** - GitHub Actions cache for faster subsequent builds
 - **Secure by default** - Minimal Azure permissions for CI operations
 
+### Image Tagging Strategy (Concise)
+- Pull request builds tag images as `{branch}-{headSha}` where `headSha = github.event.pull_request.head.sha`.
+- Reason: The feature deploy workflow (workflow_run) receives only the PR head SHA (not the synthetic merge SHA `github.sha`).
+- Production (push to main) uses the normal commit SHA (no divergence between merge/head on main).
+- Example tag: `feature-login-4694cc19a5e0c7f37e86a55b8e6a7223616cf44a`.
+
+### If Feature Deployment Cannot Find Image Tag
+1. Compare PR head SHA in CI summary with `IMAGE_TAG_SUFFIX` in deploy logs.
+2. List tags (backend): `az acr repository show-tags --name kubemooc --repository todo-app-be -o tsv | grep <branch>`
+3. If missing, re-run CI (ensures rebuild with head SHA) then deployment will succeed.
+
+(No dual tagging kept to avoid registry clutter.)
+
 ### Branch Environment Deployment
 Two separate deployment pipelines ensure proper isolation:
 
