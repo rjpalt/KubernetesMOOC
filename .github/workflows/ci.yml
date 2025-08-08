@@ -250,7 +250,7 @@ jobs:
         context: course_project/todo-backend
         tags: |
           todo-backend:test
-          ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+          ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
         load: true  # Load to local Docker for testing
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -261,7 +261,7 @@ jobs:
         context: course_project/todo-app
         tags: |
           todo-app:test
-          ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+          ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
         load: true  # Load to local Docker for testing
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -349,7 +349,7 @@ jobs:
         context: course_project/todo-backend
         platforms: linux/amd64
         push: true
-        tags: ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+        tags: ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
         cache-from: type=gha  # Reuse the exact same build from test job
         cache-to: type=gha,mode=max
     
@@ -359,19 +359,20 @@ jobs:
         context: course_project/todo-app
         platforms: linux/amd64
         push: true
-        tags: ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+        tags: ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
         cache-from: type=gha  # Reuse the exact same build from test job
         cache-to: type=gha,mode=max
     
     - name: Image build summary
       run: |
         BRANCH_NAME=${{ github.head_ref || github.ref_name }}
+        HEAD_SHA=${{ github.event.pull_request.head.sha || github.sha }}
         echo "## Successfully Built and Pushed Images 🐳" >> $GITHUB_STEP_SUMMARY
         echo "| Service | Image Tag |" >> $GITHUB_STEP_SUMMARY
         echo "|---------|-----------|" >> $GITHUB_STEP_SUMMARY
-        echo "| Backend | \`${{ env.REGISTRY }}/todo-app-be:${BRANCH_NAME}-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-        echo "| Frontend | \`${{ env.REGISTRY }}/todo-app-fe:${BRANCH_NAME}-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | \`${{ env.REGISTRY }}/todo-app-be:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend | \`${{ env.REGISTRY }}/todo-app-fe:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit (PR head):** \`${HEAD_SHA}\`" >> $GITHUB_STEP_SUMMARY
         echo "**All tests passed before building these images** ✅" >> $GITHUB_STEP_SUMMARY
