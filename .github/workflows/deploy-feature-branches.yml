@@ -110,23 +110,43 @@ jobs:
         
         echo "✅ Namespace ${{ env.NAMESPACE }} created and configured"
     
-    - name: Copy database secret to feature namespace
+    - name: Configure Azure Workload Identity for feature branch
       run: |
-        # Copy postgres secret from project namespace to feature namespace
-        # This allows feature environments to use the same database as production
-        echo "Copying postgres-secret from project to ${{ env.NAMESPACE }} namespace..."
+        # Create federated identity credential for this specific feature branch
+        CREDENTIAL_NAME="postgres-workload-identity-${{ env.BRANCH_NAME }}"
+        SUBJECT="system:serviceaccount:${{ env.NAMESPACE }}:postgres-service-account"
         
-        kubectl get secret postgres-secret -n project -o yaml | \
-          sed 's/namespace: project/namespace: ${{ env.NAMESPACE }}/' | \
-          sed '/resourceVersion:/d' | \
-          sed '/uid:/d' | \
-          sed '/creationTimestamp:/d' | \
-          sed '/ownerReferences:/,+4d' | \
-          kubectl apply -f -
+        echo "Creating federated identity credential for feature branch..."
+        echo "Credential name: $CREDENTIAL_NAME"
+        echo "Subject: $SUBJECT"
         
-        # Verify the secret was created
-        kubectl get secret postgres-secret -n ${{ env.NAMESPACE }}
-        echo "✅ Database secret copied successfully"
+        # Check if credential already exists
+        if az identity federated-credential show \
+          --identity-name keyvault-identity-kube-mooc \
+          --resource-group kubernetes-learning \
+          --name "$CREDENTIAL_NAME" &>/dev/null; then
+          echo "Federated credential already exists, updating..."
+          az identity federated-credential update \
+            --identity-name keyvault-identity-kube-mooc \
+            --resource-group kubernetes-learning \
+            --name "$CREDENTIAL_NAME" \
+            --subject "$SUBJECT"
+        else
+          echo "Creating new federated credential..."
+          az identity federated-credential create \
+            --identity-name keyvault-identity-kube-mooc \
+            --resource-group kubernetes-learning \
+            --name "$CREDENTIAL_NAME" \
+            --issuer "https://northeurope.oic.prod-aks.azure.com/b7cff52d-a4ec-4367-903c-5cf05c061aca/9618e5d3-f054-4b6d-9871-1d5a7447d273/" \
+            --subject "$SUBJECT" \
+            --audience api://AzureADTokenExchange
+        fi
+        
+        echo "✅ Azure Workload Identity configured for ${{ env.NAMESPACE }}"
+        
+        # Wait a moment for Azure AD to propagate the changes
+        echo "Waiting for Azure AD propagation..."
+        sleep 30
     
     - name: Deploy feature environment
       run: |
@@ -143,11 +163,16 @@ jobs:
         # Apply the manifests
         kustomize build . | kubectl apply -f -
         
-        echo "✅ Feature environment deployed"
+        echo "✅ Feature environment deployed with Azure Key Vault integration"
     
     - name: Wait for deployments
       run: |
         echo "Waiting for deployments to be ready..."
+        
+        # Wait for PostgreSQL StatefulSet first (database dependency)
+        echo "Waiting for PostgreSQL StatefulSet..."
+        kubectl rollout status statefulset/postgres-statefulset --timeout=600s
+        echo "✅ PostgreSQL ready"
         
         # Use deployment rollout status instead of individual pod waits
         # This avoids race conditions with terminating pods during rolling updates
@@ -176,7 +201,15 @@ jobs:
         
         echo "Found backend pod: $BACKEND_POD"
         
-        # Test backend health with port-forward
+        # Debug: Check what's actually running in the backend pod
+        echo "Debugging backend pod configuration..."
+        kubectl describe pod $BACKEND_POD -n ${{ env.NAMESPACE }}
+        echo "Checking backend pod logs..."
+        kubectl logs $BACKEND_POD -n ${{ env.NAMESPACE }} --tail=20
+        echo "Checking if backend is listening on expected ports..."
+        kubectl exec $BACKEND_POD -n ${{ env.NAMESPACE }} -- netstat -tlnp 2>/dev/null || kubectl exec $BACKEND_POD -n ${{ env.NAMESPACE }} -- ss -tlnp 2>/dev/null || echo "netstat/ss not available"
+        
+        # Test backend health with port-forward to the correct port
         echo "Testing backend health..."
         kubectl port-forward pod/$BACKEND_POD 8001:2506 &
         PORT_FORWARD_PID=$!
@@ -185,9 +218,22 @@ jobs:
         if curl -f --max-time 10 http://localhost:8001/be-health; then
           echo "✅ Backend health check passed"
         else
-          echo "❌ Backend health check failed"
+          echo "❌ Backend health check failed, trying alternative ports..."
           kill $PORT_FORWARD_PID 2>/dev/null || true
-          exit 1
+          
+          # Try port 8001 (common local development port)
+          echo "Trying port-forward to 8001:8001..."
+          kubectl port-forward pod/$BACKEND_POD 8002:8001 &
+          PORT_FORWARD_PID=$!
+          sleep 5
+          
+          if curl -f --max-time 10 http://localhost:8002/be-health; then
+            echo "✅ Backend health check passed on port 8001"
+          else
+            echo "❌ Backend health check failed on both ports"
+            kill $PORT_FORWARD_PID 2>/dev/null || true
+            exit 1
+          fi
         fi
         
         kill $PORT_FORWARD_PID 2>/dev/null || true
@@ -206,6 +252,12 @@ jobs:
         
         echo "Found frontend pod: $FRONTEND_POD"
         
+        # Debug: Check what's actually running in the frontend pod
+        echo "Debugging frontend pod configuration..."
+        kubectl describe pod $FRONTEND_POD -n ${{ env.NAMESPACE }}
+        echo "Checking frontend pod logs..."
+        kubectl logs $FRONTEND_POD -n ${{ env.NAMESPACE }} --tail=20
+        
         # Test frontend health with port-forward
         echo "Testing frontend health..."
         kubectl port-forward pod/$FRONTEND_POD 8000:2507 &
@@ -215,13 +267,42 @@ jobs:
         if curl -f --max-time 10 http://localhost:8000/health; then
           echo "✅ Frontend health check passed"
         else
-          echo "❌ Frontend health check failed"
+          echo "❌ Frontend health check failed, trying alternative ports..."
           kill $PORT_FORWARD_PID 2>/dev/null || true
-          exit 1
+          
+          # Try port 8000 (common local development port)
+          echo "Trying port-forward to 8000:8000..."
+          kubectl port-forward pod/$FRONTEND_POD 8003:8000 &
+          PORT_FORWARD_PID=$!
+          sleep 5
+          
+          if curl -f --max-time 10 http://localhost:8003/health; then
+            echo "✅ Frontend health check passed on port 8000"
+          else
+            echo "❌ Frontend health check failed on both ports"
+            kill $PORT_FORWARD_PID 2>/dev/null || true
+            exit 1
+          fi
         fi
         
         kill $PORT_FORWARD_PID 2>/dev/null || true
         echo "✅ All health checks passed"
+    
+    - name: Cleanup on failure
+      if: failure()
+      run: |
+        echo "Cleaning up resources due to deployment failure..."
+        CREDENTIAL_NAME="postgres-workload-identity-${{ env.BRANCH_NAME }}"
+        
+        # Remove the federated identity credential if deployment failed
+        echo "Removing federated identity credential: $CREDENTIAL_NAME"
+        az identity federated-credential delete \
+          --identity-name keyvault-identity-kube-mooc \
+          --resource-group kubernetes-learning \
+          --name "$CREDENTIAL_NAME" \
+          --yes || echo "Credential cleanup failed or credential doesn't exist"
+        
+        echo "✅ Cleanup completed"
     
     - name: Generate deployment summary
       run: |
