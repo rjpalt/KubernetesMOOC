@@ -133,10 +133,10 @@ jobs:
         
         # Use deployment rollout status instead of individual pod waits
         # This avoids race conditions with terminating pods during rolling updates
-        kubectl rollout status deployment/todo-backend-deployment --timeout=300s
+        kubectl rollout status deployment/todo-app-be --timeout=300s
         echo "✅ Backend deployment ready"
         
-        kubectl rollout status deployment/todo-frontend-deployment --timeout=300s
+        kubectl rollout status deployment/todo-app-fe --timeout=300s
         echo "✅ Frontend deployment ready"
     
     - name: Verify feature environment health
@@ -148,12 +148,12 @@ jobs:
         
         # Find a ready backend pod using field selector (avoids terminating pods)
         echo "Finding ready backend pod..."
-        BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-backend --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-be --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
         
         if [ -z "$BACKEND_POD" ]; then
           echo "No running backend pods found, waiting briefly..."
           sleep 10
-          BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-backend --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+          BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-be --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
         fi
         
         echo "Found backend pod: $BACKEND_POD"
@@ -176,12 +176,14 @@ jobs:
         
         # Find a ready frontend pod using field selector
         echo "Finding ready frontend pod..."
-        FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-frontend --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
         
         if [ -z "$FRONTEND_POD" ]; then
           echo "No running frontend pods found, waiting briefly..."
           sleep 10
-          FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-frontend --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+          FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+
         fi
         
         echo "Found frontend pod: $FRONTEND_POD"
