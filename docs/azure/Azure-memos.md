@@ -163,6 +163,124 @@ Get the ingress IP address:
 kubectl get ingress
 ```
 
+# Azure Workload Identity for GitHub Actions CI/CD
+
+## Why Separate Identities for CI and CD?
+
+In production environments, it's crucial to follow the **principle of least privilege** and separate concerns between different pipeline stages, even when they share the same underlying infrastructure.
+
+### Security Benefits
+
+1. **Blast Radius Limitation**: If CI identity is compromised, it can only push images, not deploy to production
+2. **Permission Scoping**: Each identity has only the minimum permissions needed for its specific role
+3. **Audit Trail**: Clear separation of who did what in CI vs CD stages
+4. **Future Flexibility**: Ready for infrastructure evolution (separate test databases, staging clusters)
+
+### Current Architecture
+
+Even though our feature and production environments currently share the same AKS cluster and ACR, separate identities provide:
+- **CI Identity**: Only ACR push permissions for building and storing tested images
+- **CD Identity**: AKS deployment permissions for production releases
+- **Clean Separation**: CI focuses on build/test, CD focuses on deployment
+
+## Creating Azure Managed Identities for GitHub Actions
+
+### CI Identity Setup
+
+```bash
+# Create dedicated CI identity for build and push operations
+az identity create \
+  --name github-actions-ci \
+  --resource-group kubernetes-learning \
+  --location northeurope
+
+# Grant ACR push permissions (minimal needed for CI)
+az role assignment create \
+  --assignee $(az identity show -g kubernetes-learning -n github-actions-ci --query clientId -o tsv) \
+  --role AcrPush \
+  --scope $(az acr show --name kubemooc --query id --output tsv)
+
+# Create federated credential for pull requests
+az identity federated-credential create \
+  --name github-actions-ci \
+  --identity-name github-actions-ci \
+  --resource-group kubernetes-learning \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject repo:rjpalt/KubernetesMOOC:pull_request \
+  --audience api://AzureADTokenExchange
+```
+
+### CD Identity Setup (Existing)
+
+```bash
+# CD identity already exists with broader permissions
+# Originally created with:
+az identity create \
+  --name github-actions-todo-cd \
+  --resource-group kubernetes-learning \
+  --location northeurope
+
+# Has AKS deployment permissions + ACR access
+# Federated credential for main branch only:
+az identity federated-credential create \
+  --name github-actions-ci-cd \
+  --identity-name github-actions-todo-cd \
+  --resource-group kubernetes-learning \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject repo:rjpalt/KubernetesMOOC:ref:refs/heads/main \
+  --audience api://AzureADTokenExchange
+```
+
+## Federated Credential Subject Scoping
+
+### Understanding GitHub OIDC Subjects
+
+The `subject` field in federated credentials determines **exactly when** Azure will trust the GitHub token:
+
+#### Pull Request Subject: `repo:owner/repo:pull_request`
+- **Scope**: ANY pull request to ANY branch
+- **Use Case**: CI pipelines that run on feature branches
+- **Security**: Broader scope but limited permissions (only ACR push)
+- **Trigger**: `on: pull_request` in GitHub Actions
+
+#### Branch-Specific Subject: `repo:owner/repo:ref:refs/heads/main`
+- **Scope**: ONLY pushes to the main branch
+- **Use Case**: Production deployments after PR merge
+- **Security**: Narrow scope with broader permissions (AKS deployment)
+- **Trigger**: `on: push: branches: [main]` in GitHub Actions
+
+### Subject Scoping Implications
+
+| Subject Type | When It Triggers | Security Posture | Use Case |
+|--------------|------------------|------------------|-----------|
+| `pull_request` | Any PR to any branch | Wider trigger scope, minimal permissions | CI builds/tests |
+| `ref:refs/heads/main` | Only main branch pushes | Narrow trigger scope, full permissions | Production deployment |
+| `ref:refs/heads/feature/*` | Only specific feature branches | Very narrow scope | Branch-specific testing |
+
+### Architecture Benefits
+
+```mermaid
+graph TD
+    A[GitHub PR] --> B[CI Identity: pull_request subject]
+    B --> C[ACR Push Only]
+    
+    D[GitHub Main Push] --> E[CD Identity: main branch subject]
+    E --> F[AKS Deployment + ACR Access]
+    
+    G[Future: Feature DB] --> H[CI Identity: extended scope]
+    I[Future: Prod Cluster] --> J[CD Identity: isolated scope]
+```
+
+### GitHub Secrets Configuration
+
+```bash
+# Set CI identity for pull request builds
+gh secret set AZURE_CI_CLIENT_ID --body "a7c70b35-0eb3-4363-b0e1-1c48bae476cc"
+
+# CD identity remains for production deployments
+# AZURE_CLIENT_ID = "d2e20c1d-c71a-43d8-ba21-463212e9596f"
+```
+
 -----
 
 # Deploying an Application to Azure Kubernetes Service (AKS) with Application Gateway for Containers
