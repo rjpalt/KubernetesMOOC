@@ -1,12 +1,12 @@
 # Todo Application - Microservices Project
 
-Three-service todo application: **todo-backend** (REST API), **todo-app** (Frontend with image caching), and **todo-cron** (Automated Wikipedia todo generation).
+Two-service todo application: **todo-backend** (REST API) and **todo-app** (Frontend with image caching). The **todo-cron** service for automated Wikipedia todo generation is available but not part of current deployments.
 
 ## Architecture
 
 - **todo-backend** (Port 8001): FastAPI REST API for todo CRUD operations
 - **todo-app** (Port 8000): FastAPI frontend with HTMX UI, communicates with backend via HTTP
-- **todo-cron**: CronJob service that creates todos with random Wikipedia articles hourly
+- **todo-cron**: CronJob service for automated Wikipedia todos (available but not currently deployed)
 
 ### Data Flow
 
@@ -75,7 +75,7 @@ The project supports both local development (ARM64) and cloud deployment (AMD64)
 **AMD64 Images (AKS Deployment):**
 - `todo-app-fe:TAG-amd64` - Frontend service for Azure Kubernetes Service
 - `todo-app-be:TAG-amd64` - Backend service for Azure Kubernetes Service
-- `todo-app-cron:TAG-amd64` - Cron service for Azure Kubernetes Service
+- `todo-app-cron:TAG-amd64` - Cron service (available but not deployed)
 
 ### Environment Configuration
 Before running with Docker Compose, set up your environment:
@@ -98,8 +98,9 @@ cp docker-compose.env.example docker-compose.env
 ```
 
 This creates 6 total images:
-- 3 ARM64 images for local development (automatically used by docker-compose.yaml)
-- 3 AMD64 images for AKS deployment (use in Kubernetes manifests)
+- 2 ARM64 images for local development (backend and frontend - automatically used by docker-compose.yaml)
+- 2 AMD64 images for AKS deployment (backend and frontend - use in Kubernetes manifests)
+- 2 cron images (available but not currently deployed)
 
 ### Manual Docker Build
 ```bash
@@ -139,6 +140,7 @@ The application uses `docker-compose.env` for environment variables:
 - **todo-app-be**: Backend API on http://localhost:8001 (ARM64 image)
 - **postgres_prod**: PostgreSQL database on localhost:5432
 - **Persistent data**: Database data persists in Docker volumes
+- **Note**: Cron service available but not included in current docker-compose setup
 
 ## Kubernetes Deployment
 
@@ -298,38 +300,64 @@ See `todo-backend/tests/TEST_PLAN.md` for comprehensive testing documentation.
 
 ## CI/CD Pipeline
 
-Sequential testing strategy in `.github/workflows/test.yml`:
-1. **Backend Tests**: API contracts and business logic
-2. **Frontend Tests**: Service integration with mocked backend
-3. **Integration Tests**: Docker containers with real service communication
+Modern GitOps-style pipeline with separate testing and deployment phases:
+
+### Pipeline Architecture
+```mermaid
+graph TD
+    A[Push/PR to any branch] --> B[Test Pipeline - Microservices]
+    B --> C{All tests pass?}
+    C -->|Yes| D[Build & Push Images to ACR]
+    D --> E{Branch type?}
+    E -->|main branch| F[Production Deployment]
+    E -->|feature branch| G[Feature Branch Deployment]
+    F --> H[Deploy to project namespace]
+    G --> I[Deploy to feature-{branch} namespace]
+    C -->|No| J[Pipeline fails - no deployment]
+```
+
+### Test Pipeline (`test.yml`)
+Sequential testing strategy with image building:
+1. **Code Quality**: Ruff linting and formatting for both services
+2. **Backend Tests**: Unit and integration tests with PostgreSQL
+3. **Frontend Tests**: Service integration with mocked backend
+4. **Service Integration**: Docker containers with real service communication
+5. **Image Building**: Build and push tested images to ACR with `{branch}-{sha}` tags
+
+**Services Covered:**
+- **Backend**: `kubemooc.azurecr.io/todo-app-be:{branch}-{sha}`
+- **Frontend**: `kubemooc.azurecr.io/todo-app-fe:{branch}-{sha}`
+
+**Key Features:**
+- **Only tested code is built** - Images only created after all tests pass
+- **Consistent tagging** - `kubemooc.azurecr.io/todo-app-be:feature-my-branch-abc123def`
+- **Multi-platform** - AMD64 images for AKS deployment
+- **Build cache** - GitHub Actions cache for faster subsequent builds
 
 ### Branch Environment Deployment
-The deployment pipeline creates separate environments for each branch:
+Two separate deployment pipelines ensure proper isolation:
 
-```yaml
-# Example deployment pipeline logic
-if [ "$BRANCH_NAME" = "main" ]; then
-  NAMESPACE="project"
-  cd course_project/manifests/overlays/production/
-  # No namespace creation needed - already exists
-  # No labeling needed - already allowed in Gateway
-else
-  NAMESPACE="feature-$BRANCH_NAME"
-  cd course_project/manifests/overlays/feature/
-  kubectl create namespace $NAMESPACE || true
-  kubectl label namespace $NAMESPACE gateway-access=allowed --overwrite
-  kustomize edit set namespace $NAMESPACE
-fi
+#### Production Deployment (`deploy-production.yml`)
+- **Trigger**: Push to main branch (merge from PR)
+- **Target**: `project` namespace using `overlays/production/`
+- **Images**: Builds fresh images for production (independent validation)
+- **Tests**: Runs own test suite before deployment
+- **Strategy**: Independent pipeline for production reliability
 
-kustomize edit set image [branch-specific-images...]
-kustomize build . | kubectl apply -f -
-```
+#### Feature Branch Deployment (`deploy-feature-branches.yml`)  
+- **Trigger**: After CI pipeline completes successfully (non-main branches)
+- **Target**: `feature-{branch-name}` namespace using `overlays/feature/`
+- **Images**: Uses tested images from CI pipeline (no rebuilding)
+- **Services**: Deploys backend and frontend services only
+- **Namespace**: Auto-creates with `gateway-access=allowed` label
+- **Health Checks**: Verifies both services respond correctly
 
 **Benefits:**
 - **Integration Testing**: Test features in production-like environment
 - **Stakeholder Review**: Product managers can test features before merge
 - **Parallel Development**: Multiple developers work on features simultaneously
 - **E2E Testing Foundation**: Perfect environment for automated end-to-end tests
+- **No Duplicate Work**: Uses images that were already tested in CI
 
 ### Local CI Testing with ACT
 

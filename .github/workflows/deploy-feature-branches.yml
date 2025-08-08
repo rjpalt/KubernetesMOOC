@@ -1,0 +1,221 @@
+name: Feature Branch Deployment
+
+on:
+  workflow_run:
+    workflows: ["Test Pipeline - Microservices"]
+    types: [completed]
+    branches-ignore: [main]
+
+permissions:
+  id-token: write  # Required for Azure authentication
+  contents: read   # Required for checkout
+
+env:
+  ACR_LOGIN_SERVER: kubemooc.azurecr.io
+  AKS_CLUSTER_NAME: kube-mooc
+  AKS_RESOURCE_GROUP: kubernetes-learning
+  REGISTRY: kubemooc.azurecr.io
+
+jobs:
+  deploy-feature-environment:
+    name: Deploy Feature Environment
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # CRITICAL: Checkout the exact same commit that triggered the CI pipeline
+        # This ensures we deploy manifests that match the tested images
+        ref: ${{ github.event.workflow_run.head_sha }}
+    
+    - name: Set environment variables
+      run: |
+        # Use the same branch and commit SHA as the triggering CI pipeline
+        # This ensures image tags match: {branch}-{sha}
+        BRANCH_NAME="${{ github.event.workflow_run.head_branch }}"
+        COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+        NAMESPACE="feature-${BRANCH_NAME}"
+        
+        echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+        echo "COMMIT_SHA=${COMMIT_SHA}" >> $GITHUB_ENV
+        echo "NAMESPACE=${NAMESPACE}" >> $GITHUB_ENV
+        echo "IMAGE_TAG_SUFFIX=${BRANCH_NAME}-${COMMIT_SHA}" >> $GITHUB_ENV
+        
+        echo "## Feature Environment Deployment 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** \`${COMMIT_SHA}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Namespace:** \`${NAMESPACE}\`" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Azure Login via Workload Identity
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+    - name: Connect to AKS cluster
+      run: |
+        az aks get-credentials \
+          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+          --name ${{ env.AKS_CLUSTER_NAME }}
+    
+    - name: Verify images exist in registry
+      run: |
+        echo "Verifying that tested images exist in registry..."
+        IMAGE_SUFFIX="${{ env.IMAGE_TAG_SUFFIX }}"
+        
+        # Check if all required images exist and fail if any are missing
+        echo "Checking backend image..."
+        BACKEND_TAGS=$(az acr repository show-tags \
+          --name kubemooc \
+          --repository todo-app-be \
+          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
+          --output tsv)
+        
+        if [ -z "$BACKEND_TAGS" ]; then
+          echo "❌ Backend image with tag containing '${IMAGE_SUFFIX}' not found!"
+          exit 1
+        fi
+        
+        echo "Checking frontend image..."
+        FRONTEND_TAGS=$(az acr repository show-tags \
+          --name kubemooc \
+          --repository todo-app-fe \
+          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
+          --output tsv)
+        
+        if [ -z "$FRONTEND_TAGS" ]; then
+          echo "❌ Frontend image with tag containing '${IMAGE_SUFFIX}' not found!"
+          exit 1
+        fi
+        
+        echo "✅ All tested images found in registry:"
+        echo "  - Backend: $BACKEND_TAGS"
+        echo "  - Frontend: $FRONTEND_TAGS"
+    
+    - name: Create and configure namespace
+      run: |
+        # Create namespace for feature environment
+        kubectl create namespace ${{ env.NAMESPACE }} || true
+        
+        # Label namespace for Gateway access
+        kubectl label namespace ${{ env.NAMESPACE }} gateway-access=allowed --overwrite
+        
+        # Set context to use the feature namespace
+        kubectl config set-context --current --namespace=${{ env.NAMESPACE }}
+        
+        echo "✅ Namespace ${{ env.NAMESPACE }} created and configured"
+    
+    - name: Deploy feature environment
+      run: |
+        cd course_project/manifests/overlays/feature
+        
+        # Configure namespace for this feature branch
+        kustomize edit set namespace ${{ env.NAMESPACE }}
+        
+        # Set the tested image tags
+        kustomize edit set image \
+          kubemooc.azurecr.io/todo-app-be=kubemooc.azurecr.io/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }} \
+          kubemooc.azurecr.io/todo-app-fe=kubemooc.azurecr.io/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }}
+        
+        # Apply the manifests
+        kustomize build . | kubectl apply -f -
+        
+        echo "✅ Feature environment deployed"
+    
+    - name: Wait for deployments
+      run: |
+        echo "Waiting for deployments to be ready..."
+        
+        # Use deployment rollout status instead of individual pod waits
+        # This avoids race conditions with terminating pods during rolling updates
+        kubectl rollout status deployment/todo-backend-deployment --timeout=300s
+        echo "✅ Backend deployment ready"
+        
+        kubectl rollout status deployment/todo-frontend-deployment --timeout=300s
+        echo "✅ Frontend deployment ready"
+    
+    - name: Verify feature environment health
+      run: |
+        echo "Verifying feature environment health..."
+        
+        # Get service information
+        kubectl get services -o wide
+        
+        # Find a ready backend pod using field selector (avoids terminating pods)
+        echo "Finding ready backend pod..."
+        BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-backend --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        
+        if [ -z "$BACKEND_POD" ]; then
+          echo "No running backend pods found, waiting briefly..."
+          sleep 10
+          BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-backend --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+        fi
+        
+        echo "Found backend pod: $BACKEND_POD"
+        
+        # Test backend health with port-forward
+        echo "Testing backend health..."
+        kubectl port-forward pod/$BACKEND_POD 8001:2506 &
+        PORT_FORWARD_PID=$!
+        sleep 5
+        
+        if curl -f --max-time 10 http://localhost:8001/be-health; then
+          echo "✅ Backend health check passed"
+        else
+          echo "❌ Backend health check failed"
+          kill $PORT_FORWARD_PID 2>/dev/null || true
+          exit 1
+        fi
+        
+        kill $PORT_FORWARD_PID 2>/dev/null || true
+        
+        # Find a ready frontend pod using field selector
+        echo "Finding ready frontend pod..."
+        FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-frontend --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        
+        if [ -z "$FRONTEND_POD" ]; then
+          echo "No running frontend pods found, waiting briefly..."
+          sleep 10
+          FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-frontend --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+        fi
+        
+        echo "Found frontend pod: $FRONTEND_POD"
+        
+        # Test frontend health with port-forward
+        echo "Testing frontend health..."
+        kubectl port-forward pod/$FRONTEND_POD 8000:2507 &
+        PORT_FORWARD_PID=$!
+        sleep 5
+        
+        if curl -f --max-time 10 http://localhost:8000/health; then
+          echo "✅ Frontend health check passed"
+        else
+          echo "❌ Frontend health check failed"
+          kill $PORT_FORWARD_PID 2>/dev/null || true
+          exit 1
+        fi
+        
+        kill $PORT_FORWARD_PID 2>/dev/null || true
+        echo "✅ All health checks passed"
+    
+    - name: Generate deployment summary
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Deployment Results 📊" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Status | Image |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | ✅ Deployed | \`kubemooc.azurecr.io/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend | ✅ Deployed | \`kubemooc.azurecr.io/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Access Information 🌐" >> $GITHUB_STEP_SUMMARY
+        echo "**Namespace:** \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Gateway Route:** Feature environment accessible through Gateway API" >> $GITHUB_STEP_SUMMARY
+        echo "**Health Checks:** ✅ All services responding" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Next Steps 📝" >> $GITHUB_STEP_SUMMARY
+        echo "- Test your feature in the isolated environment" >> $GITHUB_STEP_SUMMARY
+        echo "- Run E2E tests against this environment" >> $GITHUB_STEP_SUMMARY
+        echo "- Environment will be cleaned up when branch is deleted" >> $GITHUB_STEP_SUMMARY
