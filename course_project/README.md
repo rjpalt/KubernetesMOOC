@@ -300,7 +300,31 @@ See `todo-backend/tests/TEST_PLAN.md` for comprehensive testing documentation.
 
 ## CI/CD Pipeline
 
-Modern GitOps-style pipeline with separate testing and deployment phases:
+Modern GitOps-style pipeline with **separate Azure identities** for CI and CD stages, following security best practices:
+
+### Azure Identity Architecture
+
+The pipeline uses **two dedicated Azure Managed Identities** for secure, passwordless authentication:
+
+#### CI Identity (`github-actions-ci`)
+- **Purpose**: Build and push tested images during pull request validation
+- **Permissions**: `AcrPush` role on Azure Container Registry only
+- **Scope**: Triggered by `pull_request` events on any branch
+- **Client ID**: `a7c70b35-0eb3-4363-b0e1-1c48bae476cc`
+- **Security**: Minimal permissions following principle of least privilege
+
+#### CD Identity (`github-actions-todo-cd`)  
+- **Purpose**: Deploy applications to AKS after main branch merge
+- **Permissions**: AKS deployment permissions + ACR access
+- **Scope**: Triggered only by pushes to `main` branch
+- **Client ID**: `d2e20c1d-c71a-43d8-ba21-463212e9596f`  
+- **Security**: Broader permissions but restricted to production deployments
+
+**Why Separate Identities?**
+- **Blast Radius Control**: Compromised CI identity cannot deploy to production
+- **Future-Proof**: Ready for separate test databases and staging clusters
+- **Audit Clarity**: Clear separation between build and deployment activities
+- **Permission Scoping**: Each stage has only the minimum required access
 
 ### Pipeline Architecture
 ```mermaid
@@ -317,12 +341,18 @@ graph TD
 ```
 
 ### CI Pipeline (`ci.yml`)
-Sequential testing strategy with image building:
+Sequential testing strategy with secure image building:
 1. **Code Quality**: Ruff linting and formatting for both services
 2. **Backend Tests**: Unit and integration tests with PostgreSQL
 3. **Frontend Tests**: Service integration with mocked backend
 4. **Service Integration**: Docker containers with real service communication
-5. **Image Building**: Build and push tested images to ACR with `{branch}-{sha}` tags
+5. **Image Building**: Build and push tested images to ACR using **CI identity**
+
+**Authentication Architecture:**
+- Uses `AZURE_CI_CLIENT_ID` secret with `pull_request` federated credential
+- Federated credential subject: `repo:rjpalt/KubernetesMOOC:pull_request`
+- Permissions: `AcrPush` role only (cannot deploy to AKS)
+- Scope: Triggered on ANY pull request to main branch
 
 **Services Covered:**
 - **Backend**: `kubemooc.azurecr.io/todo-app-be:{branch}-{sha}`
@@ -333,12 +363,16 @@ Sequential testing strategy with image building:
 - **Consistent tagging** - `kubemooc.azurecr.io/todo-app-be:feature-my-branch-abc123def`
 - **Multi-platform** - AMD64 images for AKS deployment
 - **Build cache** - GitHub Actions cache for faster subsequent builds
+- **Secure by default** - Minimal Azure permissions for CI operations
 
 ### Branch Environment Deployment
 Two separate deployment pipelines ensure proper isolation:
 
 #### Production Deployment (`deploy-production.yml`)
 - **Trigger**: Push to main branch (merge from PR)
+- **Authentication**: Uses `AZURE_CLIENT_ID` secret with **CD identity**
+- **Federated Credential**: `repo:rjpalt/KubernetesMOOC:ref:refs/heads/main`
+- **Permissions**: Full AKS deployment + ACR access
 - **Target**: `project` namespace using `overlays/production/`
 - **Images**: Builds fresh images for production (independent validation)
 - **Tests**: Runs own test suite before deployment
@@ -346,8 +380,9 @@ Two separate deployment pipelines ensure proper isolation:
 
 #### Feature Branch Deployment (`deploy-feature-branches.yml`)  
 - **Trigger**: After CI pipeline completes successfully (non-main branches)
-- **Target**: `feature-{branch-name}` namespace using `overlays/feature/`
+- **Authentication**: Uses `AZURE_CLIENT_ID` secret with **CD identity**
 - **Images**: Uses tested images from CI pipeline (no rebuilding)
+- **Target**: `feature-{branch-name}` namespace using `overlays/feature/`
 - **Services**: Deploys backend and frontend services only
 - **Namespace**: Auto-creates with `gateway-access=allowed` label
 - **Health Checks**: Verifies both services respond correctly
@@ -358,6 +393,34 @@ Two separate deployment pipelines ensure proper isolation:
 - **Parallel Development**: Multiple developers work on features simultaneously
 - **E2E Testing Foundation**: Perfect environment for automated end-to-end tests
 - **No Duplicate Work**: Uses images that were already tested in CI
+
+### Identity Architecture Benefits
+
+**Current Shared Infrastructure:**
+- Both CI and CD use same ACR (`kubemooc.azurecr.io`) and AKS cluster (`kube-mooc`)
+- Feature and production environments share underlying Azure resources
+- Separate identities provide security isolation despite shared infrastructure
+
+**Future Infrastructure Evolution:**
+```mermaid
+graph TD
+    A[Current: Shared Infrastructure] --> B[Future: Isolated Infrastructure]
+    
+    A --> A1[CI: ACR Push Only]
+    A --> A2[CD: AKS Deploy + ACR]
+    
+    B --> B1[CI: Feature ACR + Test DB]
+    B --> B2[CD: Prod ACR + Prod Cluster]
+    
+    A1 --> B1
+    A2 --> B2
+```
+
+**Migration Path:**
+- **Today**: Both identities access same resources with different permission scopes
+- **Tomorrow**: Each identity can be granted access to environment-specific resources
+- **No Refactoring**: Pipeline code remains unchanged during infrastructure evolution
+- **Clean Separation**: CI concerns (build/test) separate from CD concerns (deploy/monitor)
 
 ### Local CI Testing with ACT
 

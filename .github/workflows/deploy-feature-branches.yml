@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["CI Pipeline - Microservices"]
     types: [completed]
-    branches-ignore: [main]
 
 permissions:
   id-token: write  # Required for Azure authentication
@@ -20,7 +19,10 @@ jobs:
   deploy-feature-environment:
     name: Deploy Feature Environment
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
+    # Only run when CI succeeded AND the source (head) branch is not main
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch != 'main'
     
     steps:
     - name: Checkout code
