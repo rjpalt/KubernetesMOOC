@@ -26,14 +26,14 @@
 | 2025-08-04 | 3.5 | Chapter 4: 3.3 & 3.4: AKS + Gateway API | 62 |
 | 2025-08-05 | 2 | Chapter 4: 3.5: Azure Key Vault integration | 64 |
 | 2025-08-06 | 3 | Chapter 4: 3.5: Refactor + Gateway API for Course Project | 67 |
-| 2025-08-07 | 0 | Chapter 4: 3.8: AKS + Gateway API | 67 |
-| 2025-08-08 | 0 | Chapter 4: 3.9: AKS + Gateway API | 67 |
-| 2025-08-09 | 0 | Chapter 4: 3.10: AKS + Gateway API | 67 |
-| 2025-08-10 | 0 | Chapter 4: 3.11: AKS + Gateway API | 67 |
-| 2025-08-11 | 0 | Chapter 4: 3.12: AKS + Gateway API | 67 |
-| 2025-08-12 | 0 | Chapter 4: 3.13: AKS + Gateway API | 67 |
-| 2025-08-13 | 0 | Chapter 4: 3.14: AKS + Gateway API | 67 |
-| 2025-08-14 | 0 | Chapter 4: 3.15: AKS + Gateway API | 67 |
-| 2025-08-15 | 0 | Chapter 4: 3.16: AKS + Gateway API | 67 |
-| 2025-08-16 | 0 | Chapter 4: 3.17: AKS + Gateway API | 67 |
-| 2025-08-17 | 0 | Chapter 4: 3.18: AKS + Gateway API | 67 |
+| 2025-08-07 | 2.75 | Chapter 4: 3.6: CD Pipeline | 69.75 |
+| 2025-08-08 | 0 | Chapter 4: 3.7:  | 69 |
+| 2025-08-09 | 0 | Chapter 4: 3.8: | 69 |
+| 2025-08-10 | 0 | Chapter 4: 3.9: | 69 |
+| 2025-08-11 | 0 | Chapter 4: 3.10: AKS + Gateway API | 69 |
+| 2025-08-12 | 0 | Chapter 4: 3.11: AKS + Gateway API | 69 |
+| 2025-08-13 | 0 | Chapter 4: 3.12: AKS + Gateway API | 69 |
+| 2025-08-14 | 0 | Chapter 5: 4.1: AKS + Gateway API | 69 |
+| 2025-08-15 | 0 | Chapter 5: 4.2: AKS + Gateway API | 69 |
+| 2025-08-16 | 0 | Chapter 5: 4.3: AKS + Gateway API | 69 |
+| 2025-08-17 | 0 | Chapter 5: 4.4: AKS + Gateway API | 69 |

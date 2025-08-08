@@ -76,6 +76,8 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
 - [3.3](https://github.com/rjpalt/KubernetesMOOC/tree/3.3/ping-pong) - AKS Gateway API - [Commands](docs/exercises/3.3-commands.md) and [Azure Memos](docs/azure/Azure-memos.md)
 - [3.4](https://github.com/rjpalt/KubernetesMOOC/tree/3.4/ping-pong) - Gateway API Route Rewriting - [Commands](docs/exercises/3.4-commands.md)
 - [3.5](https://github.com/rjpalt/KubernetesMOOC/tree/3.5/course_project) - Refactor + Gateway API for Course Project - [Commands](docs/exercises/3.5-commands.md) and [Azure Memos](docs/azure/Azure-memos.md)
+- [3.6](https://github.com/rjpalt/KubernetesMOOC/tree/3.6/course_project) - CD Pipeline can be found here: [pipeline yaml](.github/workflows/aks-cd.yaml) and example pipeline run [here](https://github.com/rjpalt/KubernetesMOOC/actions/runs/16798189696)
+  - **Note**: The pipelien shows a failure, which was fixed for the next commit, which failed as well. The latter failure for frontend was due to health checks timing out even though the deployment was successful. The problem has been patched and should show correct in consequent runs. The problem is documented in Azure memos [here](docs/azure/Azure-memos.md#aks-gateway-api-health-checks).
 
 
 ## Cleanup Script
