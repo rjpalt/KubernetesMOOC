@@ -14,7 +14,7 @@ spec:
       protocol: HTTP
       port: 80
       allowedRoutes:
-        # <2> allow the nsa2 namespace to use this gateway
+        # <2> allow specific namespaces and feature branches to use this gateway
         namespaces:
           from: Selector
           selector:
@@ -22,5 +22,8 @@ spec:
               - key: kubernetes.io/metadata.name
                 operator: In
                 values: ["exercises", "project", "nsa2"]
+              - key: gateway-access
+                operator: In
+                values: ["allowed"]
         kinds:
           - kind: HTTPRoute

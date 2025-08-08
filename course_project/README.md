@@ -176,6 +176,15 @@ The deployment uses Azure Key Vault for secure credential management:
 
 ### Deployment Options
 
+**Branch-based environment deployment:**
+```bash
+# Main branch deploys to 'project' namespace using production overlay
+kubectl apply -k manifests/overlays/production/
+
+# Feature branches deploy to 'feature-branch-name' namespace using feature overlay
+kubectl apply -k manifests/overlays/feature/
+```
+
 **Individual service deployment:**
 ```bash
 # Deploy only the backend (when kustomization.yaml files are created)
@@ -210,8 +219,19 @@ kubectl apply -k manifests/overlays/production/
 ### Kustomization Benefits
 - **Service Independence**: Deploy and update individual microservices
 - **Environment Management**: Different configurations for dev/staging/prod
+- **Branch Environments**: Feature branches deploy to isolated namespaces with same configuration
 - **Resource Customization**: Environment-specific resource limits, replicas, and secrets
 - **GitOps Ready**: Structure supports GitOps deployment patterns
+
+### Branch Environment Strategy
+The deployment pipeline creates separate environments for each branch:
+
+- **Main Branch**: Deploys to `project` namespace using `overlays/production/`
+- **Feature Branches**: Deploy to `feature-{branch-name}` namespace using `overlays/feature/`
+- **Gateway Access**: Feature namespaces labeled with `gateway-access=allowed` for routing
+- **Isolation**: Each feature environment is completely isolated with its own resources
+- **Same Configuration**: Feature environments use identical resource limits as production
+- **Automatic Cleanup**: Feature environments can be cleaned up when branches are deleted
 
 ### Service Access
 - **Frontend**: Through Gateway API at `/project/` (main UI and form submissions)
@@ -282,6 +302,34 @@ Sequential testing strategy in `.github/workflows/test.yml`:
 1. **Backend Tests**: API contracts and business logic
 2. **Frontend Tests**: Service integration with mocked backend
 3. **Integration Tests**: Docker containers with real service communication
+
+### Branch Environment Deployment
+The deployment pipeline creates separate environments for each branch:
+
+```yaml
+# Example deployment pipeline logic
+if [ "$BRANCH_NAME" = "main" ]; then
+  NAMESPACE="project"
+  cd course_project/manifests/overlays/production/
+  # No namespace creation needed - already exists
+  # No labeling needed - already allowed in Gateway
+else
+  NAMESPACE="feature-$BRANCH_NAME"
+  cd course_project/manifests/overlays/feature/
+  kubectl create namespace $NAMESPACE || true
+  kubectl label namespace $NAMESPACE gateway-access=allowed --overwrite
+  kustomize edit set namespace $NAMESPACE
+fi
+
+kustomize edit set image [branch-specific-images...]
+kustomize build . | kubectl apply -f -
+```
+
+**Benefits:**
+- **Integration Testing**: Test features in production-like environment
+- **Stakeholder Review**: Product managers can test features before merge
+- **Parallel Development**: Multiple developers work on features simultaneously
+- **E2E Testing Foundation**: Perfect environment for automated end-to-end tests
 
 ### Local CI Testing with ACT
 

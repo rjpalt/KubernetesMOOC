@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Production overlay - used for deploying main branch to project namespace
+# Usage: 
+#   cd course_project/manifests/overlays/production
+#   kustomize edit set image [images...]
+#   kustomize build . | kubectl apply -f -
+
+resources:
+  - ../../base
+
+# No patches needed - production uses base configuration as-is
+# Only images will be modified by CI/CD pipeline
+
+images:
+  - name: kubemooc.azurecr.io/todo-app-be
+    newTag: latest
+  - name: kubemooc.azurecr.io/todo-app-fe
+    newTag: latest
+  - name: kubemooc.azurecr.io/todo-app-cron
+    newTag: latest
