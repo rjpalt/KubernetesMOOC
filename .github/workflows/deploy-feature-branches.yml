@@ -177,11 +177,13 @@ jobs:
         # Find a ready frontend pod using field selector
         echo "Finding ready frontend pod..."
         FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
         
         if [ -z "$FRONTEND_POD" ]; then
           echo "No running frontend pods found, waiting briefly..."
           sleep 10
           FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+
         fi
         
         echo "Found frontend pod: $FRONTEND_POD"
