@@ -1,0 +1,37 @@
+# Machine Project Context (gitignored)
+version: 1
+azure:
+  subscriptionEnvVar: AZURE_SUBSCRIPTION_ID
+  subscriptionId: ede18d8a-a758-4a40-b15e-6eded5264b93
+  resourceGroup: kubernetes-learning
+  aksCluster: kube-mooc
+  acr:
+    loginServer: kubemooc.azurecr.io
+    name: kubemooc
+kubernetes:
+  featureNamespacePattern: feature-<branch>
+  stableNamespaces:
+    - default
+    - kube-system
+images:
+  tagPattern: "{branch}-{sha}"
+  repositories:
+    - todo-app-be
+    - todo-app-fe
+workflows:
+  ciName: "CI Pipeline - Microservices"
+  featureDeployWorkflow: deploy-feature-branches.yml
+  productionDeployWorkflow: deploy-production.yml
+rules:
+  allowedActions:
+    azure:
+      - aks_cluster_list
+      - acr_repository_list
+      - acr_repository_show_tags
+    github:
+      - list_pull_requests
+      - get_pull_request
+      - get_workflow_runs
+notes:
+  - Non-destructive operations only.
+  - Update subscriptionId if environment changes.
