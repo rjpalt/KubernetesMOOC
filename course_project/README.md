@@ -236,7 +236,7 @@ The deployment pipeline creates separate environments for each branch with compl
   - Separate namespace with RBAC isolation
   - Isolated Gateway API routes
 - **Overlay Maintenance**: Feature overlay patches HTTPRoute paths for a fixed set of endpoints. When adding new public endpoints, update `manifests/overlays/feature/kustomization.yaml` accordingly. CI replaces `BRANCH_NAME` placeholders during deploy.
-- **Automatic Cleanup**: Feature environments can be cleaned up when branches are deleted
+- **Automatic Cleanup**: Feature environments can be cleaned up when branches are deleted (see [Deprovisioning Feature Environments](../docs/azure/Azure-memos.md#deprovisioning-feature-environments) for detailed cleanup procedures)
 
 **Gateway Label Management:**
 ```bash
@@ -380,12 +380,52 @@ The current GitHub Actions workflow (`deploy-feature-branches.yml`) creates dedi
 **Pros:**
 - Complete isolation between feature environments
 - Proper Azure security model with exact subject matching
-- Easy cleanup when feature branches are deleted
+- Easy cleanup when feature branches are deleted (see [Azure-memos.md](../docs/azure/Azure-memos.md#deprovisioning-feature-environments) for detailed cleanup procedures)
 
 **Cons:**
 - Increased Azure AD resource creation overhead
 - Complex credential lifecycle management
 - Potential security concerns with dynamic identity creation in CI/CD
+
+#### How Feature Environment Federated Credentials Work
+
+When a feature branch is pushed, the GitHub Actions workflow creates a dedicated Azure federated credential that enables secure, passwordless access to Azure Key Vault for that specific feature environment.
+
+**The Provisioning Process:**
+```bash
+# 1. Extract branch name from GitHub context
+BRANCH_NAME=$(echo "${GITHUB_REF#refs/heads/}" | sed 's/[^a-zA-Z0-9-]/-/g')
+
+# 2. Create branch-specific federated credential
+az identity federated-credential create \
+  --name "postgres-workload-identity-${BRANCH_NAME}" \
+  --identity-name "keyvault-identity-kube-mooc" \
+  --resource-group "kubernetes-learning" \
+  --issuer "${AKS_OIDC_ISSUER}" \
+  --subject "system:serviceaccount:feature-${BRANCH_NAME}:postgres-service-account"
+```
+
+**Security Architecture:**
+- **Managed Identity**: Uses existing `keyvault-identity-kube-mooc` (not creating new identities)
+- **Subject Isolation**: Each branch gets unique subject: `system:serviceaccount:feature-BRANCH_NAME:postgres-service-account`
+- **Namespace Isolation**: Same service account name (`postgres-service-account`) works across namespaces due to subject specificity
+- **Automatic Trust**: Azure validates OIDC tokens from the specific namespace/service account combination
+
+**Key Benefits:**
+- **No Shared Secrets**: Each environment has independent Key Vault access
+- **Same Service Account Name**: Simplifies manifest maintenance across environments
+- **Secure Isolation**: Azure validates exact namespace/service account match
+- **Temporary Access**: Credentials only work while namespace exists
+
+**The Authentication Flow:**
+1. Pod starts with service account `postgres-service-account` in namespace `feature-BRANCH_NAME`
+2. CSI Secrets Store driver requests OIDC token from Kubernetes
+3. Token includes subject: `system:serviceaccount:feature-BRANCH_NAME:postgres-service-account`
+4. Azure validates token against federated credential `postgres-workload-identity-BRANCH_NAME`
+5. Azure grants temporary access to Key Vault secrets
+6. Database credentials mounted into pod securely
+
+This architecture enables the same `postgres-service-account` name across all feature environments while maintaining complete security isolation through Azure's federated credential trust relationships.
 
 ### Alternative Approach: Shared Database with Logical Isolation
 An alternative architecture would use a shared database with multiple workload identities:
