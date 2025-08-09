@@ -226,14 +226,35 @@ kubectl apply -k manifests/overlays/production/
 - **GitOps Ready**: Structure supports GitOps deployment patterns
 
 ### Branch Environment Strategy
-The deployment pipeline creates separate environments for each branch:
+The deployment pipeline creates separate environments for each branch with complete isolation:
 
 - **Main Branch**: Deploys to `project` namespace using `overlays/production/`
 - **Feature Branches**: Deploy to `feature-{branch-name}` namespace using `overlays/feature/`
-- **Gateway Access**: Feature namespaces labeled with `gateway-access=allowed` for routing
-- **Isolation**: Each feature environment is completely isolated with its own resources
-- **Same Configuration**: Feature environments use identical resource limits as production
+- **Gateway Access**: Feature namespaces automatically labeled with `gateway-access=allowed` for routing
+- **Path Isolation**: Each environment uses unique URL paths (`/project/` vs `/feature-{branch}/`)
+- **Complete Isolation**: Each feature environment has dedicated resources:
+  - Separate namespace with RBAC isolation
+  - Independent PostgreSQL database instance
+  - Unique Azure Workload Identity federated credential
+  - Branch-specific container image tags
+  - Isolated Gateway API routes
 - **Automatic Cleanup**: Feature environments can be cleaned up when branches are deleted
+
+**Gateway Label Management:**
+```bash
+# Automatic labeling in CI/CD (feature branches)
+kubectl create namespace feature-my-branch
+kubectl label namespace feature-my-branch gateway-access=allowed
+
+# Manual labeling for existing namespaces
+kubectl label namespace project gateway-access=allowed
+kubectl label namespace exercises gateway-access=allowed
+```
+
+**Environment Access Examples:**
+- **Production**: http://gateway-url/project/
+- **Feature Branch**: http://gateway-url/feature-my-branch/
+- **Multiple Features**: http://gateway-url/feature-login/, http://gateway-url/feature-payments/
 
 ### Service Access
 - **Frontend**: Through Gateway API at `/project/` (main UI and form submissions)
@@ -242,13 +263,68 @@ The deployment pipeline creates separate environments for each branch:
 - **Health Checks**: `/project/be-health` endpoint routes directly to backend for monitoring
 - **Security**: All database credentials managed through Azure Key Vault
 
-### Gateway API Routing
-The HTTPRoute configuration provides intelligent routing:
+### Gateway API Configuration
+
+#### Gateway Access Control
+The Gateway API uses a **label-based access control** system for namespace isolation:
+
+**Label Convention:**
+```bash
+# Required label for gateway access
+gateway-access=allowed
+```
+
+**Implementation:**
+- **Gateway Listener**: Configured with `namespaces.from: Selector` and `matchLabels: {gateway-access: allowed}`
+- **Namespace Creation**: Feature branch namespaces automatically receive this label
+- **Access Control**: Only namespaces with this label can create HTTPRoutes through the gateway
+
+**Gateway Configuration Example:**
+```yaml
+# Gateway listener configuration
+listeners:
+- allowedRoutes:
+    kinds:
+    - kind: HTTPRoute
+    namespaces:
+      from: Selector
+      selector:
+        matchLabels:
+          gateway-access: allowed
+```
+
+**Adding Gateway Access to Namespaces:**
+```bash
+# For existing namespaces
+kubectl label namespace <namespace-name> gateway-access=allowed
+
+# For new feature environments (done automatically in CI/CD)
+kubectl create namespace feature-my-branch
+kubectl label namespace feature-my-branch gateway-access=allowed
+```
+
+#### HTTPRoute Path Strategy
+Different environments use distinct path prefixes to avoid conflicts and enable parallel testing:
+
+**Production Environment (`project` namespace):**
 - `/project/todos` → Frontend service (handles form data conversion to JSON)
 - `/project/be-health` → Backend service (direct health check access)
 - `/project/docs` → Backend service (API documentation)
 - `/project/image*` → Frontend service (image caching functionality)
 - `/project/` → Frontend service (main UI and catch-all)
+
+**Feature Environments (`feature-{branch}` namespaces):**
+- `/feature-{branch}/todos` → Frontend service (isolated testing)
+- `/feature-{branch}/be-health` → Backend service (health monitoring)
+- `/feature-{branch}/docs` → Backend service (API documentation)
+- `/feature-{branch}/image*` → Frontend service (image caching)
+- `/feature-{branch}/` → Frontend service (main UI)
+
+**Path Prefix Benefits:**
+- **Environment Isolation**: No conflicts between production and feature environments
+- **Parallel Testing**: Multiple feature branches can run simultaneously
+- **Clear Identification**: URL immediately shows which environment you're accessing
+- **Gateway Efficiency**: Single gateway handles all environments with path-based routing
 
 ## Azure Deployment
 
@@ -439,8 +515,122 @@ Two separate deployment pipelines ensure proper isolation:
 - **Images**: Uses tested images from CI pipeline (no rebuilding)
 - **Target**: `feature-{branch-name}` namespace using `overlays/feature/`
 - **Services**: Deploys backend and frontend services only
-- **Namespace**: Auto-creates with `gateway-access=allowed` label
+- **Namespace**: Auto-creates with `gateway-access=allowed` label for Gateway API access
+- **HTTPRoute Patching**: Uses Kustomization patches for Infrastructure as Code approach
 - **Health Checks**: Verifies both services respond correctly
+
+**HTTPRoute Path Management:**
+```bash
+# Current approach: Kustomization patches with placeholder replacement
+cd course_project/manifests/overlays/feature
+kustomize edit set namespace feature-branch-name
+sed -i "s/BRANCH_NAME/branch-name/g" kustomization.yaml
+kustomize build . | kubectl apply -f -
+```
+
+The feature overlay uses Kustomization patches to modify HTTPRoute paths declaratively:
+
+```yaml
+# manifests/overlays/feature/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+- target:
+    kind: HTTPRoute
+    name: todo-app
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/matches/0/path/value
+      value: /feature-BRANCH_NAME/be-health
+    - op: replace
+      path: /spec/rules/1/matches/0/path/value
+      value: /feature-BRANCH_NAME/docs/
+    # ... additional path updates
+    name: todo-app
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/matches/0/path/value
+      value: /feature-PLACEHOLDER/be-health
+    - op: replace
+      path: /spec/rules/1/matches/0/path/value
+      value: /feature-PLACEHOLDER/docs/
+    # Additional path replacements...
+
+# CI/CD would then replace PLACEHOLDER with actual branch name
+# sed -i 's/PLACEHOLDER/${BRANCH_NAME}/g' kustomization.yaml
+```
+
+### HTTPRoute Management Approaches
+
+#### Current Approach: Kustomization Patches with Placeholders
+The current implementation uses Infrastructure as Code approach with Kustomization patches:
+
+**Pros:**
+- **Declarative**: All routing configuration in version control
+- **GitOps Friendly**: Infrastructure changes visible in manifests
+- **Maintainable**: Centralized routing configuration management
+- **Consistent**: Same patching mechanism across all feature branches
+- **Simple**: Minimal CI/CD logic required
+
+**Implementation:**
+```bash
+# In deploy-feature-branches.yml
+cd course_project/manifests/overlays/feature
+kustomize edit set namespace ${{ env.NAMESPACE }}
+sed -i "s/BRANCH_NAME/${{ env.BRANCH_NAME }}/g" kustomization.yaml
+kustomize build . | kubectl apply -f -
+```
+
+```yaml
+# manifests/overlays/feature/kustomization.yaml
+patches:
+- target:
+    kind: HTTPRoute
+    name: todo-app
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/matches/0/path/value
+      value: /feature-BRANCH_NAME/be-health
+    - op: replace
+      path: /spec/rules/1/matches/0/path/value
+      value: /feature-BRANCH_NAME/docs/
+    # ... additional path updates
+```
+
+#### Previous Approach: Runtime Patching in CI/CD
+Alternative implementation that patches HTTPRoute paths dynamically during deployment:
+
+**Pros:**
+- **Simple**: No Kustomization patch management
+- **Flexible**: Easy to modify paths without changing manifests
+- **Debugging**: Clear kubectl commands visible in CI/CD logs
+
+**Cons:**
+- **Imperative**: Changes not visible in version control
+- **Complex CI/CD**: More logic in deployment pipeline
+
+**Implementation Example:**
+```bash
+# Previous kubectl patch approach (not used)
+kubectl patch httproute todo-app -n ${{ env.NAMESPACE }} --type='json' -p='[
+  {"op": "replace", "path": "/spec/rules/0/matches/0/path/value", "value": "/feature-${{ env.BRANCH_NAME }}/be-health"},
+  # ... additional path updates
+]'
+```
+
+**Migration Completed:**
+The project has migrated from runtime `kubectl patch` to declarative Kustomization patches. This provides better GitOps alignment and Infrastructure as Code principles while maintaining the same functionality.
+
+**Benefits of Current Approach:**
+- All HTTPRoute configuration visible in version control
+- Consistent Infrastructure as Code approach
+- Simplified CI/CD pipeline logic  
+- Better maintainability and debugging
+- Standard Kustomization patterns
 
 **Benefits:**
 - **Integration Testing**: Test features in production-like environment
