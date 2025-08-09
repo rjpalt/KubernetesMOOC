@@ -1446,3 +1446,116 @@ READY_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=stat
 - Keep least privilege for CI/CD identities; avoid broad Contributor when possible
 - Track quotas/limits for federated credentials on the managed identity
 - Measure ALB/Gateway cost impact if moving to per-env infra
+
+# Deprovisioning Feature Environments
+
+## Overview
+When a feature branch is no longer needed, both Kubernetes and Azure resources must be cleaned up to prevent resource sprawl and unnecessary costs.
+
+## Critical Issue Prevention
+**PRIORITY**: CronJobs can create unlimited failed jobs if image pull fails. Always suspend CronJobs before namespace deletion to prevent cluster resource exhaustion.
+
+## Deprovisioning Process
+
+### 1. Connect to AKS Cluster
+```bash
+# Connect to cluster (or use existing context)
+az aks get-credentials --resource-group kubernetes-learning --name kube-mooc
+kubectl config use-context kube-mooc
+```
+
+### 2. Emergency CronJob Suspension (if needed)
+```bash
+# CRITICAL: Suspend runaway CronJob immediately
+kubectl patch cronjob todo-cronjob -n feature-BRANCH_NAME -p '{"spec":{"suspend":true}}'
+
+# Delete all accumulated failed jobs
+kubectl delete jobs --all -n feature-BRANCH_NAME
+```
+
+### 3. Kubernetes Resource Cleanup
+```bash
+# Check what resources exist in the namespace
+kubectl get all,pvc,secrets,httproutes -n feature-BRANCH_NAME
+
+# Delete the entire namespace (cascades to all resources)
+kubectl delete namespace feature-BRANCH_NAME
+
+# Verify namespace deletion
+kubectl get namespace feature-BRANCH_NAME 2>/dev/null || echo "Namespace successfully deleted"
+```
+
+**What gets deleted automatically:**
+- All pods, deployments, services, StatefulSets
+- PersistentVolumeClaims and associated Azure Disks/Files
+- Secrets (including CSI-mounted Key Vault secrets)
+- HTTPRoutes and other custom resources
+- CronJobs and any remaining jobs
+
+### 4. Azure Resource Cleanup
+```bash
+# Delete federated identity credential for the branch
+az identity federated-credential delete \
+  --identity-name keyvault-identity-kube-mooc \
+  --resource-group kubernetes-learning \
+  --name "postgres-workload-identity-BRANCH_NAME" \
+  --yes
+
+# Verify credential deletion
+az identity federated-credential show \
+  --identity-name keyvault-identity-kube-mooc \
+  --resource-group kubernetes-learning \
+  --name "postgres-workload-identity-BRANCH_NAME" 2>/dev/null && echo "ERROR: Credential still exists" || echo "SUCCESS: Credential deleted"
+```
+
+## Resource Architecture Context
+
+### What Each Feature Environment Creates
+- **Kubernetes Namespace**: Contains all application resources
+- **Azure Federated Credential**: Links Kubernetes service account to Key Vault access
+- **HTTPRoute**: Provides unique path routing (/feature-BRANCH_NAME/)
+- **Persistent Volumes**: Automatically provisioned Azure Disks/Files
+
+### Security and Isolation
+- Each feature environment uses branch-specific Azure federated credential
+- Database secrets fetched from Azure Key Vault via CSI Secrets Store driver
+- No secrets copied between namespaces - each has independent Key Vault access
+- Namespace deletion removes all Kubernetes resources but preserves Azure Key Vault
+
+## Validation Commands
+```bash
+# Confirm Kubernetes cleanup
+kubectl get all,pvc,secrets,httproutes -n feature-BRANCH_NAME
+
+# Confirm Azure cleanup
+az identity federated-credential list \
+  --identity-name keyvault-identity-kube-mooc \
+  --resource-group kubernetes-learning \
+  --query "[?name=='postgres-workload-identity-BRANCH_NAME']"
+```
+
+## Example: Cleaning up feature-ex-3-7
+```bash
+# 1. Suspend CronJob (prevents new job creation)
+kubectl patch cronjob todo-cronjob -n feature-ex-3-7 -p '{"spec":{"suspend":true}}'
+
+# 2. Delete accumulated jobs (95+ failed jobs found)
+kubectl delete jobs --all -n feature-ex-3-7
+
+# 3. Delete namespace and all resources
+kubectl delete namespace feature-ex-3-7
+
+# 4. Clean up Azure federated credential
+az identity federated-credential delete \
+  --identity-name keyvault-identity-kube-mooc \
+  --resource-group kubernetes-learning \
+  --name "postgres-workload-identity-ex-3-7" \
+  --yes
+```
+
+## Implementation Notes
+- Namespace deletion is safe and graceful - Kubernetes handles proper pod termination
+- Azure federated credentials must be cleaned up manually (not automatic)
+- PersistentVolumes follow their reclaim policy (usually delete for dynamic provisioning)
+- No impact on other feature environments or production namespace
+- HTTPRoute deletion automatically removes traffic routing for the feature branch

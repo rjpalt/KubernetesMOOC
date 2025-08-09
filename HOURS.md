@@ -28,7 +28,7 @@
 | 2025-08-06 | 3 | Chapter 4: 3.5: Refactor + Gateway API for Course Project | 67 |
 | 2025-08-07 | 2.75 | Chapter 4: 3.6: CD Pipeline | 69.75 |
 | 2025-08-08 | 4.75 | Chapter 4: 3.7 | 74.5 |
-| 2025-08-09 | 1.5 | Chapter 4: 3.8 | 76 |
+| 2025-08-09 | 2 | Chapter 4: 3.8 | 76.5 |
 | 2025-08-10 | 0 | Chapter 4: 3.9: | 76 |
 | 2025-08-11 | 0 | Chapter 4: 3.10 | 76 |
 | 2025-08-12 | 0 | Chapter 4: 3.11 | 76 |

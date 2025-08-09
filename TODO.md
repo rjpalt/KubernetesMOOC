@@ -1,4 +1,10 @@
-# TODO: Exercise 3.7 Completion
+# TODO: Exe## Action Items (3.7)
+- [x] Add cleanup workflows: on PR closed/branch delete remove namespace + federated credential
+- [ ] Test cleanup workflow with ex-3-8 branch lifecycle  
+- [ ] Document overlay maintenance requirement (README + Azure memos)
+- [ ] Consider External Secrets Operator (ESO) with Azure Key Vault; optionally HashiCorp Vault for dynamic secrets
+- [ ] Decide preview env trigger: PR-opened (recommended for cost) vs. branch-created; implement chosen workflow
+- [ ] Prep platform installs (cluster-wide): ExternalDNS (Azure DNS) and cert-manager (Let's Encrypt), scoped to preview domain3.7 Completion
 
 ## Current Implementation Notes (3.7)
 - Feature overlay patches HTTPRoute paths for a fixed set of endpoints
