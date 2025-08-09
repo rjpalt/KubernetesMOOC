@@ -1270,13 +1270,6 @@ containers:
 - **Kustomize compatible**: Pipeline still uses `kustomize edit set image` normally
 - **Deployment verification**: Forces developers to check actual cluster state
 
-**Pipeline behavior remains unchanged:**
-```bash
-# CI/CD still works exactly the same way
-kustomize edit set image kubemooc.azurecr.io/todo-app-be:abc123def
-kubectl apply -k .
-```
-
 **Alternative approaches for "latest" behavior:**
 - Use ACR webhook triggers (advanced Azure Container Registry feature)
 - Implement image digest references instead of tags (most reliable)
@@ -1404,3 +1397,52 @@ READY_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=stat
 - `kubectl rollout status` waits for deployment to be stable
 - Field selector filters only running pods
 - Avoids race conditions with terminating pods during rolling updates
+
+# Decision Log: Feature Environments on AKS (High-level)
+
+- Current pattern (course scope)
+  - Single ALB + Gateway API
+  - Per-namespace feature environments, routed via path prefixes (/feature-<branch>/)
+  - Federated credential per feature branch (subject: service account in feature namespace)
+  - Kustomization overlay patches HTTPRoute paths; CI replaces BRANCH_NAME placeholder
+- Known trade-offs
+  - Gateway route crowding and overlay patch maintenance for new endpoints
+  - Public exposure of preview environments (no edge auth/allowlist yet)
+  - No automated lifecycle cleanup on branch deletion (namespaces + federated credentials)
+  - Shared database across environments (no data isolation)
+- Rationale
+  - Expedites learning and validates infra quickly within course limits
+
+## Immediate Improvements
+- Documentation
+  - Document overlay maintenance requirement (add new endpoints to feature overlay HTTPRoute patches)
+  - Clarify that CI creates federated credentials on an existing managed identity (not new identities), which requires higher RBAC for the CI principal
+- CI/CD hygiene
+  - Add cleanup workflows on PR close/branch delete: delete namespace, HTTPRoute, and federated credential; optional ACR tag cleanup
+  - Add a periodic janitor job (labels: env=feature, branch=<name>, ttl=<date>)
+- Access hardening (quick wins)
+  - Tighten CORS, add basic IP allowlists for preview envs, or require Entra ID at the edge
+
+## Future Plan (More Secure & Scalable Preview Envs)
+- Routing and DNS
+  - Per-env hostnames (feature-<branch>.example.com) via ExternalDNS + cert-manager + wildcard TLS
+  - Optionally move to per-namespace Gateway or dedicated GatewayClass; separate ALB if budget allows
+- Identity & secrets
+  - Prefer External Secrets Operator with Azure Key Vault (Workload Identity, least privilege)
+  - Optionally HashiCorp Vault for dynamic secrets (short-lived DB users per env) and Vault Agent Injector
+- Database isolation
+  - Option A: small Azure Postgres per env
+  - Option B: per-namespace Postgres StatefulSet with PVC
+  - Option C: per-env schema + dedicated credentials (cheapest compromise)
+- Lifecycle management
+  - PR-open: provision namespace, DNS, certificates, federated credential, secrets, database
+  - PR-close/branch-delete: tear down everything (namespace, DNS records/certs, federated credential, DB)
+  - Nightly janitor to catch stragglers
+- Delivery model
+  - Keep GitHub Actions as orchestrator for this course
+  - For production, shift to GitOps (Argo CD/Flux) and Terraform/Bicep for infra provisioning
+
+## Notes
+- Keep least privilege for CI/CD identities; avoid broad Contributor when possible
+- Track quotas/limits for federated credentials on the managed identity
+- Measure ALB/Gateway cost impact if moving to per-env infra

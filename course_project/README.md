@@ -234,10 +234,8 @@ The deployment pipeline creates separate environments for each branch with compl
 - **Path Isolation**: Each environment uses unique URL paths (`/project/` vs `/feature-{branch}/`)
 - **Complete Isolation**: Each feature environment has dedicated resources:
   - Separate namespace with RBAC isolation
-  - Independent PostgreSQL database instance
-  - Unique Azure Workload Identity federated credential
-  - Branch-specific container image tags
   - Isolated Gateway API routes
+- **Overlay Maintenance**: Feature overlay patches HTTPRoute paths for a fixed set of endpoints. When adding new public endpoints, update `manifests/overlays/feature/kustomization.yaml` accordingly. CI replaces `BRANCH_NAME` placeholders during deploy.
 - **Automatic Cleanup**: Feature environments can be cleaned up when branches are deleted
 
 **Gateway Label Management:**
@@ -631,41 +629,6 @@ The project has migrated from runtime `kubectl patch` to declarative Kustomizati
 - Simplified CI/CD pipeline logic  
 - Better maintainability and debugging
 - Standard Kustomization patterns
-
-**Benefits:**
-- **Integration Testing**: Test features in production-like environment
-- **Stakeholder Review**: Product managers can test features before merge
-- **Parallel Development**: Multiple developers work on features simultaneously
-- **E2E Testing Foundation**: Perfect environment for automated end-to-end tests
-- **No Duplicate Work**: Uses images that were already tested in CI
-
-### Identity Architecture Benefits ###
-
-**Current Shared Infrastructure:**
-- Both CI and CD use same ACR (`kubemooc.azurecr.io`) and AKS cluster (`kube-mooc`)
-- Feature and production environments share underlying Azure resources
-- Separate identities provide security isolation despite shared infrastructure
-
-**Future Infrastructure Evolution:**
-```mermaid
-graph TD
-    A[Current: Shared Infrastructure] --> B[Future: Isolated Infrastructure]
-    
-    A --> A1[CI: ACR Push Only]
-    A --> A2[CD: AKS Deploy + ACR]
-    
-    B --> B1[CI: Feature ACR + Test DB]
-    B --> B2[CD: Prod ACR + Prod Cluster]
-    
-    A1 --> B1
-    A2 --> B2
-```
-
-**Migration Path:**
-- **Today**: Both identities access same resources with different permission scopes
-- **Tomorrow**: Each identity can be granted access to environment-specific resources
-- **No Refactoring**: Pipeline code remains unchanged during infrastructure evolution
-- **Clean Separation**: CI concerns (build/test) separate from CD concerns (deploy/monitor)
 
 ### Local CI Testing with ACT
 
