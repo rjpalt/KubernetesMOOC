@@ -1,111 +1,91 @@
 # TODO: Exercise 3.7 Completion
 
-## URGENT: Debug Current Issues - DIAGNOSED ✅
-- [x] **Backend pods failing**: CreateContainerConfigError → Missing postgres-secret in feature namespace
-- [x] **Postgres not starting**: ContainerCreating stuck → Azure Key Vault auth failure (wrong namespace)
-- [x] **Cron job spam**: ImagePullBackOff every minute → Disabled cronjob ✅
-- [x] **Check which namespace**: feature-ex-3-7 ✅
-- [x] **Debug secrets/config issues**: Root cause identified ✅
+## Current Implementation Notes (3.7)
+- Feature overlay patches HTTPRoute paths for a fixed set of endpoints
+  - When adding new public endpoints, update `course_project/manifests/overlays/feature/kustomization.yaml`
+  - CI replaces `BRANCH_NAME` placeholders during deploy
+- Federated credentials are created per feature branch (on an existing managed identity)
+  - Lifecycle cleanup on PR close/branch delete is not automated yet
+  - Namespaces for feature environments are also not auto-removed
+- Optional future: per-env ALB/GatewayClass and per-env DNS (feature-<branch>.example.com) would eliminate overlay path management and improve isolation
 
-## Root Cause Analysis ✅
-**Problem**: Azure Key Vault Workload Identity only configured for `project` namespace, but feature environments use `feature-*` namespaces.
+## Action Items (3.7)
+- [ ] Add cleanup workflows: on PR closed/branch delete remove namespace + federated credential; optional ACR tag cleanup
+- [ ] Document overlay maintenance requirement (README + Azure memos)
+- [ ] Consider External Secrets Operator (ESO) with Azure Key Vault; optionally HashiCorp Vault for dynamic secrets
+- [ ] Decide preview env trigger: PR-opened (recommended for cost) vs. branch-created; implement chosen workflow
+- [ ] Prep platform installs (cluster-wide): ExternalDNS (Azure DNS) and cert-manager (Let’s Encrypt), scoped to preview domain
 
-**Error**: `No matching federated identity record found for presented assertion subject 'system:serviceaccount:feature-ex-3-7:postgres-service-account'`
+---
 
-**Solution**: Copy `postgres-secret` from `project` namespace to feature namespace in deployment workflow.
+## FUTURE: Per-feature Hostnames with ExternalDNS + cert-manager (Preview Environments)
 
-## Fixed in Workflow ✅
-Added step in `deploy-feature-branches.yml` to copy database secret:
-```yaml
-- name: Copy database secret to feature namespace
-  run: |
-    kubectl get secret postgres-secret -n project -o yaml | \
-      sed 's/namespace: project/namespace: ${{ env.NAMESPACE }}/' | \
-      sed '/resourceVersion:/d' | sed '/uid:/d' | sed '/creationTimestamp:/d' | \
-      sed '/ownerReferences:/,+4d' | kubectl apply -f -
-```
+### Why
+- Avoid path-prefix crowding and rewrite complexity in Gateway API
+- Consistent, human-friendly URLs per feature (feature-<branch>.preview.example.com)
+- Clean TLS with per-host or wildcard certificates; simpler browser/SameSite behavior
+- Better isolation boundaries and easier cleanup (DNS and certs deprovision with namespace delete)
+- Clearer observability (per-host metrics/logs) and policy controls (quotas, rate limits)
 
-## ⚠️ Current Implementation Issues
+### What to Implement (High Level)
+- DNS
+  - Choose and provision base preview domain (e.g., preview.example.com) in Azure DNS
+  - Delegate if needed; ensure CI/cluster has least-privilege to manage only this zone
+- ExternalDNS (cluster-wide)
+  - Install with Azure DNS provider; set txt-owner-id and domain filters to preview.example.com
+  - Restrict to namespaces labeled for previews; enable garbage collection
+- cert-manager (cluster-wide)
+  - Install and configure ClusterIssuers (Let’s Encrypt staging/prod) using DNS-01 with Azure DNS
+  - Option A: Wildcard cert for *.preview.example.com
+  - Option B: Per-host certificates issued on demand
+- Gateway design
+  - Recommended: Use a dedicated ALB/Gateway for all feature namespaces (shared preview Gateway), keep production on a separate Gateway/ALB to reduce blast radius
+  - Configure AllowedRoutes/namespaceSelectors so feature namespaces can bind only their own hosts
+- App routing
+  - Each feature namespace defines an HTTPRoute with host: feature-<branch>.preview.example.com pointing to its services (no path rewrites)
+  - Ensure frontend/backend base URLs align with host-based routing
+- CI/CD automation (per feature)
+  - Trigger: PR-opened (recommended) to save resources; optionally support branch-created if desired
+  - Steps: create namespace → apply manifests with HOSTNAME variable → wait for ExternalDNS record + cert ready → post PR comment with URL
+  - Cleanup on PR-closed: delete namespace; ExternalDNS removes DNS; cert-manager cleans up certs
+- Guardrails
+  - Apply resource quotas/limits per namespace; minimal replicas; autoscaling caps
+  - Optional edge auth/IP allowlist for previews; baseline NetworkPolicies
 
-### 1. Kustomization Overlay Route Management - MEDIUM PRIORITY
-**Problem**: HTTPRoute patches are hardcoded in `course_project/manifests/overlays/feature/kustomization.yaml`
-```yaml
-patches:
-  - target:
-      kind: HTTPRoute
-      name: todo-app
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/matches/0/path/value
-        value: /feature-BRANCH_NAME/be-health
-      - op: replace
-        path: /spec/rules/1/matches/0/path/value
-        value: /feature-BRANCH_NAME/docs/
-      # ... 3 more hardcoded endpoints
-```
+### Azure-Native Provisioning Service (Recommended Enhancement)
+- **Problem**: GitHub Actions directly managing Azure resources creates security and operational issues
+- **Solution**: Azure Functions-based provisioning service with Azure-native identity management
+- **Architecture**: GitHub Actions → OIDC → Azure Function → Provision/Cleanup Resources
+- **Benefits**:
+  - Reduced CI/CD permissions (only calls one Azure endpoint vs managing all resources)
+  - Centralized provisioning logic with business rules, validation, resource limits
+  - Better error handling, retry logic, and audit trails within Azure ecosystem
+  - Consistent resource naming, tagging, and lifecycle management
+  - Enhanced logging and monitoring capabilities for troubleshooting
+- **Implementation**: 
+  - Azure Function with Managed Identity and least-privilege Azure RBAC
+  - HTTP triggers for provision/cleanup operations with structured request/response
+  - Comprehensive logging with Application Insights for debugging complex scenarios
+  - ARM/Bicep templates for consistent resource provisioning patterns
 
-**Issues**:
-- **Maintenance Overhead**: New API endpoints require manual addition to overlay patches
-- **Documentation Gap**: Requirement not documented for developers
-- **Error Prone**: Easy to forget updating overlay when adding new routes
-- **Scaling Issue**: Multiple overlays (dev/staging/prod) would need sync
+### Trigger Choice: PR-opened vs Branch-created
+- PR-opened: More resource-savvy, aligns with review lifecycle; preferred default
+- Branch-created: Faster feedback but can create unused environments; use only if contributors rely on early URLs
 
-**Solutions**:
-- [ ] Document overlay maintenance requirement in development guidelines
-- [ ] Create pre-commit hook to validate overlay completeness
-- [ ] Consider dynamic HTTPRoute generation from base route definitions
-- [ ] Add CI check to ensure overlay patches match base HTTPRoute rules
+### Risks/Decisions
+- ALB limits and cost: One shared preview ALB/Gateway vs per-env ALB; start with one shared preview ALB/Gateway and keep prod separate
+- Certificate strategy: wildcard (simpler) vs per-host (granular)
+- DNS permissions: scope creds to preview zone only
+- Provisioning service complexity: Additional Azure component to maintain but significantly improves security posture
 
-### 2. Azure Federated Credential Lifecycle Management - HIGH PRIORITY  
-**Problem**: Federated credentials created per feature branch but never cleaned up
+### Next Steps
+- Decide base preview domain and add Azure DNS zone
+- Approve design: shared preview ALB/Gateway, prod isolated; PR-opened trigger
+- Add platform installs (ExternalDNS + cert-manager) with limited scope
+- Design and implement Azure Functions provisioning service with comprehensive logging
+- Add CI jobs for create/update and cleanup on PR lifecycle
 
-**Current Behavior**:
-```bash
-# Creates: postgres-workload-identity-{branch-name}
-az identity federated-credential create \
-  --name "postgres-workload-identity-${{ env.BRANCH_NAME }}"
-
-# Only deletes on deployment FAILURE, not on branch deletion/merge
-```
-
-**Issues**:
-- **Resource Leak**: Accumulating federated credentials in Azure AD
-- **Security Risk**: Orphaned credentials for deleted branches
-- **Azure Limits**: May hit federated credential limits per managed identity
-- **Cost**: Unnecessary Azure AD resources consuming quota
-
-**Solutions**:
-- [ ] **Immediate**: Create cleanup workflow triggered on branch deletion
-- [ ] **Medium-term**: Create cleanup workflow triggered on PR merge to main
-- [ ] **Long-term**: Consider shared credential approach with namespace-based subject patterns
-- [ ] **Monitoring**: Add Azure CLI script to list and identify orphaned credentials
-
-### 3. Missing Cleanup Workflows - HIGH PRIORITY
-**Problem**: No automation for cleaning up feature environment resources
-
-**Missing Cleanup Events**:
-- Branch deletion (most important)
-- PR merge to main
-- Manual cleanup capability
-- Periodic cleanup of old resources
-
-**Resources Needing Cleanup**:
-- Azure federated credentials (`postgres-workload-identity-{branch}`)
-- Kubernetes namespaces (`feature-{branch}`)
-- Container images (optional - registry cleanup)
-
-**Implementation Plan**:
-```yaml
-# .github/workflows/cleanup-feature-branch.yml
-name: Cleanup Feature Branch Resources
-on:
-  delete:
-    branches:
-      - '*'
-  pull_request:
-    types: [closed]
-    branches: [main]
-```
+---
 
 ## ⚠️ Current Limitation: Shared Database
 **Current Setup**: All feature environments share the same PostgreSQL database as production.
@@ -118,28 +98,6 @@ on:
 - **Option 3**: In-memory databases for testing (fastest, ephemeral)
 
 **Implementation Priority**: MEDIUM - Current shared setup works for learning/demo purposes, but proper isolation needed for real development workflows.
-
-## Debug Commands
-```bash
-kubectl describe pod <backend-pod-name>
-kubectl describe pod postgres-statefulset-0
-kubectl get events --sort-by=.metadata.creationTimestamp
-kubectl get namespaces
-```
-
-## Next Steps (After Debugging)
-- [ ] Wait for CI completion on PR #15
-- [ ] Verify feature deployment works (namespace: feature-ex-3-7)
-- [ ] Merge PR #15 to main
-- [ ] Verify main branch deployment still works
-- [ ] Submit exercise 3.7
-
-## What We Fixed
-- Image tagging (head SHA consistency)
-- Branch naming (ex-3.7 → ex-3-7 for Kubernetes)
-- Deployment names in workflow
-- Workflow file location (pushed to main)
-
 
 ---
 
@@ -199,21 +157,6 @@ course_project/
 - `stefanzweifel/git-auto-commit-action` - Git automation
 - `peaceiris/actions-gh-pages` - Pages deployment
 - Custom scripts for OpenAPI extraction and comparison
-
-### Questions to Address During Implementation
-1. Service startup time and health check strategy
-2. Change detection logic (ignore timestamps, focus on actual API changes)
-3. Swagger UI layout (single page vs separate pages for each service)
-4. Error handling if services fail to start in CI
-
-### Expected Outcome
-- Automated API documentation that stays current with code
-- Public Swagger UI accessible via GitHub Pages
-- Zero-maintenance documentation pipeline
-- Learning experience with GitHub Actions and OpenAPI workflows
-
----
-**Next Steps**: Enable GitHub Pages and Actions, then start with Phase 1 directory setup.
 
 ---
 

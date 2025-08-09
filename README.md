@@ -78,6 +78,18 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
 - [3.5](https://github.com/rjpalt/KubernetesMOOC/tree/3.5/course_project) - Refactor + Gateway API for Course Project - [Commands](docs/exercises/3.5-commands.md) and [Azure Memos](docs/azure/Azure-memos.md)
 - [3.6](https://github.com/rjpalt/KubernetesMOOC/tree/3.6/course_project) - CD Pipeline can be found here: [pipeline yaml](.github/workflows/aks-cd.yaml) and example pipeline run [here](https://github.com/rjpalt/KubernetesMOOC/actions/runs/16798189696)
   - **Note**: The pipelien shows a failure, which was fixed for the next commit, which failed as well. The latter failure for frontend was due to health checks timing out even though the deployment was successful. The problem has been patched and should show correct in consequent runs. The problem is documented in Azure memos [here](docs/azure/Azure-memos.md#aks-gateway-api-health-checks).
+- [3.7](https://github.com/rjpalt/KubernetesMOOC/tree/3.7/course_project)
+  - Note: Current solution is intentionally simplified for the course and has known security/DevOps gaps. See submission notes and [Azure Memos](docs/azure/Azure-memos.md).
+    - Gateway API gets crowded with per-environment path prefixes (e.g., http://d9hqaucbbyazhfem.fz53.alb.azure.com/feature-ex-3-7/)
+    - Overlay maintenance overhead: HTTPRoute patches in the feature overlay must be updated whenever new endpoints are introduced
+    - QA/preview environments are publicly reachable; no edge auth/allowlisting yet
+    - Federated credentials are created per feature branch on an existing managed identity; lifecycle cleanup after branch deletion is not automated yet
+    - In a real setup, prefer per-env DNS and stronger isolation; for the course we keep a single ALB and path-based routing
+  - Real-life approach (concise):
+    - Per-env hostnames (feature-<branch>.preview.example.com) via ExternalDNS + cert-manager; avoid path-prefix crowding
+    - Use shared ALB/Gateway for all feature environments; keep production on separate ALB/Gateway for blast radius isolation
+    - Add NetworkPolicies and edge auth (Entra ID or OAuth proxy) for preview environment security
+    - Consider Azure Functions-based provisioning service: GitHub Actions → OIDC → Azure Function → provision resources; improves security and centralized control
 
 
 ## Cleanup Script
