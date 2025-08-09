@@ -61,3 +61,6 @@ course_project/docs/AKS.md
 
 # Ignore Docker compose backups
 docker-compose.yaml.backup
+
+# Ignore machine context real file
+.project/context.yaml

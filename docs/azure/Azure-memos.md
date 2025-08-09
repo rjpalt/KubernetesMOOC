@@ -163,6 +163,124 @@ Get the ingress IP address:
 kubectl get ingress
 ```
 
+# Azure Workload Identity for GitHub Actions CI/CD
+
+## Why Separate Identities for CI and CD?
+
+In production environments, it's crucial to follow the **principle of least privilege** and separate concerns between different pipeline stages, even when they share the same underlying infrastructure.
+
+### Security Benefits
+
+1. **Blast Radius Limitation**: If CI identity is compromised, it can only push images, not deploy to production
+2. **Permission Scoping**: Each identity has only the minimum permissions needed for its specific role
+3. **Audit Trail**: Clear separation of who did what in CI vs CD stages
+4. **Future Flexibility**: Ready for infrastructure evolution (separate test databases, staging clusters)
+
+### Current Architecture
+
+Even though our feature and production environments currently share the same AKS cluster and ACR, separate identities provide:
+- **CI Identity**: Only ACR push permissions for building and storing tested images
+- **CD Identity**: AKS deployment permissions for production releases
+- **Clean Separation**: CI focuses on build/test, CD focuses on deployment
+
+## Creating Azure Managed Identities for GitHub Actions
+
+### CI Identity Setup
+
+```bash
+# Create dedicated CI identity for build and push operations
+az identity create \
+  --name github-actions-ci \
+  --resource-group kubernetes-learning \
+  --location northeurope
+
+# Grant ACR push permissions (minimal needed for CI)
+az role assignment create \
+  --assignee $(az identity show -g kubernetes-learning -n github-actions-ci --query clientId -o tsv) \
+  --role AcrPush \
+  --scope $(az acr show --name kubemooc --query id --output tsv)
+
+# Create federated credential for pull requests
+az identity federated-credential create \
+  --name github-actions-ci \
+  --identity-name github-actions-ci \
+  --resource-group kubernetes-learning \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject repo:rjpalt/KubernetesMOOC:pull_request \
+  --audience api://AzureADTokenExchange
+```
+
+### CD Identity Setup (Existing)
+
+```bash
+# CD identity already exists with broader permissions
+# Originally created with:
+az identity create \
+  --name github-actions-todo-cd \
+  --resource-group kubernetes-learning \
+  --location northeurope
+
+# Has AKS deployment permissions + ACR access
+# Federated credential for main branch only:
+az identity federated-credential create \
+  --name github-actions-ci-cd \
+  --identity-name github-actions-todo-cd \
+  --resource-group kubernetes-learning \
+  --issuer https://token.actions.githubusercontent.com \
+  --subject repo:rjpalt/KubernetesMOOC:ref:refs/heads/main \
+  --audience api://AzureADTokenExchange
+```
+
+## Federated Credential Subject Scoping
+
+### Understanding GitHub OIDC Subjects
+
+The `subject` field in federated credentials determines **exactly when** Azure will trust the GitHub token:
+
+#### Pull Request Subject: `repo:owner/repo:pull_request`
+- **Scope**: ANY pull request to ANY branch
+- **Use Case**: CI pipelines that run on feature branches
+- **Security**: Broader scope but limited permissions (only ACR push)
+- **Trigger**: `on: pull_request` in GitHub Actions
+
+#### Branch-Specific Subject: `repo:owner/repo:ref:refs/heads/main`
+- **Scope**: ONLY pushes to the main branch
+- **Use Case**: Production deployments after PR merge
+- **Security**: Narrow scope with broader permissions (AKS deployment)
+- **Trigger**: `on: push: branches: [main]` in GitHub Actions
+
+### Subject Scoping Implications
+
+| Subject Type | When It Triggers | Security Posture | Use Case |
+|--------------|------------------|------------------|-----------|
+| `pull_request` | Any PR to any branch | Wider trigger scope, minimal permissions | CI builds/tests |
+| `ref:refs/heads/main` | Only main branch pushes | Narrow trigger scope, full permissions | Production deployment |
+| `ref:refs/heads/feature/*` | Only specific feature branches | Very narrow scope | Branch-specific testing |
+
+### Architecture Benefits
+
+```mermaid
+graph TD
+    A[GitHub PR] --> B[CI Identity: pull_request subject]
+    B --> C[ACR Push Only]
+    
+    D[GitHub Main Push] --> E[CD Identity: main branch subject]
+    E --> F[AKS Deployment + ACR Access]
+    
+    G[Future: Feature DB] --> H[CI Identity: extended scope]
+    I[Future: Prod Cluster] --> J[CD Identity: isolated scope]
+```
+
+### GitHub Secrets Configuration
+
+```bash
+# Set CI identity for pull request builds
+gh secret set AZURE_CI_CLIENT_ID --body "a7c70b35-0eb3-4363-b0e1-1c48bae476cc"
+
+# CD identity remains for production deployments
+# AZURE_CLIENT_ID = "d2e20c1d-c71a-43d8-ba21-463212e9596f"
+```
+
 -----
 
 # Deploying an Application to Azure Kubernetes Service (AKS) with Application Gateway for Containers
@@ -1152,13 +1270,6 @@ containers:
 - **Kustomize compatible**: Pipeline still uses `kustomize edit set image` normally
 - **Deployment verification**: Forces developers to check actual cluster state
 
-**Pipeline behavior remains unchanged:**
-```bash
-# CI/CD still works exactly the same way
-kustomize edit set image kubemooc.azurecr.io/todo-app-be:abc123def
-kubectl apply -k .
-```
-
 **Alternative approaches for "latest" behavior:**
 - Use ACR webhook triggers (advanced Azure Container Registry feature)
 - Implement image digest references instead of tags (most reliable)
@@ -1286,3 +1397,52 @@ READY_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=stat
 - `kubectl rollout status` waits for deployment to be stable
 - Field selector filters only running pods
 - Avoids race conditions with terminating pods during rolling updates
+
+# Decision Log: Feature Environments on AKS (High-level)
+
+- Current pattern (course scope)
+  - Single ALB + Gateway API
+  - Per-namespace feature environments, routed via path prefixes (/feature-<branch>/)
+  - Federated credential per feature branch (subject: service account in feature namespace)
+  - Kustomization overlay patches HTTPRoute paths; CI replaces BRANCH_NAME placeholder
+- Known trade-offs
+  - Gateway route crowding and overlay patch maintenance for new endpoints
+  - Public exposure of preview environments (no edge auth/allowlist yet)
+  - No automated lifecycle cleanup on branch deletion (namespaces + federated credentials)
+  - Shared database across environments (no data isolation)
+- Rationale
+  - Expedites learning and validates infra quickly within course limits
+
+## Immediate Improvements
+- Documentation
+  - Document overlay maintenance requirement (add new endpoints to feature overlay HTTPRoute patches)
+  - Clarify that CI creates federated credentials on an existing managed identity (not new identities), which requires higher RBAC for the CI principal
+- CI/CD hygiene
+  - Add cleanup workflows on PR close/branch delete: delete namespace, HTTPRoute, and federated credential; optional ACR tag cleanup
+  - Add a periodic janitor job (labels: env=feature, branch=<name>, ttl=<date>)
+- Access hardening (quick wins)
+  - Tighten CORS, add basic IP allowlists for preview envs, or require Entra ID at the edge
+
+## Future Plan (More Secure & Scalable Preview Envs)
+- Routing and DNS
+  - Per-env hostnames (feature-<branch>.example.com) via ExternalDNS + cert-manager + wildcard TLS
+  - Optionally move to per-namespace Gateway or dedicated GatewayClass; separate ALB if budget allows
+- Identity & secrets
+  - Prefer External Secrets Operator with Azure Key Vault (Workload Identity, least privilege)
+  - Optionally HashiCorp Vault for dynamic secrets (short-lived DB users per env) and Vault Agent Injector
+- Database isolation
+  - Option A: small Azure Postgres per env
+  - Option B: per-namespace Postgres StatefulSet with PVC
+  - Option C: per-env schema + dedicated credentials (cheapest compromise)
+- Lifecycle management
+  - PR-open: provision namespace, DNS, certificates, federated credential, secrets, database
+  - PR-close/branch-delete: tear down everything (namespace, DNS records/certs, federated credential, DB)
+  - Nightly janitor to catch stragglers
+- Delivery model
+  - Keep GitHub Actions as orchestrator for this course
+  - For production, shift to GitOps (Argo CD/Flux) and Terraform/Bicep for infra provisioning
+
+## Notes
+- Keep least privilege for CI/CD identities; avoid broad Contributor when possible
+- Track quotas/limits for federated credentials on the managed identity
+- Measure ALB/Gateway cost impact if moving to per-env infra

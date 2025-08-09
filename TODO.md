@@ -1,81 +1,103 @@
-# TODO: Priority Tasks for Tomorrow
+# TODO: Exercise 3.7 Completion
 
-## Goal: Deploy Complete Todo Application Stack to AKS with Kustomization
-**End State**: Individual service deployments + full stack deployment capability using hierarchical Kustomization structure with Azure Key Vault integration.
+## Current Implementation Notes (3.7)
+- Feature overlay patches HTTPRoute paths for a fixed set of endpoints
+  - When adding new public endpoints, update `course_project/manifests/overlays/feature/kustomization.yaml`
+  - CI replaces `BRANCH_NAME` placeholders during deploy
+- Federated credentials are created per feature branch (on an existing managed identity)
+  - Lifecycle cleanup on PR close/branch delete is not automated yet
+  - Namespaces for feature environments are also not auto-removed
+- Optional future: per-env ALB/GatewayClass and per-env DNS (feature-<branch>.example.com) would eliminate overlay path management and improve isolation
 
-### Phase 1: Container Images & Registry
-- [x] Build application images with consistent versioning (v3.5)
-  ```bash
-  ./build-images.sh v3.5
-  ```
-- [x] Tag images for Azure Container Registry
-  ```bash
-  docker tag todo-app-be:3.5 kubemooc.azurecr.io/todo-app-be:3.5
-  docker tag todo-app-fe:3.5 kubemooc.azurecr.io/todo-app-fe:3.5
-  docker tag todo-app-cron:3.5 kubemooc.azurecr.io/todo-app-cron:3.5
-  ```
-- [x] Push all images to ACR
-  ```bash
-  az acr login --name kubemooc
-  docker push kubemooc.azurecr.io/todo-app-be:3.5
-  docker push kubemooc.azurecr.io/todo-app-fe:3.5
-  docker push kubemooc.azurecr.io/todo-app-cron:3.5
-  ```
+## Action Items (3.7)
+- [ ] Add cleanup workflows: on PR closed/branch delete remove namespace + federated credential; optional ACR tag cleanup
+- [ ] Document overlay maintenance requirement (README + Azure memos)
+- [ ] Consider External Secrets Operator (ESO) with Azure Key Vault; optionally HashiCorp Vault for dynamic secrets
+- [ ] Decide preview env trigger: PR-opened (recommended for cost) vs. branch-created; implement chosen workflow
+- [ ] Prep platform installs (cluster-wide): ExternalDNS (Azure DNS) and cert-manager (Let’s Encrypt), scoped to preview domain
 
-### Phase 2: Update Kubernetes Manifests
-- [x] **Backend Service** (`manifests/base/todo-be/`)
-  - [x] Update deployment.yaml with ACR image reference
-  - [x] Configure database connection to use Azure Key Vault secrets
-  - [x] Update service.yaml for proper port exposure
-  - [x] Create/verify kustomization.yaml for independent deployment
+---
 
-- [x] **Frontend Service** (`manifests/base/todo-fe/`)
-  - [x] Update deployment.yaml with ACR image reference
-  - [x] Configure backend API endpoint for AKS internal communication
-  - [x] Update service.yaml for Gateway API routing
-  - [x] Create/verify kustomization.yaml for independent deployment
+## FUTURE: Per-feature Hostnames with ExternalDNS + cert-manager (Preview Environments)
 
-- [x] **Cron Job Service** (`manifests/base/todo-cron/`)
-  - [x] Update cronjob.yaml with ACR image reference
-  - [x] Configure backend API endpoint for internal cluster communication
-  - [x] Create/verify kustomization.yaml for independent deployment
+### Why
+- Avoid path-prefix crowding and rewrite complexity in Gateway API
+- Consistent, human-friendly URLs per feature (feature-<branch>.preview.example.com)
+- Clean TLS with per-host or wildcard certificates; simpler browser/SameSite behavior
+- Better isolation boundaries and easier cleanup (DNS and certs deprovision with namespace delete)
+- Clearer observability (per-host metrics/logs) and policy controls (quotas, rate limits)
 
-### Phase 3: Kustomization Structure Validation
-- [x] **Service-Level Kustomizations**
-  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-be/`
-  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-fe/`
-  - [x] Test individual service deployment: `kubectl apply -k manifests/base/todo-cron/`
+### What to Implement (High Level)
+- DNS
+  - Choose and provision base preview domain (e.g., preview.example.com) in Azure DNS
+  - Delegate if needed; ensure CI/cluster has least-privilege to manage only this zone
+- ExternalDNS (cluster-wide)
+  - Install with Azure DNS provider; set txt-owner-id and domain filters to preview.example.com
+  - Restrict to namespaces labeled for previews; enable garbage collection
+- cert-manager (cluster-wide)
+  - Install and configure ClusterIssuers (Let’s Encrypt staging/prod) using DNS-01 with Azure DNS
+  - Option A: Wildcard cert for *.preview.example.com
+  - Option B: Per-host certificates issued on demand
+- Gateway design
+  - Recommended: Use a dedicated ALB/Gateway for all feature namespaces (shared preview Gateway), keep production on a separate Gateway/ALB to reduce blast radius
+  - Configure AllowedRoutes/namespaceSelectors so feature namespaces can bind only their own hosts
+- App routing
+  - Each feature namespace defines an HTTPRoute with host: feature-<branch>.preview.example.com pointing to its services (no path rewrites)
+  - Ensure frontend/backend base URLs align with host-based routing
+- CI/CD automation (per feature)
+  - Trigger: PR-opened (recommended) to save resources; optionally support branch-created if desired
+  - Steps: create namespace → apply manifests with HOSTNAME variable → wait for ExternalDNS record + cert ready → post PR comment with URL
+  - Cleanup on PR-closed: delete namespace; ExternalDNS removes DNS; cert-manager cleans up certs
+- Guardrails
+  - Apply resource quotas/limits per namespace; minimal replicas; autoscaling caps
+  - Optional edge auth/IP allowlist for previews; baseline NetworkPolicies
 
-- [ ] **Full Stack Kustomization**
-  - [ ] Create root `manifests/kustomization.yaml` that includes all base services
-  - [ ] Define proper deployment order (postgres → backend → frontend → cron)
-  - [ ] Test full stack deployment: `kubectl apply -k manifests/`
+### Azure-Native Provisioning Service (Recommended Enhancement)
+- **Problem**: GitHub Actions directly managing Azure resources creates security and operational issues
+- **Solution**: Azure Functions-based provisioning service with Azure-native identity management
+- **Architecture**: GitHub Actions → OIDC → Azure Function → Provision/Cleanup Resources
+- **Benefits**:
+  - Reduced CI/CD permissions (only calls one Azure endpoint vs managing all resources)
+  - Centralized provisioning logic with business rules, validation, resource limits
+  - Better error handling, retry logic, and audit trails within Azure ecosystem
+  - Consistent resource naming, tagging, and lifecycle management
+  - Enhanced logging and monitoring capabilities for troubleshooting
+- **Implementation**: 
+  - Azure Function with Managed Identity and least-privilege Azure RBAC
+  - HTTP triggers for provision/cleanup operations with structured request/response
+  - Comprehensive logging with Application Insights for debugging complex scenarios
+  - ARM/Bicep templates for consistent resource provisioning patterns
 
-### Phase 4: Gateway API Integration  
-- [ ] **HTTPRoute Configuration**
-  - [ ] Create/update HTTPRoute for frontend service routing (`/` → todo-frontend-svc)
-  - [ ] Create/update HTTPRoute for backend API routing (`/todos`, `/be-health` → todo-backend-svc)
-  - [ ] Apply Gateway API routes and verify functionality
+### Trigger Choice: PR-opened vs Branch-created
+- PR-opened: More resource-savvy, aligns with review lifecycle; preferred default
+- Branch-created: Faster feedback but can create unused environments; use only if contributors rely on early URLs
 
-### Phase 5: End-to-End Testing
-- [ ] **Individual Service Testing**
-  - [ ] Deploy and test backend independently
-  - [ ] Deploy and test frontend independently  
-  - [ ] Deploy and test cron job independently
+### Risks/Decisions
+- ALB limits and cost: One shared preview ALB/Gateway vs per-env ALB; start with one shared preview ALB/Gateway and keep prod separate
+- Certificate strategy: wildcard (simpler) vs per-host (granular)
+- DNS permissions: scope creds to preview zone only
+- Provisioning service complexity: Additional Azure component to maintain but significantly improves security posture
 
-- [ ] **Full Stack Testing**
-  - [ ] Deploy complete application stack with single command
-  - [ ] Verify frontend loads and can create todos
-  - [ ] Verify backend API endpoints work through Gateway
-  - [ ] Verify cron job creates Wikipedia todos automatically
-  - [ ] Test data persistence through PostgreSQL with Azure Key Vault credentials
+### Next Steps
+- Decide base preview domain and add Azure DNS zone
+- Approve design: shared preview ALB/Gateway, prod isolated; PR-opened trigger
+- Add platform installs (ExternalDNS + cert-manager) with limited scope
+- Design and implement Azure Functions provisioning service with comprehensive logging
+- Add CI jobs for create/update and cleanup on PR lifecycle
 
-### Success Criteria
-✅ **Service Independence**: Each service can be deployed/updated individually
-✅ **Full Stack Deployment**: Single command deploys entire application  
-✅ **Azure Integration**: All services use ACR images and Azure Key Vault secrets
-✅ **Gateway API**: External access works through Azure Application Load Balancer
-✅ **Data Persistence**: Todos persist across deployments using Azure Key Vault secured database
+---
+
+## ⚠️ Current Limitation: Shared Database
+**Current Setup**: All feature environments share the same PostgreSQL database as production.
+
+**Problem**: Data isolation issues - feature tests can affect each other and production data.
+
+**Future Enhancement**: Each feature environment should have its own database instance:
+- **Option 1**: Azure Database for PostgreSQL per feature branch
+- **Option 2**: PostgreSQL pods with persistent volumes per namespace  
+- **Option 3**: In-memory databases for testing (fastest, ephemeral)
+
+**Implementation Priority**: MEDIUM - Current shared setup works for learning/demo purposes, but proper isolation needed for real development workflows.
 
 ---
 
@@ -135,21 +157,6 @@ course_project/
 - `stefanzweifel/git-auto-commit-action` - Git automation
 - `peaceiris/actions-gh-pages` - Pages deployment
 - Custom scripts for OpenAPI extraction and comparison
-
-### Questions to Address During Implementation
-1. Service startup time and health check strategy
-2. Change detection logic (ignore timestamps, focus on actual API changes)
-3. Swagger UI layout (single page vs separate pages for each service)
-4. Error handling if services fail to start in CI
-
-### Expected Outcome
-- Automated API documentation that stays current with code
-- Public Swagger UI accessible via GitHub Pages
-- Zero-maintenance documentation pipeline
-- Learning experience with GitHub Actions and OpenAPI workflows
-
----
-**Next Steps**: Enable GitHub Pages and Actions, then start with Phase 1 directory setup.
 
 ---
 
@@ -213,6 +220,83 @@ Current: App Repo + Placeholder Tags → GitOps: App Repo + Config Repo + ArgoCD
 ```
 
 **Status**: Planned for later exercises after mastering basic Kubernetes concepts.
+
+---
+
+# TODO: Feature Environment Database Isolation (FUTURE)
+
+## Current Limitation
+All feature environments share the same PostgreSQL database as production, creating potential data conflicts and test isolation issues.
+
+## Proposed Solutions
+
+### Option 1: Azure Database for PostgreSQL per Feature Branch
+```yaml
+# In deployment workflow
+- name: Create feature database
+  run: |
+    # Create Azure Database for PostgreSQL Flexible Server
+    az postgres flexible-server create \
+      --name "todo-db-feature-${BRANCH_NAME}" \
+      --resource-group kubernetes-learning \
+      --sku-name Standard_B1ms \
+      --storage-size 32 \
+      --tier Burstable \
+      --database-name todoapp
+```
+
+### Option 2: PostgreSQL StatefulSet per Namespace
+```yaml
+# Deploy dedicated postgres instance in each feature namespace
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-statefulset
+  namespace: feature-branch-name
+```
+
+### Option 3: Ephemeral In-Memory Database
+```yaml
+# Use SQLite or in-memory postgres for fast, isolated testing
+env:
+  - name: DATABASE_URL
+    value: "sqlite:///tmp/feature_test.db"
+```
+
+## Implementation Considerations
+- **Cost**: Option 1 most expensive, Option 3 cheapest
+- **Speed**: Option 3 fastest startup, Option 1 slowest
+- **Isolation**: All options provide full isolation
+- **Persistence**: Options 1&2 persist data, Option 3 ephemeral
+- **Production Similarity**: Option 1 most similar to production
+
+## Recommended Approach
+Start with **Option 2** (StatefulSet per namespace) for good balance of isolation, cost, and production similarity.
+
+---
+
+# TODO: Playwright E2E Testing with Feature Branch Environments
+
+## High-Level Implementation
+- **CI/CD Extension**: Add E2E job after feature environment deployment
+- **Test Target**: Live feature environments via Gateway API (not mocks)
+- **Pipeline Flow**: CI → Deploy → E2E Tests → Block/Allow PR merge
+- **Kubernetes Integration**: Test against real services in isolated namespaces
+
+## Key Benefits
+- Validates complete user workflows before production
+- Leverages existing feature environment infrastructure
+- Fast feedback loop (~10-15 minutes from push to results)
+- Production-like testing with real Gateway API routing
+
+## Implementation Steps
+1. Add Playwright tests in `course_project/e2e-tests/`
+2. Extend `ci.yml` with E2E job after deployment
+3. Configure tests to target feature environment URLs
+4. Set up test result reporting and PR blocking
+
+**Priority**: HIGH - Natural next step for production readiness
+**Effort**: MEDIUM - Builds on existing infrastructure
 
 ---
 

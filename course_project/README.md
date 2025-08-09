@@ -1,12 +1,12 @@
 # Todo Application - Microservices Project
 
-Three-service todo application: **todo-backend** (REST API), **todo-app** (Frontend with image caching), and **todo-cron** (Automated Wikipedia todo generation).
+Two-service todo application: **todo-backend** (REST API) and **todo-app** (Frontend with image caching). The **todo-cron** service for automated Wikipedia todo generation is available but not part of current deployments.
 
 ## Architecture
 
 - **todo-backend** (Port 8001): FastAPI REST API for todo CRUD operations
 - **todo-app** (Port 8000): FastAPI frontend with HTMX UI, communicates with backend via HTTP
-- **todo-cron**: CronJob service that creates todos with random Wikipedia articles hourly
+- **todo-cron**: CronJob service for automated Wikipedia todos (available but not currently deployed)
 
 ### Data Flow
 
@@ -75,7 +75,7 @@ The project supports both local development (ARM64) and cloud deployment (AMD64)
 **AMD64 Images (AKS Deployment):**
 - `todo-app-fe:TAG-amd64` - Frontend service for Azure Kubernetes Service
 - `todo-app-be:TAG-amd64` - Backend service for Azure Kubernetes Service
-- `todo-app-cron:TAG-amd64` - Cron service for Azure Kubernetes Service
+- `todo-app-cron:TAG-amd64` - Cron service (available but not deployed)
 
 ### Environment Configuration
 Before running with Docker Compose, set up your environment:
@@ -98,8 +98,9 @@ cp docker-compose.env.example docker-compose.env
 ```
 
 This creates 6 total images:
-- 3 ARM64 images for local development (automatically used by docker-compose.yaml)
-- 3 AMD64 images for AKS deployment (use in Kubernetes manifests)
+- 2 ARM64 images for local development (backend and frontend - automatically used by docker-compose.yaml)
+- 2 AMD64 images for AKS deployment (backend and frontend - use in Kubernetes manifests)
+- 2 cron images (available but not currently deployed)
 
 ### Manual Docker Build
 ```bash
@@ -139,6 +140,7 @@ The application uses `docker-compose.env` for environment variables:
 - **todo-app-be**: Backend API on http://localhost:8001 (ARM64 image)
 - **postgres_prod**: PostgreSQL database on localhost:5432
 - **Persistent data**: Database data persists in Docker volumes
+- **Note**: Cron service available but not included in current docker-compose setup
 
 ## Kubernetes Deployment
 
@@ -176,6 +178,15 @@ The deployment uses Azure Key Vault for secure credential management:
 
 ### Deployment Options
 
+**Branch-based environment deployment:**
+```bash
+# Main branch deploys to 'project' namespace using production overlay
+kubectl apply -k manifests/overlays/production/
+
+# Feature branches deploy to 'feature-branch-name' namespace using feature overlay
+kubectl apply -k manifests/overlays/feature/
+```
+
 **Individual service deployment:**
 ```bash
 # Deploy only the backend (when kustomization.yaml files are created)
@@ -210,8 +221,38 @@ kubectl apply -k manifests/overlays/production/
 ### Kustomization Benefits
 - **Service Independence**: Deploy and update individual microservices
 - **Environment Management**: Different configurations for dev/staging/prod
+- **Branch Environments**: Feature branches deploy to isolated namespaces with same configuration
 - **Resource Customization**: Environment-specific resource limits, replicas, and secrets
 - **GitOps Ready**: Structure supports GitOps deployment patterns
+
+### Branch Environment Strategy
+The deployment pipeline creates separate environments for each branch with complete isolation:
+
+- **Main Branch**: Deploys to `project` namespace using `overlays/production/`
+- **Feature Branches**: Deploy to `feature-{branch-name}` namespace using `overlays/feature/`
+- **Gateway Access**: Feature namespaces automatically labeled with `gateway-access=allowed` for routing
+- **Path Isolation**: Each environment uses unique URL paths (`/project/` vs `/feature-{branch}/`)
+- **Complete Isolation**: Each feature environment has dedicated resources:
+  - Separate namespace with RBAC isolation
+  - Isolated Gateway API routes
+- **Overlay Maintenance**: Feature overlay patches HTTPRoute paths for a fixed set of endpoints. When adding new public endpoints, update `manifests/overlays/feature/kustomization.yaml` accordingly. CI replaces `BRANCH_NAME` placeholders during deploy.
+- **Automatic Cleanup**: Feature environments can be cleaned up when branches are deleted
+
+**Gateway Label Management:**
+```bash
+# Automatic labeling in CI/CD (feature branches)
+kubectl create namespace feature-my-branch
+kubectl label namespace feature-my-branch gateway-access=allowed
+
+# Manual labeling for existing namespaces
+kubectl label namespace project gateway-access=allowed
+kubectl label namespace exercises gateway-access=allowed
+```
+
+**Environment Access Examples:**
+- **Production**: http://gateway-url/project/
+- **Feature Branch**: http://gateway-url/feature-my-branch/
+- **Multiple Features**: http://gateway-url/feature-login/, http://gateway-url/feature-payments/
 
 ### Service Access
 - **Frontend**: Through Gateway API at `/project/` (main UI and form submissions)
@@ -220,13 +261,68 @@ kubectl apply -k manifests/overlays/production/
 - **Health Checks**: `/project/be-health` endpoint routes directly to backend for monitoring
 - **Security**: All database credentials managed through Azure Key Vault
 
-### Gateway API Routing
-The HTTPRoute configuration provides intelligent routing:
+### Gateway API Configuration
+
+#### Gateway Access Control
+The Gateway API uses a **label-based access control** system for namespace isolation:
+
+**Label Convention:**
+```bash
+# Required label for gateway access
+gateway-access=allowed
+```
+
+**Implementation:**
+- **Gateway Listener**: Configured with `namespaces.from: Selector` and `matchLabels: {gateway-access: allowed}`
+- **Namespace Creation**: Feature branch namespaces automatically receive this label
+- **Access Control**: Only namespaces with this label can create HTTPRoutes through the gateway
+
+**Gateway Configuration Example:**
+```yaml
+# Gateway listener configuration
+listeners:
+- allowedRoutes:
+    kinds:
+    - kind: HTTPRoute
+    namespaces:
+      from: Selector
+      selector:
+        matchLabels:
+          gateway-access: allowed
+```
+
+**Adding Gateway Access to Namespaces:**
+```bash
+# For existing namespaces
+kubectl label namespace <namespace-name> gateway-access=allowed
+
+# For new feature environments (done automatically in CI/CD)
+kubectl create namespace feature-my-branch
+kubectl label namespace feature-my-branch gateway-access=allowed
+```
+
+#### HTTPRoute Path Strategy
+Different environments use distinct path prefixes to avoid conflicts and enable parallel testing:
+
+**Production Environment (`project` namespace):**
 - `/project/todos` → Frontend service (handles form data conversion to JSON)
 - `/project/be-health` → Backend service (direct health check access)
 - `/project/docs` → Backend service (API documentation)
 - `/project/image*` → Frontend service (image caching functionality)
 - `/project/` → Frontend service (main UI and catch-all)
+
+**Feature Environments (`feature-{branch}` namespaces):**
+- `/feature-{branch}/todos` → Frontend service (isolated testing)
+- `/feature-{branch}/be-health` → Backend service (health monitoring)
+- `/feature-{branch}/docs` → Backend service (API documentation)
+- `/feature-{branch}/image*` → Frontend service (image caching)
+- `/feature-{branch}/` → Frontend service (main UI)
+
+**Path Prefix Benefits:**
+- **Environment Isolation**: No conflicts between production and feature environments
+- **Parallel Testing**: Multiple feature branches can run simultaneously
+- **Clear Identification**: URL immediately shows which environment you're accessing
+- **Gateway Efficiency**: Single gateway handles all environments with path-based routing
 
 ## Azure Deployment
 
@@ -276,12 +372,263 @@ cd ../todo-app && uv run pytest tests/ -v
 
 See `todo-backend/tests/TEST_PLAN.md` for comprehensive testing documentation.
 
+## Feature Branch Deployment Strategy
+
+### Current Implementation: Dynamic Azure Workload Identity
+The current GitHub Actions workflow (`deploy-feature-branches.yml`) creates dedicated Azure federated identity credentials for each feature branch:
+
+**Pros:**
+- Complete isolation between feature environments
+- Proper Azure security model with exact subject matching
+- Easy cleanup when feature branches are deleted
+
+**Cons:**
+- Increased Azure AD resource creation overhead
+- Complex credential lifecycle management
+- Potential security concerns with dynamic identity creation in CI/CD
+
+### Alternative Approach: Shared Database with Logical Isolation
+An alternative architecture would use a shared database with multiple workload identities:
+
+**Concept:**
+- Single PostgreSQL instance shared across all feature environments
+- Multiple Azure Workload Identity credentials with naming pattern `feature-*-workload-identity`
+- Logical separation using database schemas or prefixed table names
+- Reduced Azure resource overhead
+
+**Implementation Considerations:**
+```bash
+# Create multiple federated credentials upfront
+az identity federated-credential create \
+  --name "feature-database-access" \
+  --subject "system:serviceaccount:feature-*:postgres-service-account" \
+  --identity-name keyvault-identity-kube-mooc
+
+# Note: Azure doesn't support wildcard subjects, so this would require
+# pre-provisioning credentials for expected feature branch patterns
+```
+
+**Trade-offs:**
+- **Pros**: Reduced credential management, shared database resources, simpler Key Vault access
+- **Cons**: Less isolation, potential data bleed between environments, complex cleanup
+
+**Status**: Current implementation uses per-branch credentials for maximum isolation. The shared database approach could be evaluated for future optimization if the credential overhead becomes problematic.
+
 ## CI/CD Pipeline
 
-Sequential testing strategy in `.github/workflows/test.yml`:
-1. **Backend Tests**: API contracts and business logic
-2. **Frontend Tests**: Service integration with mocked backend
-3. **Integration Tests**: Docker containers with real service communication
+Modern GitOps-style pipeline with **separate Azure identities** for CI and CD stages, following security best practices:
+
+### Azure Identity Architecture
+
+The pipeline uses **two dedicated Azure Managed Identities** for secure, passwordless authentication:
+
+#### CI Identity (`github-actions-ci`)
+- **Purpose**: Build and push tested images during pull request validation
+- **Permissions**: `AcrPush` role on Azure Container Registry only
+- **Scope**: Triggered by `pull_request` events on any branch
+- **Client ID**: `a7c70b35-0eb3-4363-b0e1-1c48bae476cc`
+- **Security**: Minimal permissions following principle of least privilege
+
+#### CD Identity (`github-actions-todo-cd`)  
+- **Purpose**: Deploy applications to AKS after main branch merge
+- **Permissions**: AKS deployment permissions + ACR access
+- **Scope**: Triggered only by pushes to `main` branch
+- **Client ID**: `d2e20c1d-c71a-43d8-ba21-463212e9596f`  
+- **Security**: Broader permissions but restricted to production deployments
+
+**Why Separate Identities?**
+- **Blast Radius Control**: Compromised CI identity cannot deploy to production
+- **Future-Proof**: Ready for separate test databases and staging clusters
+- **Audit Clarity**: Clear separation between build and deployment activities
+- **Permission Scoping**: Each stage has only the minimum required access
+
+### Pipeline Architecture
+```mermaid
+graph TD
+    A[Push/PR to any branch] --> B[CI Pipeline - Microservices]
+    B --> C{All tests pass?}
+    C -->|Yes| D[Build & Push Images to ACR]
+    D --> E{Branch type?}
+    E -->|main branch| F[Production Deployment]
+    E -->|feature branch| G[Feature Branch Deployment]
+    F --> H[Deploy to project namespace]
+    G --> I[Deploy to feature-{branch} namespace]
+    C -->|No| J[Pipeline fails - no deployment]
+```
+
+### CI Pipeline (`ci.yml`) ###
+Sequential testing strategy with secure image building:
+1. **Code Quality**: Ruff linting and formatting for both services
+2. **Backend Tests**: Unit and integration tests with PostgreSQL
+3. **Frontend Tests**: Service integration with mocked backend
+4. **Service Integration**: Docker containers with real service communication
+5. **Image Building**: Build and push tested images to ACR using **CI identity**
+
+**Authentication Architecture:**
+- Uses `AZURE_CI_CLIENT_ID` secret with `pull_request` federated credential
+- Federated credential subject: `repo:rjpalt/KubernetesMOOC:pull_request`
+- Permissions: `AcrPush` role only (cannot deploy to AKS)
+- Scope: Triggered on ANY pull request to main branch
+
+**Services Covered:**
+- **Backend**: `kubemooc.azurecr.io/todo-app-be:{branch}-{sha}`
+- **Frontend**: `kubemooc.azurecr.io/todo-app-fe:{branch}-{sha}`
+
+**Key Features:**
+- **Only tested code is built** - Images only created after all tests pass
+- **Consistent tagging** - `kubemooc.azurecr.io/todo-app-be:feature-my-branch-abc123def`
+- **Multi-platform** - AMD64 images for AKS deployment
+- **Build cache** - GitHub Actions cache for faster subsequent builds
+- **Secure by default** - Minimal Azure permissions for CI operations
+
+### Image Tagging Strategy (Concise)
+- Pull request builds tag images as `{branch}-{headSha}` where `headSha = github.event.pull_request.head.sha`.
+- Reason: The feature deploy workflow (workflow_run) receives only the PR head SHA (not the synthetic merge SHA `github.sha`).
+- Production (push to main) uses the normal commit SHA (no divergence between merge/head on main).
+- Example tag: `feature-login-4694cc19a5e0c7f37e86a55b8e6a7223616cf44a`.
+
+### If Feature Deployment Cannot Find Image Tag
+1. Compare PR head SHA in CI summary with `IMAGE_TAG_SUFFIX` in deploy logs.
+2. List tags (backend): `az acr repository show-tags --name kubemooc --repository todo-app-be -o tsv | grep <branch>`
+3. If missing, re-run CI (ensures rebuild with head SHA) then deployment will succeed.
+
+(No dual tagging kept to avoid registry clutter.)
+
+### Branch Environment Deployment
+Two separate deployment pipelines ensure proper isolation:
+
+#### Production Deployment (`deploy-production.yml`)
+- **Trigger**: Push to main branch (merge from PR)
+- **Authentication**: Uses `AZURE_CLIENT_ID` secret with **CD identity**
+- **Federated Credential**: `repo:rjpalt/KubernetesMOOC:ref:refs/heads/main`
+- **Permissions**: Full AKS deployment + ACR access
+- **Target**: `project` namespace using `overlays/production/`
+- **Images**: Builds fresh images for production (independent validation)
+- **Tests**: Runs own test suite before deployment
+- **Strategy**: Independent pipeline for production reliability
+
+#### Feature Branch Deployment (`deploy-feature-branches.yml`)  
+- **Trigger**: After CI pipeline completes successfully (non-main branches)
+- **Authentication**: Uses `AZURE_CLIENT_ID` secret with **CD identity**
+- **Images**: Uses tested images from CI pipeline (no rebuilding)
+- **Target**: `feature-{branch-name}` namespace using `overlays/feature/`
+- **Services**: Deploys backend and frontend services only
+- **Namespace**: Auto-creates with `gateway-access=allowed` label for Gateway API access
+- **HTTPRoute Patching**: Uses Kustomization patches for Infrastructure as Code approach
+- **Health Checks**: Verifies both services respond correctly
+
+**HTTPRoute Path Management:**
+```bash
+# Current approach: Kustomization patches with placeholder replacement
+cd course_project/manifests/overlays/feature
+kustomize edit set namespace feature-branch-name
+sed -i "s/BRANCH_NAME/branch-name/g" kustomization.yaml
+kustomize build . | kubectl apply -f -
+```
+
+The feature overlay uses Kustomization patches to modify HTTPRoute paths declaratively:
+
+```yaml
+# manifests/overlays/feature/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+- target:
+    kind: HTTPRoute
+    name: todo-app
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/matches/0/path/value
+      value: /feature-BRANCH_NAME/be-health
+    - op: replace
+      path: /spec/rules/1/matches/0/path/value
+      value: /feature-BRANCH_NAME/docs/
+    # ... additional path updates
+    name: todo-app
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/matches/0/path/value
+      value: /feature-PLACEHOLDER/be-health
+    - op: replace
+      path: /spec/rules/1/matches/0/path/value
+      value: /feature-PLACEHOLDER/docs/
+    # Additional path replacements...
+
+# CI/CD would then replace PLACEHOLDER with actual branch name
+# sed -i 's/PLACEHOLDER/${BRANCH_NAME}/g' kustomization.yaml
+```
+
+### HTTPRoute Management Approaches
+
+#### Current Approach: Kustomization Patches with Placeholders
+The current implementation uses Infrastructure as Code approach with Kustomization patches:
+
+**Pros:**
+- **Declarative**: All routing configuration in version control
+- **GitOps Friendly**: Infrastructure changes visible in manifests
+- **Maintainable**: Centralized routing configuration management
+- **Consistent**: Same patching mechanism across all feature branches
+- **Simple**: Minimal CI/CD logic required
+
+**Implementation:**
+```bash
+# In deploy-feature-branches.yml
+cd course_project/manifests/overlays/feature
+kustomize edit set namespace ${{ env.NAMESPACE }}
+sed -i "s/BRANCH_NAME/${{ env.BRANCH_NAME }}/g" kustomization.yaml
+kustomize build . | kubectl apply -f -
+```
+
+```yaml
+# manifests/overlays/feature/kustomization.yaml
+patches:
+- target:
+    kind: HTTPRoute
+    name: todo-app
+  patch: |-
+    - op: replace
+      path: /spec/rules/0/matches/0/path/value
+      value: /feature-BRANCH_NAME/be-health
+    - op: replace
+      path: /spec/rules/1/matches/0/path/value
+      value: /feature-BRANCH_NAME/docs/
+    # ... additional path updates
+```
+
+#### Previous Approach: Runtime Patching in CI/CD
+Alternative implementation that patches HTTPRoute paths dynamically during deployment:
+
+**Pros:**
+- **Simple**: No Kustomization patch management
+- **Flexible**: Easy to modify paths without changing manifests
+- **Debugging**: Clear kubectl commands visible in CI/CD logs
+
+**Cons:**
+- **Imperative**: Changes not visible in version control
+- **Complex CI/CD**: More logic in deployment pipeline
+
+**Implementation Example:**
+```bash
+# Previous kubectl patch approach (not used)
+kubectl patch httproute todo-app -n ${{ env.NAMESPACE }} --type='json' -p='[
+  {"op": "replace", "path": "/spec/rules/0/matches/0/path/value", "value": "/feature-${{ env.BRANCH_NAME }}/be-health"},
+  # ... additional path updates
+]'
+```
+
+**Migration Completed:**
+The project has migrated from runtime `kubectl patch` to declarative Kustomization patches. This provides better GitOps alignment and Infrastructure as Code principles while maintaining the same functionality.
+
+**Benefits of Current Approach:**
+- All HTTPRoute configuration visible in version control
+- Consistent Infrastructure as Code approach
+- Simplified CI/CD pipeline logic  
+- Better maintainability and debugging
+- Standard Kustomization patterns
 
 ### Local CI Testing with ACT
 

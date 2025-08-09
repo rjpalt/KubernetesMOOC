@@ -1,0 +1,39 @@
+# Machine Project Context Template (do not commit secrets)
+version: 1
+azure:
+  subscriptionEnvVar: AZURE_SUBSCRIPTION_ID  # Environment variable providing subscription id
+  resourceGroup: kubernetes-learning
+  aksCluster: kube-mooc
+  acr:
+    loginServer: kubemooc.azurecr.io
+    name: kubemooc
+kubernetes:
+  # Namespaces pattern for feature environments
+  featureNamespacePattern: feature-<branch>
+  stableNamespaces:
+    - default
+    - kube-system
+images:
+  # Tag pattern produced by CI: {branch}-{sha}
+  tagPattern: "{branch}-{sha}"
+  repositories:
+    - todo-app-be
+    - todo-app-fe
+workflows:
+  ciName: "CI Pipeline - Microservices"
+  featureDeployWorkflow: deploy-feature-branches.yml
+  productionDeployWorkflow: deploy-production.yml
+rules:
+  allowedActions:
+    azure:
+      - aks_cluster_list            # list clusters
+      - aks_get_credentials_readonly # (if implemented) read-only credentials retrieval
+      - acr_repository_list         # list repos
+      - acr_repository_show_tags    # show image tags
+    github:
+      - list_pull_requests
+      - get_pull_request
+      - get_workflow_runs
+notes:
+  - Never perform destructive kubectl or az operations automatically.
+  - Context file is gitignored; template holds structure.
