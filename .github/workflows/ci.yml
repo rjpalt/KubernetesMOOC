@@ -1,10 +1,18 @@
-name: Test Pipeline - Microservices
+name: CI Pipeline - Microservices
 
 on:
   pull_request:
     branches: [ main ]
     paths:
       - 'course_project/**'
+
+permissions:
+  id-token: write  # Required for Azure authentication
+  contents: read   # Required for checkout
+
+env:
+  ACR_LOGIN_SERVER: kubemooc.azurecr.io
+  REGISTRY: kubemooc.azurecr.io
 
 jobs:
   code-quality:
@@ -236,21 +244,25 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: Build backend image
+    - name: Build and cache backend image
       uses: docker/build-push-action@v5
       with:
         context: course_project/todo-backend
-        tags: todo-backend:test
-        load: true
+        tags: |
+          todo-backend:test
+          ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+        load: true  # Load to local Docker for testing
         cache-from: type=gha
         cache-to: type=gha,mode=max
     
-    - name: Build frontend image  
+    - name: Build and cache frontend image  
       uses: docker/build-push-action@v5
       with:
         context: course_project/todo-app
-        tags: todo-app:test
-        load: true
+        tags: |
+          todo-app:test
+          ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+        load: true  # Load to local Docker for testing
         cache-from: type=gha
         cache-to: type=gha,mode=max
     
@@ -307,3 +319,60 @@ jobs:
         # Cleanup
         docker stop backend-test frontend-test
         docker rm backend-test frontend-test
+
+  build-and-push-images:
+    name: Push Tested Images to ACR
+    runs-on: ubuntu-latest
+    needs: [code-quality, test-backend, test-frontend, test-microservice-integration]
+    if: github.actor != 'nektos/act'  # Skip when running with act locally
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Azure Login via Workload Identity
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CI_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+    - name: Login to ACR
+      run: az acr login --name kubemooc
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Push tested backend image to ACR
+      uses: docker/build-push-action@v5
+      with:
+        context: course_project/todo-backend
+        platforms: linux/amd64
+        push: true
+        tags: ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+        cache-from: type=gha  # Reuse the exact same build from test job
+        cache-to: type=gha,mode=max
+    
+    - name: Push tested frontend image to ACR
+      uses: docker/build-push-action@v5
+      with:
+        context: course_project/todo-app
+        platforms: linux/amd64
+        push: true
+        tags: ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+        cache-from: type=gha  # Reuse the exact same build from test job
+        cache-to: type=gha,mode=max
+    
+    - name: Image build summary
+      run: |
+        BRANCH_NAME=${{ github.head_ref || github.ref_name }}
+        HEAD_SHA=${{ github.event.pull_request.head.sha || github.sha }}
+        echo "## Successfully Built and Pushed Images 🐳" >> $GITHUB_STEP_SUMMARY
+        echo "| Service | Image Tag |" >> $GITHUB_STEP_SUMMARY
+        echo "|---------|-----------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | \`${{ env.REGISTRY }}/todo-app-be:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend | \`${{ env.REGISTRY }}/todo-app-fe:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit (PR head):** \`${HEAD_SHA}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**All tests passed before building these images** ✅" >> $GITHUB_STEP_SUMMARY

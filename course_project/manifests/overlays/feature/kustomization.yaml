@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Feature branch overlay - used for deploying feature branches to separate namespaces
+# Usage: 
+#   cd course_project/manifests/overlays/feature
+#   kustomize edit set namespace feature-branch-name
+#   kustomize edit set image [images...]
+#   kustomize build . | kubectl apply -f -
+
+resources:
+  - ../../base
+
+# Patch HTTPRoute to use feature-specific path prefix
+# This replaces runtime kubectl patching with Infrastructure as Code approach
+patches:
+  - target:
+      kind: HTTPRoute
+      name: todo-app
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/matches/0/path/value
+        value: /feature-BRANCH_NAME/be-health
+      - op: replace
+        path: /spec/rules/1/matches/0/path/value
+        value: /feature-BRANCH_NAME/docs/
+      - op: replace
+        path: /spec/rules/2/matches/0/path/value
+        value: /feature-BRANCH_NAME/image
+      - op: replace
+        path: /spec/rules/3/matches/0/path/value
+        value: /feature-BRANCH_NAME/todos
+      - op: replace
+        path: /spec/rules/4/matches/0/path/value
+        value: /feature-BRANCH_NAME/
+
+images:
+  - name: kubemooc.azurecr.io/todo-app-be
+    newTag: latest
+  - name: kubemooc.azurecr.io/todo-app-fe
+    newTag: latest
