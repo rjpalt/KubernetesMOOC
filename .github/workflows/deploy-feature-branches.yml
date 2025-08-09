@@ -160,10 +160,13 @@ jobs:
           kubemooc.azurecr.io/todo-app-be=kubemooc.azurecr.io/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }} \
           kubemooc.azurecr.io/todo-app-fe=kubemooc.azurecr.io/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }}
         
-        # Apply the manifests
+        # Replace BRANCH_NAME placeholder in HTTPRoute patches with actual branch name
+        sed -i "s/BRANCH_NAME/${{ env.BRANCH_NAME }}/g" kustomization.yaml
+        
+        # Apply the manifests with feature-specific HTTPRoute paths configured
         kustomize build . | kubectl apply -f -
         
-        echo "✅ Feature environment deployed with Azure Key Vault integration"
+        echo "✅ Feature environment deployed with unique path prefix: /feature-${{ env.BRANCH_NAME }}/"
     
     - name: Wait for deployments
       run: |
@@ -315,7 +318,9 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Access Information 🌐" >> $GITHUB_STEP_SUMMARY
         echo "**Namespace:** \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Gateway Route:** Feature environment accessible through Gateway API" >> $GITHUB_STEP_SUMMARY
+        echo "**Feature URL:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/feature-${{ env.BRANCH_NAME }}/" >> $GITHUB_STEP_SUMMARY
+        echo "**Backend Health:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/feature-${{ env.BRANCH_NAME }}/be-health" >> $GITHUB_STEP_SUMMARY
+        echo "**API Docs:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/feature-${{ env.BRANCH_NAME }}/docs/" >> $GITHUB_STEP_SUMMARY
         echo "**Health Checks:** ✅ All services responding" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Next Steps 📝" >> $GITHUB_STEP_SUMMARY

@@ -25,6 +25,88 @@ Added step in `deploy-feature-branches.yml` to copy database secret:
       sed '/ownerReferences:/,+4d' | kubectl apply -f -
 ```
 
+## ⚠️ Current Implementation Issues
+
+### 1. Kustomization Overlay Route Management - MEDIUM PRIORITY
+**Problem**: HTTPRoute patches are hardcoded in `course_project/manifests/overlays/feature/kustomization.yaml`
+```yaml
+patches:
+  - target:
+      kind: HTTPRoute
+      name: todo-app
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/matches/0/path/value
+        value: /feature-BRANCH_NAME/be-health
+      - op: replace
+        path: /spec/rules/1/matches/0/path/value
+        value: /feature-BRANCH_NAME/docs/
+      # ... 3 more hardcoded endpoints
+```
+
+**Issues**:
+- **Maintenance Overhead**: New API endpoints require manual addition to overlay patches
+- **Documentation Gap**: Requirement not documented for developers
+- **Error Prone**: Easy to forget updating overlay when adding new routes
+- **Scaling Issue**: Multiple overlays (dev/staging/prod) would need sync
+
+**Solutions**:
+- [ ] Document overlay maintenance requirement in development guidelines
+- [ ] Create pre-commit hook to validate overlay completeness
+- [ ] Consider dynamic HTTPRoute generation from base route definitions
+- [ ] Add CI check to ensure overlay patches match base HTTPRoute rules
+
+### 2. Azure Federated Credential Lifecycle Management - HIGH PRIORITY  
+**Problem**: Federated credentials created per feature branch but never cleaned up
+
+**Current Behavior**:
+```bash
+# Creates: postgres-workload-identity-{branch-name}
+az identity federated-credential create \
+  --name "postgres-workload-identity-${{ env.BRANCH_NAME }}"
+
+# Only deletes on deployment FAILURE, not on branch deletion/merge
+```
+
+**Issues**:
+- **Resource Leak**: Accumulating federated credentials in Azure AD
+- **Security Risk**: Orphaned credentials for deleted branches
+- **Azure Limits**: May hit federated credential limits per managed identity
+- **Cost**: Unnecessary Azure AD resources consuming quota
+
+**Solutions**:
+- [ ] **Immediate**: Create cleanup workflow triggered on branch deletion
+- [ ] **Medium-term**: Create cleanup workflow triggered on PR merge to main
+- [ ] **Long-term**: Consider shared credential approach with namespace-based subject patterns
+- [ ] **Monitoring**: Add Azure CLI script to list and identify orphaned credentials
+
+### 3. Missing Cleanup Workflows - HIGH PRIORITY
+**Problem**: No automation for cleaning up feature environment resources
+
+**Missing Cleanup Events**:
+- Branch deletion (most important)
+- PR merge to main
+- Manual cleanup capability
+- Periodic cleanup of old resources
+
+**Resources Needing Cleanup**:
+- Azure federated credentials (`postgres-workload-identity-{branch}`)
+- Kubernetes namespaces (`feature-{branch}`)
+- Container images (optional - registry cleanup)
+
+**Implementation Plan**:
+```yaml
+# .github/workflows/cleanup-feature-branch.yml
+name: Cleanup Feature Branch Resources
+on:
+  delete:
+    branches:
+      - '*'
+  pull_request:
+    types: [closed]
+    branches: [main]
+```
+
 ## ⚠️ Current Limitation: Shared Database
 **Current Setup**: All feature environments share the same PostgreSQL database as production.
 

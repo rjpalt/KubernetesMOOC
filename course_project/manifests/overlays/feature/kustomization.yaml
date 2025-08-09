@@ -11,8 +11,28 @@ kind: Kustomization
 resources:
   - ../../base
 
-# No patches needed - feature environments use same configuration as production
-# Only namespace and images will be modified by CI/CD pipeline
+# Patch HTTPRoute to use feature-specific path prefix
+# This replaces runtime kubectl patching with Infrastructure as Code approach
+patches:
+  - target:
+      kind: HTTPRoute
+      name: todo-app
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/matches/0/path/value
+        value: /feature-BRANCH_NAME/be-health
+      - op: replace
+        path: /spec/rules/1/matches/0/path/value
+        value: /feature-BRANCH_NAME/docs/
+      - op: replace
+        path: /spec/rules/2/matches/0/path/value
+        value: /feature-BRANCH_NAME/image
+      - op: replace
+        path: /spec/rules/3/matches/0/path/value
+        value: /feature-BRANCH_NAME/todos
+      - op: replace
+        path: /spec/rules/4/matches/0/path/value
+        value: /feature-BRANCH_NAME/
 
 images:
   - name: kubemooc.azurecr.io/todo-app-be
