@@ -33,7 +33,7 @@ async def create_todo(todo_data: TodoCreate, todo_service: TodoService = Depends
 @router.get("/todos/{todo_id}", response_model=Todo)
 async def get_todo(todo_id: str, todo_service: TodoService = Depends(get_todo_service)):
     """Get a specific todo by ID."""
-    logger.info(f"Fetching todo with ID: [REDACTED]")
+    logger.info("Fetching todo with ID: [REDACTED]")
     todo = await todo_service.get_todo_by_id(todo_id)
     if not todo:
         logger.warning("Todo not found - ID redacted for security")

@@ -1,7 +1,7 @@
 """Information Disclosure Prevention Tests for Todo Backend.
 
 Tests to validate that error responses don't expose sensitive system information
-that could be useful to attackers. This addresses the security gap identified in 
+that could be useful to attackers. This addresses the security gap identified in
 TEST_PLAN.md - Information Disclosure vulnerability.
 
 Key security principles tested:
@@ -35,22 +35,22 @@ class TestInformationDisclosureProtection:
         test_ids = [
             "nonexistent-id",
             "12345",
-            "system-file-path", 
+            "system-file-path",
             "../../../etc/passwd",
             "sql-injection-attempt'; DROP TABLE todos; --",
         ]
-        
+
         for test_id in test_ids:
             response = await test_client.get(f"/todos/{test_id}")
             assert response.status_code == 404
-            
+
             error_response = response.json()
             assert "detail" in error_response
-            
+
             # Error message should be generic
             detail = error_response["detail"]
             assert detail == "Resource not found", f"Error message too specific: {detail}"
-            
+
             # Should not contain sensitive information
             assert "database" not in detail.lower()
             assert "sql" not in detail.lower()
@@ -69,13 +69,13 @@ class TestInformationDisclosureProtection:
             {"text": None},  # Wrong type
             {"malicious_field": "value"},  # Unexpected field
         ]
-        
+
         for payload in malformed_payloads:
             response = await test_client.post("/todos", json=payload)
             assert response.status_code == 422
-            
+
             error_response = response.json()
-            
+
             # Should not expose internal validation logic details
             error_str = str(error_response)
             assert "pydantic" not in error_str.lower()
@@ -88,20 +88,18 @@ class TestInformationDisclosureProtection:
         """Test that server errors don't expose sensitive information."""
         # This test would normally require mocking database failures
         # For now, we test the structure of error responses
-        
+
         # Test with extremely malformed requests that might cause server errors
         try:
             # Send malformed JSON
             response = await test_client.post(
-                "/todos", 
-                data="invalid-json-data",
-                headers={"content-type": "application/json"}
+                "/todos", content="invalid-json-data", headers={"content-type": "application/json"}
             )
-            
+
             if response.status_code >= 500:
                 error_response = response.json()
                 error_str = str(error_response)
-                
+
                 # Should not expose internal details
                 assert "database" not in error_str.lower()
                 assert "connection" not in error_str.lower()
@@ -109,7 +107,7 @@ class TestInformationDisclosureProtection:
                 assert "sqlalchemy" not in error_str.lower()
                 assert "traceback" not in error_str.lower()
                 assert "exception" not in error_str.lower()
-                
+
         except Exception:
             # If the request fails completely, that's also acceptable
             pass
@@ -118,9 +116,9 @@ class TestInformationDisclosureProtection:
         """Test that database connection errors don't expose sensitive info."""
         # This would require mocking database failures in a real test
         # For now, we document the expected behavior
-        
+
         # When database is unavailable, error messages should be generic:
-        # - "Service temporarily unavailable" 
+        # - "Service temporarily unavailable"
         # - NOT "Connection to postgresql://user:pass@host:port/db failed"
         # - NOT actual connection strings or internal network details
         pass
@@ -132,26 +130,26 @@ class TestInformationDisclosureProtection:
             ("/todos/nonexistent", 404),
             ("/nonexistent-endpoint", 404),
         ]
-        
+
         # Test validation error
         validation_response = await test_client.post("/todos", json={})
         assert validation_response.status_code == 422
-        
+
         # Add to scenarios
         error_scenarios.append(("validation", validation_response.status_code))
-        
+
         for scenario_name, expected_status in error_scenarios:
             if scenario_name == "validation":
                 response = validation_response
             else:
                 response = await test_client.get(scenario_name)
-            
+
             assert response.status_code == expected_status
-            
+
             # All error responses should have consistent structure
             error_response = response.json()
             assert "detail" in error_response
-            
+
             # Should not contain debugging information
             assert "internal_error" not in error_response
             assert "debug" not in error_response
@@ -163,13 +161,13 @@ class TestInformationDisclosureProtection:
         # Trigger an error condition
         response = await test_client.get("/todos/nonexistent-id")
         assert response.status_code == 404
-        
+
         error_response = response.json()
-        
+
         # Response should be generic
         assert error_response["detail"] == "Resource not found"
-        
-        # Note: In a real implementation, we would verify that detailed 
+
+        # Note: In a real implementation, we would verify that detailed
         # information (like the actual ID that was searched for) is logged
         # for debugging purposes but not returned to the client
 
@@ -181,15 +179,15 @@ class TestInformationDisclosureProtection:
             "/todos/system-config",
             "/todos/%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",  # URL encoded path traversal
         ]
-        
+
         for endpoint in test_endpoints:
             response = await test_client.get(endpoint)
-            
+
             # Should return standard 404, not expose file system details
             if response.status_code == 404:
                 error_response = response.json()
                 detail = error_response.get("detail", "")
-                
+
                 # Should not contain file system paths
                 assert "/etc/" not in detail
                 assert "passwd" not in detail
@@ -199,73 +197,74 @@ class TestInformationDisclosureProtection:
     async def test_error_message_consistency_across_methods(self, test_client: AsyncClient):
         """Test that error messages are consistent across HTTP methods."""
         nonexistent_id = "definitely-does-not-exist"
-        
+
         # Test different HTTP methods with same nonexistent resource
         methods_and_responses = []
-        
+
         # GET
         get_response = await test_client.get(f"/todos/{nonexistent_id}")
         if get_response.status_code == 404:
             methods_and_responses.append(("GET", get_response.json()["detail"]))
-        
+
         # PUT
         put_response = await test_client.put(f"/todos/{nonexistent_id}", json={"text": "updated"})
         if put_response.status_code == 404:
             methods_and_responses.append(("PUT", put_response.json()["detail"]))
-        
+
         # DELETE
         delete_response = await test_client.delete(f"/todos/{nonexistent_id}")
         if delete_response.status_code == 404:
             methods_and_responses.append(("DELETE", delete_response.json()["detail"]))
-        
+
         # All 404 messages should be identical
         if len(methods_and_responses) > 1:
             first_message = methods_and_responses[0][1]
-            for method, message in methods_and_responses[1:]:
-                assert message == first_message, (
-                    f"Inconsistent 404 messages: {methods_and_responses}"
-                )
+            for _method, message in methods_and_responses[1:]:
+                assert message == first_message, f"Inconsistent 404 messages: {methods_and_responses}"
 
     async def test_production_error_handling_mode(self, test_client: AsyncClient):
         """Test that the application is configured for production error handling."""
         # Force production mode for this test to validate production behavior
         import os
+
         from src.config.settings import Settings
-        
+
         # Temporarily simulate production environment
         original_namespace = os.environ.get("KUBERNETES_NAMESPACE")
         os.environ["KUBERNETES_NAMESPACE"] = "project"
-        
+
         try:
             # Create new settings instance to pick up production environment
             production_settings = Settings()
-            assert production_settings.is_production == True
-            assert production_settings.debug_enabled == False
-            
+            assert production_settings.is_production
+            assert not production_settings.debug_enabled
+
             # Send invalid data that might trigger detailed validation messages
             response = await test_client.post("/todos", json={"text": "x" * 1000})
             assert response.status_code == 422
-            
+
             error_response = response.json()
-            
+
             # In production mode, should not expose debug_info
-            assert "debug_info" not in error_response, f"Production mode should not include debug_info: {error_response}"
-            
+            assert "debug_info" not in error_response, (
+                f"Production mode should not include debug_info: {error_response}"
+            )
+
             # Should only have generic message
             assert error_response == {"detail": "Invalid request data"}
-            
+
             # Should not expose pydantic model details or validation internals in the basic response
             error_str = str(error_response["detail"]).lower()
             forbidden_terms = [
                 "pydantic",
-                "validation_error", 
+                "validation_error",
                 "field_error",
                 "type_error",
                 "value_error",
                 "__root__",
                 "model_validate",
             ]
-            
+
             for term in forbidden_terms:
                 assert term not in error_str, (
                     f"Error response contains internal term '{term}' in detail: {error_response['detail']}"
@@ -280,16 +279,16 @@ class TestInformationDisclosureProtection:
     async def test_debug_mode_detection(self, test_client: AsyncClient):
         """Test that debug information is conditionally included based on environment."""
         from src.config.settings import settings
-        
+
         # Check current debug setting
         is_debug_mode = settings.debug_enabled
-        
+
         # Test 404 error response
         response = await test_client.get("/todos/nonexistent-debug-test")
         assert response.status_code == 404
-        
+
         error_response = response.json()
-        
+
         if is_debug_mode:
             # In debug mode, should include debug_info
             assert "debug_info" in error_response, "Debug mode should include debug_info"
@@ -305,15 +304,15 @@ class TestInformationDisclosureProtection:
     async def test_debug_mode_validation_errors(self, test_client: AsyncClient):
         """Test that validation errors include debug info only in development mode."""
         from src.config.settings import settings
-        
+
         is_debug_mode = settings.debug_enabled
-        
+
         # Send invalid validation data
         response = await test_client.post("/todos", json={})
         assert response.status_code == 422
-        
+
         error_response = response.json()
-        
+
         if is_debug_mode:
             # In debug mode, should include detailed validation errors
             assert "debug_info" in error_response
