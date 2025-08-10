@@ -29,7 +29,7 @@
 | 2025-08-07 | 2.75 | Chapter 4: 3.6: CD Pipeline | 69.75 |
 | 2025-08-08 | 4.75 | Chapter 4: 3.7 | 74.5 |
 | 2025-08-09 | 2 | Chapter 4: 3.7 | 76.5 |
-| 2025-08-10 | 3 | Chapter 4: 3.8: Implement document overhaul, feature environment teardown | 79.5 |
+| 2025-08-10 | 4 | Chapter 4: 3.8: Implement document overhaul, feature environment teardown | 80.5 |
 | 2025-08-11 | 0 | Chapter 4: 3.10 | 79.5 |
 | 2025-08-12 | 0 | Chapter 4: 3.11 | 79.5 |
 | 2025-08-13 | 0 | Chapter 4: 3.12 | 79.5 |
