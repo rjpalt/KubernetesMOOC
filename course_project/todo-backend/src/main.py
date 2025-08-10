@@ -8,20 +8,20 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.api.dependencies import get_todo_service, initialize_dependencies
-from src.api.routes import health, todos
 from src.api.error_handlers import (
     custom_404_handler,
-    custom_validation_error_handler,
     custom_http_exception_handler,
     custom_server_error_handler,
+    custom_validation_error_handler,
 )
+from src.api.routes import health, todos
 from src.config.settings import settings
 from src.database.connection import db_manager
 from src.middleware.request_logging import RequestLoggingMiddleware

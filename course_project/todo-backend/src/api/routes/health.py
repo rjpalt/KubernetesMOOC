@@ -20,10 +20,10 @@ async def health_check():
         "environment": {
             "is_production": settings.is_production,
             "debug_enabled": settings.debug_enabled,
-            "mode": "production" if settings.is_production else "development"
-        }
+            "mode": "production" if settings.is_production else "development",
+        },
     }
-    
+
     # Try to get todo count, but don't fail if database is unavailable
     try:
         todo_service = get_todo_service()
@@ -31,5 +31,5 @@ async def health_check():
     except Exception as e:
         response["todos_count"] = "unavailable"
         response["database_status"] = f"error: {str(e)}"
-        
+
     return response
