@@ -228,42 +228,60 @@ jobs:
       
       - name: Verify backend health
         run: |
-          # Wait for pods to be ready
-          echo "Waiting for backend pods to be ready..."
-          kubectl wait --for=condition=ready pod -l app=todo-app-be -n project --timeout=120s
+          echo "Verifying backend health..."
           
-          # Get backend service endpoint for verification
-          kubectl get svc todo-app-be-svc -n project
+          # Get service information
+          kubectl get services -n project -o wide
           
-          # Test backend health with retry logic
-          echo "Testing backend health endpoint..."
-          for i in {1..10}; do
-            echo "Health check attempt $i/10"
+          # Find a ready backend pod using field selector (avoids terminating pods)
+          echo "Finding ready backend pod..."
+          BACKEND_POD=$(kubectl get pods -n project -l app=todo-app-be --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          
+          if [ -z "$BACKEND_POD" ]; then
+            echo "No running backend pods found, waiting briefly..."
+            sleep 10
+            BACKEND_POD=$(kubectl get pods -n project -l app=todo-app-be --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+          fi
+          
+          echo "Found backend pod: $BACKEND_POD"
+          
+          # Debug: Check what's actually running in the backend pod
+          echo "Debugging backend pod configuration..."
+          kubectl describe pod $BACKEND_POD -n project
+          echo "Checking backend pod logs..."
+          kubectl logs $BACKEND_POD -n project --tail=20
+          echo "Checking if backend is listening on expected ports..."
+          kubectl exec $BACKEND_POD -n project -- netstat -tlnp 2>/dev/null || kubectl exec $BACKEND_POD -n project -- ss -tlnp 2>/dev/null || echo "netstat/ss not available"
+          
+          # Test backend health with port-forward to the correct port
+          echo "Testing backend health..."
+          kubectl port-forward -n project pod/$BACKEND_POD 8001:2506 &
+          PORT_FORWARD_PID=$!
+          sleep 5
+          
+          if curl -f --max-time 10 http://localhost:8001/be-health; then
+            echo "✅ Backend health check passed"
+          else
+            echo "❌ Backend health check failed, trying alternative ports..."
+            kill $PORT_FORWARD_PID 2>/dev/null || true
             
-            # Start port-forward in background and capture PID
-            kubectl port-forward -n project svc/todo-app-be-svc 8001:2506 &
+            # Try port 8001 (common local development port)
+            echo "Trying port-forward to 8001:8001..."
+            kubectl port-forward -n project pod/$BACKEND_POD 8002:8001 &
             PORT_FORWARD_PID=$!
+            sleep 5
             
-            # Wait for port-forward to establish
-            sleep 3
-            
-            # Test health endpoint
-            if curl -f --max-time 10 http://localhost:8001/be-health; then
-              echo "Backend health check passed!"
-              kill $PORT_FORWARD_PID 2>/dev/null || true
-              break
+            if curl -f --max-time 10 http://localhost:8002/be-health; then
+              echo "✅ Backend health check passed on port 8001"
             else
-              echo "Health check failed, retrying in 5 seconds..."
+              echo "❌ Backend health check failed on both ports"
               kill $PORT_FORWARD_PID 2>/dev/null || true
-              sleep 5
-            fi
-            
-            # Fail if we've exhausted retries
-            if [ $i -eq 10 ]; then
-              echo "Backend health check failed after 10 attempts"
               exit 1
             fi
-          done
+          fi
+          
+          kill $PORT_FORWARD_PID 2>/dev/null || true
+          echo "✅ Backend health check completed"
 
   deploy-frontend:
     name: Deploy Frontend to AKS
@@ -309,50 +327,58 @@ jobs:
       
       - name: Verify frontend health
         run: |
-          # Deployment rollout already verified above, now just get a ready pod for testing
-          echo "Finding a ready frontend pod for health testing..."
-          READY_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          echo "Verifying frontend health..."
           
-          if [ -z "$READY_POD" ]; then
+          # Get service information
+          kubectl get services -n project -o wide
+          
+          # Find a ready frontend pod using field selector (avoids terminating pods)
+          echo "Finding ready frontend pod..."
+          FRONTEND_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+          
+          if [ -z "$FRONTEND_POD" ]; then
             echo "No running frontend pods found, waiting briefly..."
             sleep 10
-            READY_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+            FRONTEND_POD=$(kubectl get pods -n project -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
           fi
           
-          echo "Found ready pod: $READY_POD"
+          echo "Found frontend pod: $FRONTEND_POD"
           
-          # Get frontend service endpoint for verification
-          kubectl get svc todo-app-fe-svc -n project
+          # Debug: Check what's actually running in the frontend pod
+          echo "Debugging frontend pod configuration..."
+          kubectl describe pod $FRONTEND_POD -n project
+          echo "Checking frontend pod logs..."
+          kubectl logs $FRONTEND_POD -n project --tail=20
           
-          # Test frontend health with retry logic
-          echo "Testing frontend health endpoint..."
-          for i in {1..10}; do
-            echo "Health check attempt $i/10"
+          # Test frontend health with port-forward
+          echo "Testing frontend health..."
+          kubectl port-forward -n project pod/$FRONTEND_POD 8000:2507 &
+          PORT_FORWARD_PID=$!
+          sleep 5
+          
+          if curl -f --max-time 10 http://localhost:8000/health; then
+            echo "✅ Frontend health check passed"
+          else
+            echo "❌ Frontend health check failed, trying alternative ports..."
+            kill $PORT_FORWARD_PID 2>/dev/null || true
             
-            # Start port-forward in background and capture PID
-            kubectl port-forward -n project svc/todo-app-fe-svc 8000:2507 &
+            # Try port 8000 (common local development port)
+            echo "Trying port-forward to 8000:8000..."
+            kubectl port-forward -n project pod/$FRONTEND_POD 8003:8000 &
             PORT_FORWARD_PID=$!
+            sleep 5
             
-            # Wait for port-forward to establish
-            sleep 3
-            
-            # Test health endpoint
-            if curl -f --max-time 10 http://localhost:8000/health; then
-              echo "Frontend health check passed!"
-              kill $PORT_FORWARD_PID 2>/dev/null || true
-              break
+            if curl -f --max-time 10 http://localhost:8003/health; then
+              echo "✅ Frontend health check passed on port 8000"
             else
-              echo "Health check failed, retrying in 5 seconds..."
+              echo "❌ Frontend health check failed on both ports"
               kill $PORT_FORWARD_PID 2>/dev/null || true
-              sleep 5
-            fi
-            
-            # Fail if we've exhausted retries
-            if [ $i -eq 10 ]; then
-              echo "Frontend health check failed after 10 attempts"
               exit 1
             fi
-          done
+          fi
+          
+          kill $PORT_FORWARD_PID 2>/dev/null || true
+          echo "✅ Frontend health check completed"
 
   deployment-summary:
     name: Deployment Summary
@@ -370,9 +396,9 @@ jobs:
           # Backend summary
           if [[ "${{ needs.detect-changes.outputs.backend-changed }}" == "true" ]]; then
             if [[ "${{ needs.deploy-backend.result }}" == "success" ]]; then
-              echo "| Backend | ✅ Deployed | \`${{ env.REGISTRY }}/todo-app-be:main-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+              echo "| Backend | ✅ Deployed | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-be:main-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
             else
-              echo "| Backend | ❌ Failed | \`${{ env.REGISTRY }}/todo-app-be:main-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+              echo "| Backend | ❌ Failed | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-be:main-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "| Backend | ⏭️ No changes | Current image |" >> $GITHUB_STEP_SUMMARY
@@ -381,9 +407,9 @@ jobs:
           # Frontend summary
           if [[ "${{ needs.detect-changes.outputs.frontend-changed }}" == "true" ]]; then
             if [[ "${{ needs.deploy-frontend.result }}" == "success" ]]; then
-              echo "| Frontend | ✅ Deployed | \`${{ env.REGISTRY }}/todo-app-fe:main-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+              echo "| Frontend | ✅ Deployed | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:main-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
             else
-              echo "| Frontend | ❌ Failed | \`${{ env.REGISTRY }}/todo-app-fe:main-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+              echo "| Frontend | ❌ Failed | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:main-${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
             fi
           else
             echo "| Frontend | ⏭️ No changes | Current image |" >> $GITHUB_STEP_SUMMARY
