@@ -8,6 +8,37 @@ set -e  # Exit on any error
 echo "🚀 Starting Todo Microservices..."
 echo ""
 
+# Check if PostgreSQL is running and start if needed
+echo "🔍 Checking database status..."
+if ! docker ps --filter "name=todo_postgres_dev" --filter "status=running" | grep -q todo_postgres_dev; then
+    echo "📦 Starting PostgreSQL database..."
+    cd todo-backend
+    docker-compose -f docker-compose.dev.yml up -d postgres
+    echo "⏳ Waiting for database to be ready..."
+    
+    # Wait for database to be healthy
+    timeout=30
+    counter=0
+    while [ $counter -lt $timeout ]; do
+        if docker-compose -f docker-compose.dev.yml exec -T postgres pg_isready -U todouser -d todoapp > /dev/null 2>&1; then
+            echo "✅ Database is ready"
+            break
+        fi
+        sleep 1
+        counter=$((counter + 1))
+    done
+    
+    if [ $counter -eq $timeout ]; then
+        echo "❌ Database failed to start within ${timeout} seconds"
+        exit 1
+    fi
+    cd ..
+else
+    echo "✅ Database already running"
+fi
+
+echo ""
+
 # Function to cleanup background processes on exit
 cleanup() {
     echo ""
@@ -53,7 +84,7 @@ sleep 3
 echo ""
 echo "🔍 Checking service health..."
 
-if curl -s http://localhost:8001/health > /dev/null; then
+if curl -s http://localhost:8001/be-health > /dev/null; then
     echo "✅ Backend running: http://localhost:8001/docs"
 else
     echo "❌ Backend health check failed"
