@@ -4,9 +4,9 @@ on:
   delete:
 
 env:
-  RESOURCE_GROUP: 'kubernetes-learning'
-  AKS_CLUSTER: 'kube-mooc'
-  MANAGED_IDENTITY: 'keyvault-identity-kube-mooc'
+  AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+  AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+  MANAGED_IDENTITY: ${{ vars.MANAGED_IDENTITY }}
 
 permissions:
   id-token: write
@@ -88,8 +88,8 @@ jobs:
       run: |
         echo "Connecting to AKS cluster..."
         az aks get-credentials \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
-          --name ${{ env.AKS_CLUSTER }}
+          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+          --name ${{ env.AKS_CLUSTER_NAME }}
         
         # Verify cluster connectivity
         kubectl cluster-info
@@ -242,14 +242,14 @@ jobs:
         # Check if credential exists
         if az identity federated-credential show \
             --identity-name ${{ env.MANAGED_IDENTITY }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
             --name "$CREDENTIAL_NAME" >/dev/null 2>&1; then
           
           echo "Found federated credential: $CREDENTIAL_NAME"
           echo "Deleting federated credential..."
           az identity federated-credential delete \
             --identity-name ${{ env.MANAGED_IDENTITY }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
             --name "$CREDENTIAL_NAME" \
             --yes || {
             echo "Warning: Failed to delete federated credential $CREDENTIAL_NAME"
@@ -260,7 +260,7 @@ jobs:
           # Verify deletion
           if az identity federated-credential show \
               --identity-name ${{ env.MANAGED_IDENTITY }} \
-              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
               --name "$CREDENTIAL_NAME" >/dev/null 2>&1; then
             echo "WARNING: Federated credential $CREDENTIAL_NAME still exists after deletion"
           else
@@ -291,7 +291,7 @@ jobs:
         CREDENTIAL_NAME="postgres-workload-identity-${CLEAN_BRANCH}"
         if az identity federated-credential show \
             --identity-name ${{ env.MANAGED_IDENTITY }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
             --name "$CREDENTIAL_NAME" >/dev/null 2>&1; then
           AZURE_STATUS="FAILED (credential still exists)"
         else
@@ -331,7 +331,7 @@ jobs:
         echo "Current federated credentials on managed identity (for monitoring):"
         az identity federated-credential list \
           --identity-name ${{ env.MANAGED_IDENTITY }} \
-          --resource-group ${{ env.RESOURCE_GROUP }} \
+          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
           --query "[].{name:name, subject:subject}" \
           --output table || {
           echo "Warning: Could not list federated credentials"

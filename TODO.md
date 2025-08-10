@@ -1,22 +1,44 @@
-# TODO: Exe## Action Items (3.7)
-- [x] Add cleanup workflows: on PR closed/branch delete remove namespace + federated credential
-- [ ] Test cleanup workflow with ex-3-8 branch lifecycle  
-- [ ] Document overlay maintenance requirement (README + Azure memos)
-- [ ] Consider External Secrets Operator (ESO) with Azure Key Vault; optionally HashiCorp Vault for dynamic secrets
-- [ ] Decide preview env trigger: PR-opened (recommended for cost) vs. branch-created; implement chosen workflow
-- [ ] Prep platform installs (cluster-wide): ExternalDNS (Azure DNS) and cert-manager (Let's Encrypt), scoped to preview domain3.7 Completion
+# TODO - Project Tasks
 
-## Current Implementation Notes (3.7)
-- Feature overlay patches HTTPRoute paths for a fixed set of endpoints
-  - When adding new public endpoints, update `course_project/manifests/overlays/feature/kustomization.yaml`
-  - CI replaces `BRANCH_NAME` placeholders during deploy
-- Federated credentials are created per feature branch (on an existing managed identity)
-  - Lifecycle cleanup on PR close/branch delete is not automated yet
-  - Namespaces for feature environments are also not auto-removed
-- Optional future: per-env ALB/GatewayClass and per-env DNS (feature-<branch>.example.com) would eliminate overlay path management and improve isolation
+## Overview
+This document tracks tasks and features for the KubernetesMOOC project, including cleanup workflows, feature environments, and future enhancements. It is organized by status and priority to help manage development effectively.
 
-## Action Items (3.7)
-- [ ] Add cleanup workflows: on PR closed/branch delete remove namespace + federated credential; optional ACR tag cleanup
+| Task | Status | Priority | Next Action |
+|------|--------|----------|-------------|
+| Exercise 3.7 Cleanup | 🟡 Testing | HIGH | Test with ex-3-8 branch |
+| Feature Environment Cleanup | ✅ Done | - | Complete |
+| Azure Key Vault | ✅ Done | - | Complete |
+| Preview Environment DNS | ⏸️ Future | MEDIUM | Plan ExternalDNS setup |
+| Database Isolation | ⏸️ Future | MEDIUM | PostgreSQL per namespace |
+| E2E Testing | ⏸️ Future | HIGH | Playwright setup |
+| OpenAPI Docs | ⏸️ Future | LOW | GitHub Pages automation |
+| GitOps Repository | ⏸️ Future | LOW | Separate config repo |
+
+## Active Tasks
+
+### Immediate
+- [x] ~~Refactor workflows to use repository variables~~
+  - **Why**: Remove hardcoded values, improve maintainability
+- [ ] Test cleanup workflow with ex-3-8 branch lifecycle
+  - **Why**: Verify automated cleanup works before considering done
+- [ ] Document overlay maintenance in README
+  - **Why**: Others need to know how to update HTTPRoute paths
+
+### Short Term  
+- [ ] Decide preview env trigger: PR-opened vs branch-created
+  - **Why**: Need clear policy before implementing ExternalDNS
+- [ ] Install ExternalDNS and cert-manager for preview domains
+  - **Why**: Enable feature-branch.example.com URLs instead of path prefixes
+
+### Future
+- [ ] Implement database isolation per feature branch
+  - **Why**: Prevent feature tests affecting each other
+- [ ] Add Playwright E2E tests targeting live environments
+  - **Why**: Validate complete workflows before production
+- [ ] Set up GitOps with separate config repository
+  - **Why**: Track actual deployed state, enable proper rollbacks
+
+---
 - [ ] Document overlay maintenance requirement (README + Azure memos)
 - [ ] Consider External Secrets Operator (ESO) with Azure Key Vault; optionally HashiCorp Vault for dynamic secrets
 - [ ] Decide preview env trigger: PR-opened (recommended for cost) vs. branch-created; implement chosen workflow
