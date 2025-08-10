@@ -11,10 +11,9 @@ permissions:
   contents: read   # Required for checkout
 
 env:
-  ACR_LOGIN_SERVER: kubemooc.azurecr.io
-  AKS_CLUSTER_NAME: kube-mooc
-  AKS_RESOURCE_GROUP: kubernetes-learning
-  REGISTRY: kubemooc.azurecr.io
+  ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+  AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+  AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
 
 jobs:
   detect-changes:
@@ -112,11 +111,11 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       
       - name: Login to ACR
-        run: az acr login --name kubemooc
+        run: az acr login --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1)
       
       - name: Form the image tag
         run: |
-          echo "IMAGE_TAG=${{ env.REGISTRY }}/todo-app-be:main-${{ github.sha }}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${{ env.ACR_LOGIN_SERVER }}/todo-app-be:main-${{ github.sha }}" >> $GITHUB_ENV
       
       - name: Build and push backend image
         run: |
@@ -174,11 +173,11 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       
       - name: Login to ACR
-        run: az acr login --name kubemooc
+        run: az acr login --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1)
       
       - name: Build and push frontend image
         run: |
-          FRONTEND_IMAGE_TAG="${{ env.REGISTRY }}/todo-app-fe:main-${{ github.sha }}"
+          FRONTEND_IMAGE_TAG="${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:main-${{ github.sha }}"
           docker build --platform linux/amd64 \
             -t $FRONTEND_IMAGE_TAG \
             course_project/todo-app/
@@ -212,8 +211,8 @@ jobs:
         run: |
           cd course_project/manifests/base/todo-be
           # Update the image tag in the deployment
-          NEW_IMAGE="${{ env.REGISTRY }}/todo-app-be:main-${{ github.sha }}"
-          kustomize edit set image kubemooc.azurecr.io/todo-app-be=$NEW_IMAGE
+          NEW_IMAGE="${{ env.ACR_LOGIN_SERVER }}/todo-app-be:main-${{ github.sha }}"
+          kustomize edit set image ${{ env.ACR_LOGIN_SERVER }}/todo-app-be=$NEW_IMAGE
           echo "Updated backend image to: $NEW_IMAGE"
       
       - name: Deploy backend to AKS
@@ -293,8 +292,8 @@ jobs:
         run: |
           cd course_project/manifests/base/todo-fe
           # Update the image tag in the deployment
-          NEW_IMAGE="${{ env.REGISTRY }}/todo-app-fe:main-${{ github.sha }}"
-          kustomize edit set image kubemooc.azurecr.io/todo-app-fe=$NEW_IMAGE
+          NEW_IMAGE="${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:main-${{ github.sha }}"
+          kustomize edit set image ${{ env.ACR_LOGIN_SERVER }}/todo-app-fe=$NEW_IMAGE
           echo "Updated frontend image to: $NEW_IMAGE"
       
       - name: Deploy frontend to AKS

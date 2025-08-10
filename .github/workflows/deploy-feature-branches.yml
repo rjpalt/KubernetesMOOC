@@ -10,10 +10,10 @@ permissions:
   contents: read   # Required for checkout
 
 env:
-  ACR_LOGIN_SERVER: kubemooc.azurecr.io
-  AKS_CLUSTER_NAME: kube-mooc
-  AKS_RESOURCE_GROUP: kubernetes-learning
-  REGISTRY: kubemooc.azurecr.io
+  ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+  AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+  AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+  MANAGED_IDENTITY: ${{ vars.MANAGED_IDENTITY }}
 
 jobs:
   deploy-feature-environment:
@@ -71,7 +71,7 @@ jobs:
         # Check if all required images exist and fail if any are missing
         echo "Checking backend image..."
         BACKEND_TAGS=$(az acr repository show-tags \
-          --name kubemooc \
+          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
           --repository todo-app-be \
           --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
           --output tsv)
@@ -83,7 +83,7 @@ jobs:
         
         echo "Checking frontend image..."
         FRONTEND_TAGS=$(az acr repository show-tags \
-          --name kubemooc \
+          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
           --repository todo-app-fe \
           --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
           --output tsv)
@@ -122,20 +122,20 @@ jobs:
         
         # Check if credential already exists
         if az identity federated-credential show \
-          --identity-name keyvault-identity-kube-mooc \
-          --resource-group kubernetes-learning \
+          --identity-name ${{ env.MANAGED_IDENTITY }} \
+          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
           --name "$CREDENTIAL_NAME" &>/dev/null; then
           echo "Federated credential already exists, updating..."
           az identity federated-credential update \
-            --identity-name keyvault-identity-kube-mooc \
-            --resource-group kubernetes-learning \
+            --identity-name ${{ env.MANAGED_IDENTITY }} \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
             --name "$CREDENTIAL_NAME" \
             --subject "$SUBJECT"
         else
           echo "Creating new federated credential..."
           az identity federated-credential create \
-            --identity-name keyvault-identity-kube-mooc \
-            --resource-group kubernetes-learning \
+            --identity-name ${{ env.MANAGED_IDENTITY }} \
+            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
             --name "$CREDENTIAL_NAME" \
             --issuer "https://northeurope.oic.prod-aks.azure.com/b7cff52d-a4ec-4367-903c-5cf05c061aca/9618e5d3-f054-4b6d-9871-1d5a7447d273/" \
             --subject "$SUBJECT" \
@@ -157,8 +157,8 @@ jobs:
         
         # Set the tested image tags
         kustomize edit set image \
-          kubemooc.azurecr.io/todo-app-be=kubemooc.azurecr.io/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }} \
-          kubemooc.azurecr.io/todo-app-fe=kubemooc.azurecr.io/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }}
+          ${{ env.ACR_LOGIN_SERVER }}/todo-app-be=${{ env.ACR_LOGIN_SERVER }}/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }} \
+          ${{ env.ACR_LOGIN_SERVER }}/todo-app-fe=${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }}
         
         # Replace BRANCH_NAME placeholder in HTTPRoute patches with actual branch name
         sed -i "s/BRANCH_NAME/${{ env.BRANCH_NAME }}/g" kustomization.yaml
