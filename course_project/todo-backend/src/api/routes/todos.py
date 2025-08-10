@@ -33,10 +33,10 @@ async def create_todo(todo_data: TodoCreate, todo_service: TodoService = Depends
 @router.get("/todos/{todo_id}", response_model=Todo)
 async def get_todo(todo_id: str, todo_service: TodoService = Depends(get_todo_service)):
     """Get a specific todo by ID."""
-    logger.info(f"Fetching todo with ID: {todo_id}")
+    logger.info(f"Fetching todo with ID: [REDACTED]")
     todo = await todo_service.get_todo_by_id(todo_id)
     if not todo:
-        logger.warning(f"Todo not found: {todo_id}")
+        logger.warning("Todo not found - ID redacted for security")
         raise HTTPException(status_code=404, detail="Todo not found")
     return todo
 
@@ -44,21 +44,21 @@ async def get_todo(todo_id: str, todo_service: TodoService = Depends(get_todo_se
 @router.put("/todos/{todo_id}", response_model=Todo)
 async def update_todo(todo_id: str, todo_update: TodoUpdate, todo_service: TodoService = Depends(get_todo_service)):
     """Update an existing todo."""
-    logger.info(f"Updating todo: {todo_id}")
+    logger.info("Updating todo - ID redacted for security")
     updated_todo = await todo_service.update_todo(todo_id, text=todo_update.text, status=todo_update.status)
     if not updated_todo:
-        logger.warning(f"Todo not found for update: {todo_id}")
+        logger.warning("Todo not found for update - ID redacted for security")
         raise HTTPException(status_code=404, detail="Todo not found")
-    logger.info(f"Updated todo: {todo_id}")
+    logger.info("Todo updated successfully")
     return updated_todo
 
 
 @router.delete("/todos/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_todo(todo_id: str, todo_service: TodoService = Depends(get_todo_service)):
     """Delete a todo."""
-    logger.info(f"Deleting todo: {todo_id}")
+    logger.info("Deleting todo - ID redacted for security")
     deleted = await todo_service.delete_todo(todo_id)
     if not deleted:
-        logger.warning(f"Todo not found for deletion: {todo_id}")
+        logger.warning("Todo not found for deletion - ID redacted for security")
         raise HTTPException(status_code=404, detail="Todo not found")
-    logger.info(f"Deleted todo: {todo_id}")
+    logger.info("Todo deleted successfully")

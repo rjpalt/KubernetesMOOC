@@ -7,14 +7,21 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.api.dependencies import get_todo_service, initialize_dependencies
 from src.api.routes import health, todos
+from src.api.error_handlers import (
+    custom_404_handler,
+    custom_validation_error_handler,
+    custom_http_exception_handler,
+    custom_server_error_handler,
+)
 from src.config.settings import settings
 from src.database.connection import db_manager
 from src.middleware.request_logging import RequestLoggingMiddleware
@@ -76,6 +83,12 @@ def create_app() -> FastAPI:
         version=settings.api_version,
         lifespan=lifespan,
     )
+
+    # Add custom error handlers for information disclosure prevention
+    app.add_exception_handler(HTTPException, custom_http_exception_handler)
+    app.add_exception_handler(RequestValidationError, custom_validation_error_handler)
+    app.add_exception_handler(404, custom_404_handler)
+    app.add_exception_handler(Exception, custom_server_error_handler)
 
     # Add security middleware (should be first for security headers)
     app.add_middleware(SecurityHeadersMiddleware)
