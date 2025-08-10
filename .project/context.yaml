@@ -35,3 +35,35 @@ rules:
 notes:
   - Non-destructive operations only.
   - Update subscriptionId if environment changes.
+
+dx:
+  docsIndex:
+    - docs/overview/onboarding.md
+    - docs/overview/repo-map.md
+    - docs/development/local-dev.md
+    - docs/development/script-catalog.md
+    - docs/testing/index.md
+  serviceDocs:
+    - course_project/TESTING_OVERVIEW.md
+    - course_project/todo-backend/tests/TEST_PLAN.md
+    - course_project/todo-app/TEST_PLAN.md
+  docPlacement:
+    root: indices-only
+    courseProjectDocs: service-specific
+  devModes:
+    localDev: make local-dev  # uv apps + DB via backend compose
+    compose: make compose-up   # all services in compose (attached)
+  db:
+    up: make db-up
+    down: make db-down
+  tests:
+    all: make test
+    backend: make test-be
+    frontend: make test-fe
+  buildQuality:
+    build: make build-images TAG=<tag>  # updates course_project/docker-compose.yaml
+    quality: make quality [CHECK=1]
+  conventions:
+    - no file moves without confirmation
+    - root docs are short; link to canonical sources
+    - Kubernetes: guidance only; do not implement

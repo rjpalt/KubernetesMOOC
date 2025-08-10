@@ -1,6 +1,6 @@
 services:
   todo-app-be:
-    image: todo-app-be:3.5-arm64
+    image: todo-app-be:3.8-arm64
     build:
       context: ./todo-backend
       dockerfile: Dockerfile
@@ -25,7 +25,7 @@ services:
       - postgres_prod
 
   todo-app-fe:
-    image: todo-app-fe:3.5-arm64
+    image: todo-app-fe:3.8-arm64
     build:
       context: ./todo-app
       dockerfile: Dockerfile

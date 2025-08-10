@@ -38,6 +38,16 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
 - [ ] Set up GitOps with separate config repository
   - **Why**: Track actual deployed state, enable proper rollbacks
 
+### Workflow Optimizations
+- [ ] Optimize CI/CD trigger paths for smarter rebuilds
+  - **Current**: Triggers on any `course_project/**` change (docs, manifests, etc.)
+  - **Goal**: Only trigger on source code changes (src/, Dockerfile, pyproject.toml)
+  - **Why**: Avoid unnecessary rebuilds/deployments for documentation changes
+- [ ] Improve namespace creation efficiency in feature deployments
+  - **Current**: Always attempts `kubectl create namespace || true`
+  - **Goal**: Check if namespace exists first, then create only if needed
+  - **Why**: Cleaner logs, faster deployment, better error handling
+
 ---
 - [ ] Document overlay maintenance requirement (README + Azure memos)
 - [ ] Consider External Secrets Operator (ESO) with Azure Key Vault; optionally HashiCorp Vault for dynamic secrets
@@ -188,27 +198,6 @@ course_project/
 
 ---
 
-# TODO: Azure Key Vault Integration for AKS Deployment
-
-## Current Status: COMPLETED ✅
-- [x] Azure Key Vault creation and configuration
-- [x] Workload Identity for pod-to-Azure authentication  
-- [x] CSI Secrets Store Driver for mounting secrets in Kubernetes
-- [x] SecretProviderClass resource definition
-- [x] Database connection string management
-- [x] PostgreSQL StatefulSet deployed and running with Azure Key Vault integration
-
-## Implementation Results
-✅ **Azure Key Vault**: `kube-mooc-secrets-[timestamp]` created and configured
-✅ **Managed Identity**: `keyvault-identity-kube-mooc` with proper RBAC
-✅ **Database Secrets**: `postgres-user` and `postgres-password` stored securely
-✅ **Workload Identity**: Federated credential configured for passwordless authentication
-✅ **PostgreSQL Deployment**: Running successfully with Azure Key Vault credentials
-
-**Status**: Production-ready secret management implemented. Ready for application service deployment.
-
----
-
 # TODO: GitOps Repository Implementation (FUTURE)
 
 ## Problem Statement
@@ -325,7 +314,3 @@ Start with **Option 2** (StatefulSet per namespace) for good balance of isolatio
 
 **Priority**: HIGH - Natural next step for production readiness
 **Effort**: MEDIUM - Builds on existing infrastructure
-
----
-
-# TODO: OpenAPI Documentation Automation (FUTURE)

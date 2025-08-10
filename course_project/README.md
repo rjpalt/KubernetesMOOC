@@ -57,7 +57,7 @@ Access:
 
 ### API Security
 - **Request Logging**: Structured logging with correlation IDs
-- **Error Handling**: Secure error responses without information disclosure
+- **Error Handling**: Secure error responses with intelligent debug mode (auto-adapts to environment)
 - **CORS Configuration**: Configurable cross-origin resource sharing
 - **Content Type Validation**: Proper content type enforcement
 
@@ -87,6 +87,79 @@ cp docker-compose.env.example docker-compose.env
 # Edit docker-compose.env with your actual values
 # At minimum, set a secure POSTGRES_PASSWORD
 ```
+
+#### Debug Mode Configuration
+
+The application features **intelligent environment detection** for automatic debug mode configuration:
+
+**Automatic Environment Detection:**
+- **Development Environments**: DEBUG=true (local, Docker Compose, feature branches)
+- **Production Environment**: DEBUG=false (Kubernetes `project` namespace)
+
+**Manual Override (Optional):**
+```bash
+DEBUG=true   # Force debug mode in any environment
+DEBUG=false  # Force production mode in any environment
+# DEBUG=     # Use intelligent auto-detection (recommended)
+```
+
+**Environment Detection Logic:**
+```bash
+# Production detected when:
+KUBERNETES_NAMESPACE=project     # Main production deployment
+# OR
+ENVIRONMENT=production          # Explicit production marker
+# OR  
+NODE_ENV=production            # Node.js style environment marker
+
+# Development detected otherwise:
+# - Local development (no Kubernetes namespace)
+# - Docker Compose environments  
+# - Feature branch namespaces (feature-*)
+# - Any other environment
+```
+
+**Usage Examples:**
+```bash
+# Local development (auto-enables debug)
+./start-services.sh
+
+# Docker Compose (auto-enables debug)  
+docker-compose up -d
+
+# Feature branch (auto-enables debug)
+KUBERNETES_NAMESPACE=feature-my-branch
+
+# Production override (force debug in production - not recommended)
+KUBERNETES_NAMESPACE=project DEBUG=true
+```
+
+**Debug Response Examples:**
+
+*Development Mode (DEBUG=true - auto-enabled):*
+```json
+{
+  "detail": "Resource not found",
+  "debug_info": {
+    "path": "/todos/test-id",
+    "method": "GET", 
+    "original_detail": "Todo not found",
+    "mode": "development"
+  }
+}
+```
+
+*Production Mode (DEBUG=false - auto-enabled in project namespace):*
+```json
+{"detail": "Resource not found"}
+```
+
+**Security Notes:**
+- **Intelligent Defaults**: No configuration needed - debug mode auto-adapts to environment
+- **Production Safety**: Automatically disables debug info in production (`project` namespace)
+- **Development Convenience**: Debug info enabled by default in all development environments
+- **Manual Override**: Explicit `DEBUG` environment variable always takes precedence
+- **Zero Configuration**: Works out-of-the-box in local, Docker Compose, and Kubernetes environments
 
 ### Build Both Architectures
 ```bash
@@ -134,6 +207,7 @@ The application uses `docker-compose.env` for environment variables:
 - **Flexibility**: Easy environment switching (dev/staging/prod)
 - **Centralized**: All services share common configuration
 - **Architecture**: Uses ARM64 images automatically for local development
+- **Debug Mode**: Auto-enables debug mode in Docker Compose environments (manual override available)
 
 ### Services
 - **todo-app-fe**: Frontend on http://localhost:8000 (ARM64 image)
@@ -356,7 +430,7 @@ Different environments use distinct path prefixes to avoid conflicts and enable 
 ./test-all.sh
 
 # Individual services
-./test-be.sh     # Backend tests (95 tests)
+./test-be.sh     # Backend tests (96 tests)
 ./test-fe.sh     # Frontend tests
 
 # Or manually (from course_project/todo-backend):
@@ -365,9 +439,10 @@ cd ../todo-app && uv run pytest tests/ -v
 ```
 
 ### Test Coverage
-- **Backend**: 95 tests covering unit tests, integration tests, API validation, security
+- **Backend**: 96 tests covering unit tests, integration tests, API validation, security
 - **Frontend**: 49 tests covering contract tests, service integration, UI components, security
-- **Security**: 20 tests specifically for XSS and SQL injection prevention
+- **Security**: 26 tests specifically for XSS, SQL injection, and information disclosure prevention
+- **Environment Detection**: 2 tests for DEBUG mode validation (development vs production)
 - **Philosophy**: Each service tested independently for microservice isolation
 
 See `todo-backend/tests/TEST_PLAN.md` for comprehensive testing documentation.
