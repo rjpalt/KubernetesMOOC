@@ -90,35 +90,43 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
     - Use shared ALB/Gateway for all feature environments; keep production on separate ALB/Gateway for blast radius isolation
     - Add NetworkPolicies and edge auth (Entra ID or OAuth proxy) for preview environment security
     - Consider Azure Functions-based provisioning service: GitHub Actions → OIDC → Azure Function → provision resources; improves security and centralized control
+- [3.8](https://github.com/rjpalt/KubernetesMOOC/tree/3.8/course_project) - The environment teardown workflow is implemented in the [cleanup-feature-environment.yaml](.github/workflows/cleanup-feature-environment.yaml) [here](https://github.com/rjpalt/KubernetesMOOC/actions/runs/16858557720/job/47755265970) is an example of the workflow run for deleted branch ex-3-8.
 
 
-## Cleanup Script
+## Development & Environment Management
 
-The repository includes a comprehensive cleanup script (`cleanup.sh`) that helps you reset your development environment by properly shutting down Kubernetes resources before cleaning up Docker containers, networks, and the k3d cluster.
+The repository includes comprehensive tooling for local development and environment management:
 
-Separate scripts for Azure environment stop and start the AKS cluster from incurring extra costs while not in use. These are found in the root directory as `azure-stop.sh` and `azure-start.sh`.
-
-### What the script does:
-- **Cleans up Helm releases** - Properly uninstalls Prometheus, Grafana, and Loki monitoring stacks
-- **Deletes monitoring namespaces** - Removes prometheus and loki-stack namespaces with cascade cleanup
-- **Gracefully shuts down Kubernetes resources** - Deletes deployments, services, and pods in proper order with graceful termination
-- **Handles stuck pods** - Force deletes any pods that refuse to terminate gracefully
-- **Deletes k3d clusters** - Completely shuts down your Kubernetes cluster after resource cleanup
-- **Stops and removes all Docker containers** - Cleans up any running or stopped containers
-- **Removes custom Docker networks** - Cleans up networking resources (preserves default networks)
-- **Cleans up Docker system** - Removes unused build cache and dangling images
-- **Preserves Docker images** - Your built images remain available for reuse
-- **Skips Docker volumes** - Leaves volumes untouched for safety
-
-### Usage:
+### Quick Commands (Makefile)
 ```bash
-./cleanup.sh
+make help           # Show all available commands
+make local-dev      # Run app locally (uv) + Docker DB
+make compose-up     # Run full stack via docker-compose
+make test           # Run all tests (backend + frontend)
+make quality        # Code formatting and linting
+make azure-start    # Start AKS cluster
+make azure-stop     # Stop AKS cluster (save costs)
+make clean          # Clean local environment
 ```
 
-### Additional cleanup:
-If you want to remove unused Docker images as well:
+### Environment Cleanup Scripts
+
+**Local development cleanup:**
 ```bash
-docker image prune -a
+./cleanup.sh        # Comprehensive k3d/Docker cleanup
 ```
 
-**Warning:** This script will remove all Docker containers. Make sure you don't have any important data in containers before running it.
+**Azure environment management:**
+```bash
+./azure-stop.sh     # Stop AKS cluster (avoid charges)
+./azure-start.sh    # Restart AKS cluster
+```
+
+### Cleanup Script Details
+The `cleanup.sh` script provides comprehensive environment reset:
+- **Kubernetes cleanup** - Helm releases, namespaces, deployments, stuck pods
+- **k3d cluster removal** - Complete cluster shutdown after resource cleanup  
+- **Docker cleanup** - Containers, networks, build cache (preserves images/volumes)
+- **Graceful termination** - Proper shutdown order with force cleanup for stuck resources
+
+**Warning:** This removes all Docker containers. Ensure no important data before running.

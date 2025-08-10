@@ -5,14 +5,16 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
 
 | Task | Status | Priority | Next Action |
 |------|--------|----------|-------------|
-| Exercise 3.7 Cleanup | 🟡 Testing | HIGH | Test with ex-3-8 branch |
-| Feature Environment Cleanup | ✅ Done | - | Complete |
-| Azure Key Vault | ✅ Done | - | Complete |
 | Preview Environment DNS | ⏸️ Future | MEDIUM | Plan ExternalDNS setup |
 | Database Isolation | ⏸️ Future | MEDIUM | PostgreSQL per namespace |
 | E2E Testing | ⏸️ Future | HIGH | Playwright setup |
 | OpenAPI Docs | ⏸️ Future | LOW | GitHub Pages automation |
 | GitOps Repository | ⏸️ Future | LOW | Separate config repo |
+| CI/CD Trigger Optimization | ⏸️ Future | LOW | Refine path filters |
+| Namespace Creation Efficiency | ⏸️ Future | LOW | Check before create |
+| Dependabot Setup | ⏸️ Future | MEDIUM | Configure .github/dependabot.yml |
+| CodeQL Security Scanning | ⏸️ Future | MEDIUM | Add .github/workflows/codeql.yml |
+| Branch Protection Rules | ⏸️ Future | HIGH | Enforce CI+CodeQL for merge |
 
 ## Active Tasks
 
@@ -47,6 +49,20 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
   - **Current**: Always attempts `kubectl create namespace || true`
   - **Goal**: Check if namespace exists first, then create only if needed
   - **Why**: Cleaner logs, faster deployment, better error handling
+
+### Security & Quality Automation
+- [ ] Set up Dependabot for automated dependency updates
+  - **Goal**: Monitor Python dependencies in pyproject.toml files for security vulnerabilities
+  - **Config**: `.github/dependabot.yml` with schedule and PR grouping
+  - **Why**: Proactive security patching, reduced maintenance overhead
+- [ ] Configure CodeQL security scanning
+  - **Goal**: Automated static analysis for Python code security issues
+  - **Config**: `.github/workflows/codeql.yml` triggered on push/PR
+  - **Why**: Early detection of security vulnerabilities in source code
+- [ ] Enforce CI and security checks as PR merge requirements
+  - **Goal**: Require CI pipeline + CodeQL to pass before merge to main
+  - **Config**: Branch protection rules in GitHub repository settings
+  - **Why**: Prevent broken or insecure code from reaching production
 
 ---
 - [ ] Document overlay maintenance requirement (README + Azure memos)
