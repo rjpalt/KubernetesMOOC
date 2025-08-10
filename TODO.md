@@ -5,6 +5,7 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
 
 | Task | Status | Priority | Next Action |
 |------|--------|----------|-------------|
+| Review Deployment Pipelines | 🔄 Active | **CRITICAL** | Audit workflows with Copilot |
 | Preview Environment DNS | ⏸️ Future | MEDIUM | Plan ExternalDNS setup |
 | Database Isolation | ⏸️ Future | MEDIUM | PostgreSQL per namespace |
 | E2E Testing | ⏸️ Future | HIGH | Playwright setup |
@@ -17,6 +18,11 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
 | Branch Protection Rules | ⏸️ Future | HIGH | Enforce CI+CodeQL for merge |
 
 ## Active Tasks
+
+### Critical
+- [ ] Review deployment pipelines with Copilot for optimization and best practices
+  - **Why**: Recent health check fixes need validation; ensure robust CI/CD patterns
+  - **Scope**: Production, feature branch, and cleanup workflows
 
 ### Immediate
 - [x] ~~Refactor workflows to use repository variables~~
