@@ -1,13 +1,11 @@
-#!/bin/bash
-
-# Run all tests (backend + frontend)
-# Usage: ./test-all.sh
-
-set -e  # Exit on any error
+#!/usr/bin/env bash
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$DIR/.." && pwd)"
 
 # Function to check if database containers are running
 check_database_containers() {
-    echo "🔍 Checking database containers..."
+    echo "Checking database containers..."
     
     local postgres_running=false
     local postgres_test_running=false
@@ -23,69 +21,42 @@ check_database_containers() {
     fi
     
     if [ "$postgres_running" = true ] && [ "$postgres_test_running" = true ]; then
-        echo "✅ Database containers are running"
+        echo "Database containers are running"
         return 0
     else
         echo ""
-        echo "⚠️  Database containers are not running!"
+        echo "Database containers are not running!"
         echo ""
         echo "   Missing containers:"
         [ "$postgres_running" = false ] && echo "   - todo_postgres_dev (development database)"
         [ "$postgres_test_running" = false ] && echo "   - todo_postgres_test (test database)"
         echo ""
         echo "   To start the database containers:"
-        echo "   cd todo-backend && docker compose -f docker-compose.dev.yml up -d"
+        echo "   make db-up"
         echo ""
         echo "   To check container status:"
         echo "   docker ps --filter 'name=todo_postgres'"
-        echo ""
-        echo "   To check container health:"
-        echo "   docker compose -f todo-backend/docker-compose.dev.yml ps"
         echo ""
         return 1
     fi
 }
 
-echo "🧪 Running All Tests..."
+echo "Running Backend Tests..."
 echo ""
 
 # Check database containers first
 check_database_containers || exit 1
 echo ""
 
-# Backend tests
-echo "🔧 Testing Backend Service..."
-echo ""
-cd todo-backend
+cd "$ROOT/course_project/todo-backend"
 
-echo "📦 Installing backend dependencies..."
+# Install dependencies if needed
+echo "Installing dependencies..."
 uv sync --group dev
 
-echo "🔍 Running backend tests..."
+# Run tests
+echo "Running backend tests..."
 uv run pytest tests/ -v
 
 echo ""
-echo "✅ Backend tests completed!"
-echo ""
-
-# Frontend tests  
-cd ../todo-app
-echo "🌐 Testing Frontend Service..."
-echo ""
-
-echo "📦 Installing frontend dependencies..."
-uv sync --group dev
-
-echo "🔍 Running frontend tests..."
-uv run pytest tests/ -v
-
-echo ""
-echo "✅ Frontend tests completed!"
-
-# Summary
-cd ..
-echo ""
-echo "🎉 All tests completed successfully!"
-echo "   Backend: 27 tests"
-echo "   Frontend: Contract and integration tests"
-echo "   Both services tested independently"
+echo "Backend tests completed!"

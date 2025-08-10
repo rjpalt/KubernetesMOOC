@@ -1,9 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # Cleanup script for Docker and Kubernetes resources
 # This script will properly shut down Kubernetes resources before cleaning up Docker
-
-set -e  # Exit on any error
 
 echo "Starting cleanup process..."
 
@@ -124,4 +123,10 @@ docker system prune -f
 echo "Docker system cleaned up"
 
 echo "Cleanup complete! Your system is now clean."
-echo "Note: Docker images are preserved. Use 'docker image prune -a' to remove unused images."
+echo "Note: Docker images are preserved. Use 'docker image prune -a' to remove unused images."in/env bash
+set -euo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$DIR/.." && pwd)"
+
+echo "[scripts/clean.sh] Wrapper -> $ROOT/cleanup.sh"
+exec "$ROOT/cleanup.sh" "$@"
