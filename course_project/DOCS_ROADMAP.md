@@ -18,36 +18,36 @@ Status: draft (tracking checklist below). Scope is docs and DX wrappers only; no
 ## Phased plan
 
 Phase 1 — Documentation skeleton (no code moves)
-- [ ] Top-level project docs index (links, not duplication)
-  - [ ] docs/overview/repo-map.md (what lives where, quick links)
-  - [ ] docs/overview/onboarding.md (install, run dev, run tests, where manifests/docs are)
-- [ ] Development docs
-  - [ ] docs/development/local-dev.md (how to start local dev; where DB/compose lives; clarify that BE compose is the authoritative DB for dev)
-  - [ ] docs/development/script-catalog.md (catalog + deprecation notes)
-- [ ] Testing docs
-  - [ ] docs/testing/index.md (project-wide testing model; links to FE and BE plans; E2E place-holder)
-  - [ ] course_project/todo-app/TEST_PLAN.md (frontend, mirroring backend structure)
-  - [ ] course_project/TESTING_OVERVIEW.md (project-level strategy + E2E positioning)
-- [ ] Platform docs
-  - [ ] docs/platform/manifests-index.md (where manifests are, their scope, GitOps note; no apply commands)
+- [x] Top-level project docs index (links, not duplication)
+  - [x] docs/overview/repo-map.md (what lives where, quick links)
+  - [x] docs/overview/onboarding.md (install, run dev, run tests, where manifests/docs are)
+- [x] Development docs
+  - [x] docs/development/local-dev.md (how to start local dev; where DB/compose lives; clarify that BE compose is the authoritative DB for dev)
+  - [x] docs/development/script-catalog.md (catalog + deprecation notes)
+- [x] Testing docs
+  - [x] docs/testing/index.md (project-wide testing model; links to FE and BE plans; E2E place-holder)
+  - [x] course_project/todo-app/TEST_PLAN.md (frontend, mirroring backend structure)
+  - [x] course_project/TESTING_OVERVIEW.md (project-level strategy + E2E positioning)
+- [x] Platform docs
+  - [x] docs/platform/manifests-index.md (where manifests are, their scope, GitOps note; no apply commands)
   - [ ] Tiny README pointers inside existing manifests folders to link back to the index (optional)
 
 Phase 2 — Command UX (wrappers only)
-- [ ] Decide task runner (Makefile vs Just); do not remove existing scripts
-- [ ] Define target names and map to current scripts (see catalog below)
-- [ ] Add wrappers at the repo root (make/just) that call existing scripts by path
+- [x] Decide task runner (Makefile vs Just); do not remove existing scripts
+- [x] Define target names and map to current scripts (see catalog below)
+- [x] Add wrappers at the repo root (make/just) that call existing scripts by path
 
 Phase 3 — Testing program alignment
-- [ ] Align FE test plan structure to BE’s TEST_PLAN.md (unit, integration, security if any)
+- [x] Align FE test plan structure to BE’s TEST_PLAN.md (unit, integration, security if any)
 - [ ] Define E2E approach in TESTING_OVERVIEW.md (tools, scope, environments)
 - [ ] Ensure CI documentation references the same canonical docs
 
 Phase 4 — Optional compose consolidation exploration (docs-only now)
 - [ ] Document what a “top-level compose” would look like (course_project/compose/dev.yml)
-- [ ] For now, recommend wrappers that call BE’s compose file for DB and keep services’ own flows
+- [x] For now, recommend wrappers that call BE’s compose file for DB and keep services’ own flows
 
 Phase 5 — Pre-GitOps notes
-- [ ] Capture the migration plan and boundaries in manifests-index.md
+- [x] Capture the migration plan and boundaries in manifests-index.md
 
 ## Script catalog (draft mapping)
 
@@ -92,12 +92,10 @@ Note: This is not exhaustive; docs/development/script-catalog.md will list all e
 
 ## Task runner recommendation
 - Start with a Makefile at the repo root for maximum ubiquity. Keep targets thin; each calls existing scripts by path. Later we can switch to Just if desired.
-- Example target names to standardize (to be implemented later):
-  - make dev, make be-dev, make fe-dev
-  - make db-up, make db-down
-  - make test, make test-be, make test-fe
-  - make build, make build-pp-lo
-  - make azure-start, make azure-stop, make clean
+- Implemented target names:
+  - make local-dev, make db-up, make db-down
+  - make compose-up, make compose-down, make compose-logs
+  - make help (prints modes and target descriptions)
 
 ## Open decisions
 - Task runner: Makefile (recommended) vs Just (optional later). Default: Makefile.
@@ -105,13 +103,14 @@ Note: This is not exhaustive; docs/development/script-catalog.md will list all e
 - Frontend test tech: align with current stack; document in FE TEST_PLAN.md.
 
 ## Immediate next actions
-- [ ] Create docs/overview/repo-map.md and docs/overview/onboarding.md
-- [ ] Create docs/development/local-dev.md with DB/compose policy and clear links to BE compose
-- [ ] Create docs/development/script-catalog.md (first pass with the table above and more entries)
-- [ ] Create docs/testing/index.md and course_project/TESTING_OVERVIEW.md
-- [ ] Create course_project/todo-app/TEST_PLAN.md (skeleton mirroring BE)
-- [ ] Create docs/platform/manifests-index.md (index and GitOps note)
-- [ ] Decide task runner (tentatively Makefile) and define target list (no implementation yet)
+- [x] Create docs/overview/repo-map.md and docs/overview/onboarding.md
+- [x] Create docs/development/local-dev.md with DB/compose policy and clear links to BE compose
+- [x] Create docs/development/script-catalog.md (first pass with the table above and more entries)
+- [x] Create docs/testing/index.md and course_project/TESTING_OVERVIEW.md
+- [x] Create course_project/todo-app/TEST_PLAN.md (skeleton mirroring BE)
+- [x] Create docs/platform/manifests-index.md (index and GitOps note)
+- [x] Decide task runner (tentatively Makefile) and define target list (no implementation yet)
+- [x] Add Makefile wrappers for the two dev modes and DB helpers
 
 ## Conventions (docs)
 - Avoid duplication: link to the canonical source (e.g., backend TEST_PLAN.md).
