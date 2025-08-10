@@ -1,8 +1,38 @@
-# Documentation and Developer Experience Roadmap
+# Docu## Context and constraints
+- GitOps planned: manifests may move to a separate re- log_output/
+  - docker-compose.yml, dev helpers (document scope). Proposed: make logserver-up/down
 
-Purpose: make it obvious what to run, where docs live, and how to develop/test/deploy, without moving code now.
+**COMPLETED CONSOLIDATION**: All todo microservice scripts consolidated into `scripts/` directory.
 
-Status: draft (tracking checklist below). Scope is docs and DX wrappers only; no file moves; keep current paths. Manifests stay as-is; GitOps later.
+Current canonical scripts in `scripts/`:
+- **azure-start.sh** — ops: start Azure AKS cluster (canonical implementation)
+- **azure-stop.sh** — ops: stop Azure AKS cluster (canonical implementation)  
+- **build-images.sh** — build: build Docker images for todo services (canonical implementation)
+- **clean.sh** — ops: clean local artifacts/containers (canonical implementation)
+- **compose-up.sh** — dev: start all services via docker compose
+- **compose-down.sh** — dev: stop all services via docker compose
+- **compose-logs.sh** — dev: view logs from all services
+- **db-up.sh** — dev: start PostgreSQL databases (canonical implementation)
+- **db-down.sh** — dev: stop PostgreSQL databases
+- **local-dev.sh** — dev: start services in development mode (canonical implementation)
+- **quality.sh** — dev: run code quality checks (canonical implementation)
+- **test-all.sh** — test: run all tests (canonical implementation)
+- **test-be.sh** — test: run backend tests (canonical implementation)
+- **test-fe.sh** — test: run frontend tests (canonical implementation)
+
+**Removed duplicates**: Root and course_project scripts consolidated into single `scripts/` location.ater. For now, only index/links, no relocations.
+- **COMPLETED**: Script consolidation - all developer-facing scripts now live in `scripts/` as single source of truth.
+- Shared env directory is low priority; keep per-service envs for now.
+
+## Outcomes ✅ ACHIEVED
+- Single starting point for newcomers (repo map and onboarding).
+- Canonical locations for testing docs (backend already has TEST_PLAN.md; add frontend; add project-wide testing overview including E2E).
+- **COMPLETED**: Single script catalog at `scripts/` - all commands consolidated, duplicates removed.
+- **COMPLETED**: Task runner (Makefile) implemented pointing to canonical scripts.and Developer Experience Roadmap
+
+Purpose: make it obvious what to run, where docs live, and how to develop/test/deploy.
+
+Status: **COMPLETED** - Full script consolidation implemented. Single source of truth established at `scripts/` directory.
 
 ## Context and constraints
 - GitOps planned: manifests may move to a separate repo later. For now, only index/links, no relocations.
@@ -32,10 +62,11 @@ Phase 1 — Documentation skeleton (no code moves)
   - [x] docs/platform/manifests-index.md (where manifests are, their scope, GitOps note; no apply commands)
   - [ ] Tiny README pointers inside existing manifests folders to link back to the index (optional)
 
-Phase 2 — Command UX (wrappers only)
+Phase 2 — Command UX ✅ COMPLETED
 - [x] Decide task runner (Makefile vs Just); do not remove existing scripts
 - [x] Define target names and map to current scripts (see catalog below)
-- [x] Add wrappers at the repo root (make/just) that call existing scripts by path
+- [x] **COMPLETED**: Full script consolidation - moved all logic to `scripts/`, deleted duplicates
+- [x] **COMPLETED**: Makefile points to canonical `scripts/` implementations
 
 Phase 3 — Testing program alignment
 - [x] Align FE test plan structure to BE’s TEST_PLAN.md (unit, integration, security if any)
@@ -79,9 +110,9 @@ Goal: explain what exists today, the intent, and the future standard wrapper nam
 
 Note: This is not exhaustive; docs/development/script-catalog.md will list all entries with purpose and current path. Mark deprecated/confusing scripts with clear “use X instead” guidance.
 
-## Compose and DB policy (docs-only)
-- Keep backend docker-compose.dev.yml as the source of truth for local Postgres. Document clearly in local-dev.md.
-- For discoverability, add a wrapper target (e.g., make db-up) at the repo root that delegates to todo-backend/start-db.sh or docker-compose.dev.yml. No file moves now.
+## Compose and DB policy ✅ COMPLETED
+- Backend docker-compose.dev.yml remains the source of truth for local Postgres.
+- **COMPLETED**: Makefile target `make db-up` calls canonical `scripts/db-up.sh` (no duplicates).
 - Tests keep their own isolation logic; local dev DB is persistent and shared.
 
 ## Testing program shape
@@ -90,11 +121,14 @@ Note: This is not exhaustive; docs/development/script-catalog.md will list all e
 - Project-level: add course_project/TESTING_OVERVIEW.md covering categories (unit, integration, security, E2E), environments (local, CI), and ownership.
 - E2E: independent of FE/BE; define location (e.g., course_project/e2e/) and tools later; include in TESTING_OVERVIEW.md first.
 
-## Task runner recommendation
-- Start with a Makefile at the repo root for maximum ubiquity. Keep targets thin; each calls existing scripts by path. Later we can switch to Just if desired.
+## Task runner recommendation ✅ COMPLETED
+- **IMPLEMENTED**: Makefile at the repo root. All targets call canonical scripts in `scripts/`.
 - Implemented target names:
   - make local-dev, make db-up, make db-down
   - make compose-up, make compose-down, make compose-logs
+  - make test, make test-be, make test-fe
+  - make quality, make build-images TAG=version
+  - make azure-start, make azure-stop, make clean
   - make help (prints modes and target descriptions)
 
 ## Script consolidation (soft)
