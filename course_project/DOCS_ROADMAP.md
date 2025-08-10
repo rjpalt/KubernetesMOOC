@@ -97,6 +97,28 @@ Note: This is not exhaustive; docs/development/script-catalog.md will list all e
   - make compose-up, make compose-down, make compose-logs
   - make help (prints modes and target descriptions)
 
+## Script consolidation (soft)
+We’re adopting Option B (soft consolidation): add thin wrappers under scripts/ that delegate to existing paths. No moves yet; originals remain. Makefile calls the wrappers.
+
+Initial consolidated wrappers:
+- scripts/local-dev.sh → course_project/start-services.sh
+- scripts/db-up.sh → course_project/todo-backend/start-db.sh
+- scripts/db-down.sh → docker compose -f course_project/todo-backend/docker-compose.dev.yml down
+- scripts/compose-up.sh → docker compose -f course_project/docker-compose.yaml up
+- scripts/compose-down.sh → docker compose -f course_project/docker-compose.yaml down
+- scripts/compose-logs.sh → docker compose -f course_project/docker-compose.yaml logs -f
+- scripts/azure-start.sh → ./azure-start.sh
+- scripts/azure-stop.sh → ./azure-stop.sh
+- scripts/clean.sh → ./cleanup.sh
+
+Rationale:
+- One obvious place to discover commands (scripts/) without breaking current flows.
+- Makefile abstracts real locations; future moves won’t change user commands.
+
+Next steps (optional):
+- Add deprecation hints to legacy scripts when invoked directly (echo pointer to Makefile or scripts/).
+- Extend wrappers for test and build flows if needed (test-be, test-fe, build).
+
 ## Open decisions
 - Task runner: Makefile (recommended) vs Just (optional later). Default: Makefile.
 - E2E stack: decide on tool (Playwright vs Cypress vs pytest+httpx). Document in TESTING_OVERVIEW.md first.

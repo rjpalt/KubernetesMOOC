@@ -144,11 +144,10 @@ if [ -f "docker-compose.yaml" ]; then
     sed -i.tmp "s/image: todo-app-cron:[^[:space:]]*/image: todo-app-cron:$TAG-arm64/" docker-compose.yaml
     rm docker-compose.yaml.tmp  # Remove sed backup file
     
-    # Validate YAML syntax
-    python3 -c "import yaml; yaml.safe_load(open('docker-compose.yaml'))" 2>/dev/null
-    if [ $? -eq 0 ]; then
+    # Validate YAML syntax using docker compose (no Python dependency)
+    if docker compose -f docker-compose.yaml config -q >/dev/null 2>&1; then
         echo "✓ docker-compose.yaml updated successfully with ARM64 images"
-        echo "✓ YAML validation passed"
+        echo "✓ YAML validation passed (docker compose config)"
     else
         echo "✗ YAML validation failed! Restoring backup..."
         cp docker-compose.yaml.backup docker-compose.yaml
