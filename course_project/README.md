@@ -1,12 +1,12 @@
 # Todo Application - Microservices Project
 
-Two-service todo application: **todo-backend** (REST API) and **todo-app** (Frontend with image caching). The **todo-cron** service for automated Wikipedia todo generation is available but not part of current deployments.
+Two-service todo application: **todo-backend** (REST API) and **todo-app** (Frontend with image caching). The **todo-cron** service provides automated Wikipedia todo generation and database backup to Azure Blob Storage.
 
 ## Architecture
 
 - **todo-backend** (Port 8001): FastAPI REST API for todo CRUD operations
 - **todo-app** (Port 8000): FastAPI frontend with HTMX UI, communicates with backend via HTTP
-- **todo-cron**: CronJob service for automated Wikipedia todos (available but not currently deployed)
+- **todo-cron**: CronJob service for automated Wikipedia todos and database backups to Azure Blob Storage (`kubemoocbackups/database-backups`)
 
 ### Data Flow
 
@@ -75,7 +75,7 @@ The project supports both local development (ARM64) and cloud deployment (AMD64)
 **AMD64 Images (AKS Deployment):**
 - `todo-app-fe:TAG-amd64` - Frontend service for Azure Kubernetes Service
 - `todo-app-be:TAG-amd64` - Backend service for Azure Kubernetes Service
-- `todo-app-cron:TAG-amd64` - Cron service (available but not deployed)
+- `todo-app-cron:TAG-amd64` - Cron service for Wikipedia todos and database backups
 
 ### Environment Configuration
 Before running with Docker Compose, set up your environment:
@@ -214,7 +214,7 @@ The application uses `docker-compose.env` for environment variables:
 - **todo-app-be**: Backend API on http://localhost:8001 (ARM64 image)
 - **postgres_prod**: PostgreSQL database on localhost:5432
 - **Persistent data**: Database data persists in Docker volumes
-- **Note**: Cron service available but not included in current docker-compose setup
+- **Note**: Cron service available for Wikipedia todos and database backups but not included in current docker-compose setup
 
 ## Kubernetes Deployment
 
