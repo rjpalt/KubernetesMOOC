@@ -11,8 +11,8 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
 | E2E Testing | ⏸️ Future | HIGH | Playwright setup |
 | OpenAPI Docs | ⏸️ Future | LOW | GitHub Pages automation |
 | GitOps Repository | ⏸️ Future | LOW | Separate config repo |
-| CI/CD Trigger Optimization | ⏸️ Future | LOW | Refine path filters |
-| Namespace Creation Efficiency | ⏸️ Future | LOW | Check before create |
+| CI/CD Trigger Optimization | ✅ Done | LOW | **COMPLETED** |
+| Namespace Creation Efficiency | ✅ Done | LOW | **COMPLETED** |
 | Dependabot Setup | ⏸️ Future | MEDIUM | Configure .github/dependabot.yml |
 | CodeQL Security Scanning | ⏸️ Future | MEDIUM | Add .github/workflows/codeql.yml |
 | Branch Protection Rules | ⏸️ Future | HIGH | Enforce CI+CodeQL for merge |
@@ -52,14 +52,16 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
   - **Why**: Track actual deployed state, enable proper rollbacks
 
 ### Workflow Optimizations
-- [ ] Optimize CI/CD trigger paths for smarter rebuilds
-  - **Current**: Triggers on any `course_project/**` change (docs, manifests, etc.)
-  - **Goal**: Only trigger on source code changes (src/, Dockerfile, pyproject.toml)
-  - **Why**: Avoid unnecessary rebuilds/deployments for documentation changes
-- [ ] Improve namespace creation efficiency in feature deployments
-  - **Current**: Always attempts `kubectl create namespace || true`
-  - **Goal**: Check if namespace exists first, then create only if needed
-  - **Why**: Cleaner logs, faster deployment, better error handling
+- [x] ~~Optimize CI/CD trigger paths for smarter rebuilds~~
+  - **Current**: ~~Triggers on any `course_project/**` change (docs, manifests, etc.)~~
+  - **Goal**: ~~Only trigger on source code changes (src/, Dockerfile, pyproject.toml)~~
+  - **Why**: ~~Avoid unnecessary rebuilds/deployments for documentation changes~~
+  - **Status**: **COMPLETED** - CI now only triggers on meaningful code changes
+- [x] ~~Improve namespace creation efficiency in feature deployments~~
+  - **Current**: ~~Always attempts `kubectl create namespace || true`~~
+  - **Goal**: ~~Check if namespace exists first, then create only if needed~~
+  - **Why**: ~~Cleaner logs, faster deployment, better error handling~~
+  - **Status**: **COMPLETED** - Deployment now checks namespace existence before creation
 
 ### Security & Quality Automation
 - [ ] Set up Dependabot for automated dependency updates
