@@ -178,16 +178,29 @@ jobs:
         
         # Test backend health with port-forward to the correct port
         echo "Testing backend health..."
-        kubectl port-forward -n ${{ env.NAMESPACE }} pod/$BACKEND_POD 8001:2506 &
+        kubectl port-forward -n ${{ env.NAMESPACE }} pod/$BACKEND_POD 8001:8001 &
         PORT_FORWARD_PID=$!
         sleep 5
         
         if curl -f --max-time 10 http://localhost:8001/be-health; then
           echo "✅ Backend health check passed"
         else
-          echo "❌ Backend health check failed"
+          echo "❌ Backend health check failed, trying alternative port configuration..."
           kill $PORT_FORWARD_PID 2>/dev/null || true
-          exit 1
+          
+          # Try port 2506 (service port) in case container was configured differently
+          echo "Trying port-forward to 8002:2506..."
+          kubectl port-forward -n ${{ env.NAMESPACE }} pod/$BACKEND_POD 8002:2506 &
+          PORT_FORWARD_PID=$!
+          sleep 5
+          
+          if curl -f --max-time 10 http://localhost:8002/be-health; then
+            echo "✅ Backend health check passed on port 2506"
+          else
+            echo "❌ Backend health check failed on both ports"
+            kill $PORT_FORWARD_PID 2>/dev/null || true
+            exit 1
+          fi
         fi
         
         kill $PORT_FORWARD_PID 2>/dev/null || true
@@ -206,16 +219,29 @@ jobs:
         
         # Test frontend health with port-forward
         echo "Testing frontend health..."
-        kubectl port-forward -n ${{ env.NAMESPACE }} pod/$FRONTEND_POD 8000:2507 &
+        kubectl port-forward -n ${{ env.NAMESPACE }} pod/$FRONTEND_POD 8000:8000 &
         PORT_FORWARD_PID=$!
         sleep 5
         
         if curl -f --max-time 10 http://localhost:8000/health; then
           echo "✅ Frontend health check passed"
         else
-          echo "❌ Frontend health check failed"
+          echo "❌ Frontend health check failed, trying alternative port configuration..."
           kill $PORT_FORWARD_PID 2>/dev/null || true
-          exit 1
+          
+          # Try port 2507 (service port) in case container was configured differently
+          echo "Trying port-forward to 8003:2507..."
+          kubectl port-forward -n ${{ env.NAMESPACE }} pod/$FRONTEND_POD 8003:2507 &
+          PORT_FORWARD_PID=$!
+          sleep 5
+          
+          if curl -f --max-time 10 http://localhost:8003/health; then
+            echo "✅ Frontend health check passed on port 2507"
+          else
+            echo "❌ Frontend health check failed on both ports"
+            kill $PORT_FORWARD_PID 2>/dev/null || true
+            exit 1
+          fi
         fi
         
         kill $PORT_FORWARD_PID 2>/dev/null || true

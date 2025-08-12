@@ -64,3 +64,6 @@ docker-compose.yaml.backup
 
 # Ignore machine context real file
 .project/context.yaml
+
+# Ignore revamp roadmap (project planning document)
+REVAMP_ROADMAP.md
