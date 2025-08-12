@@ -119,7 +119,10 @@ create_backup() {
     
     # Create database backup using pg_dump
     log_debug "Executing pg_dump command..."
-    if pg_dump \
+    
+    # Capture both stdout and stderr
+    local pg_dump_output
+    pg_dump_output=$(pg_dump \
         --host="$POSTGRES_HOST" \
         --port="$POSTGRES_PORT" \
         --username="$POSTGRES_USER" \
@@ -130,8 +133,19 @@ create_backup() {
         --if-exists \
         --create \
         --format=plain \
-        --file="$backup_path" 2>&1; then
-        
+        --file="$backup_path" 2>&1)
+    
+    local exit_code=$?
+    
+    # Show pg_dump output for debugging
+    if [ -n "$pg_dump_output" ]; then
+        log_debug "pg_dump output:"
+        echo "$pg_dump_output" | while IFS= read -r line; do
+            log_debug "  $line"
+        done
+    fi
+    
+    if [ $exit_code -eq 0 ]; then
         log_info "Database backup created successfully: $backup_filename"
         log_debug "Backup size: $(du -h "$backup_path" | cut -f1)"
         log_debug "Backup file contents preview:"
@@ -139,8 +153,13 @@ create_backup() {
         echo "$backup_path"
         return 0
     else
-        local exit_code=$?
         log_error "Failed to create database backup (exit code: $exit_code)"
+        if [ -n "$pg_dump_output" ]; then
+            log_error "pg_dump error output:"
+            echo "$pg_dump_output" | while IFS= read -r line; do
+                log_error "  $line"
+            done
+        fi
         log_debug "Checking if partial backup file exists..."
         if [ -f "$backup_path" ]; then
             log_debug "Partial backup file size: $(du -h "$backup_path" | cut -f1)"

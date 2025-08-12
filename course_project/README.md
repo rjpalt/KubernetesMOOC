@@ -250,6 +250,24 @@ The deployment uses Azure Key Vault for secure credential management:
 # Access: Passwordless authentication via Azure Workload Identity
 ```
 
+### ⚠️ Temporary Security Compromise (CronJob Backup Authentication)
+
+**Current State**: The backup CronJob uses Azure Storage Account keys instead of the preferred Azure Workload Identity.
+
+**Root Cause**: Azure Workload Identity webhook fails to inject environment variables into CronJob pods despite correct configuration. This appears to be related to AKS admission enforcer policies or webhook namespace filtering.
+
+**Compromise Details**:
+- Storage account `kubemoocbackups` has `allowSharedKeyAccess: true` (was: false)
+- Kubernetes Secret `azure-storage-secret` contains raw storage account key
+- Manual credential rotation required (no automatic Azure AD token refresh)
+
+**Security Impact**:
+- Full storage account access instead of container-scoped permissions
+- Long-lived credentials in Kubernetes Secret
+- Less comprehensive audit trail
+
+**Planned Resolution**: Revert to federated identity during infrastructure revamp (see `REVAMP_ROADMAP.md` Phase 5). This will coincide with migration to Azure Database for PostgreSQL with native backup capabilities, eliminating the need for custom backup CronJobs entirely.
+
 ### Deployment Options
 
 **Branch-based environment deployment:**
