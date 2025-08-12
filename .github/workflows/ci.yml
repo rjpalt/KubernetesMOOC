@@ -18,6 +18,7 @@ on:
       - 'course_project/todo-app/openapi.yaml'
       - 'course_project/todo-cron/Dockerfile'
       - 'course_project/todo-cron/create_wikipedia_todo.sh'
+      - 'course_project/todo-cron/backup_database.sh'
 
 permissions:
   id-token: write  # Required for Azure authentication
