@@ -4,8 +4,8 @@ metadata:
   name: todo-backup-cronjob
   namespace: project
 spec:
-  # Runs every minute
-  schedule: "* * * * *"
+  # Runs every 2 hours at minute 0
+  schedule: "0 */2 * * *"
   jobTemplate:
     spec:
       template:

@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # Configuration from environment variables
-POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
+POSTGRES_HOST="${POSTGRES_HOST:-postgres-svc}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 POSTGRES_DB="${POSTGRES_DB:-todoapp}"
-POSTGRES_USER="${POSTGRES_USER:-todouser}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-todopass}"
-AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT:-}"
+POSTGRES_USER="${POSTGRES_USER:-possu-admin}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-}"
+AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT:-kubemoocbackups}"
 AZURE_STORAGE_CONTAINER="${AZURE_STORAGE_CONTAINER:-database-backups}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
 BACKUP_INTERVAL="${BACKUP_INTERVAL:-60}"  # Interval in seconds for local testing
@@ -51,7 +51,7 @@ validate_config() {
     # Debug: Show specifically Azure-related environment variables
     log_debug "=== Azure Environment Variables ==="
     log_debug "  AZURE_STORAGE_ACCOUNT_NAME=${AZURE_STORAGE_ACCOUNT_NAME:-<NOT_SET>}"
-    log_debug "  AZURE_STORAGE_ACCOUNT_KEY=<HIDDEN>"
+    log_debug "  AZURE_STORAGE_ACCOUNT_KEY=${AZURE_STORAGE_ACCOUNT_KEY:+<SET>}"
     log_debug "  AZURE_STORAGE_ACCOUNT=${AZURE_STORAGE_ACCOUNT:-<NOT_SET>}"
     log_debug "  AZURE_STORAGE_CONTAINER=${AZURE_STORAGE_CONTAINER:-<NOT_SET>}"
     
@@ -274,9 +274,12 @@ test_db_connection() {
 azure_login() {
     log_info "Setting up Azure storage authentication using account key"
     
+    # Use AZURE_STORAGE_ACCOUNT if set, otherwise fall back to AZURE_STORAGE_ACCOUNT_NAME
+    local storage_account="${AZURE_STORAGE_ACCOUNT:-${AZURE_STORAGE_ACCOUNT_NAME:-}}"
+    
     # Check that required environment variables are set
-    if [ -z "${AZURE_STORAGE_ACCOUNT_NAME:-}" ]; then
-        log_error "AZURE_STORAGE_ACCOUNT_NAME environment variable not set"
+    if [ -z "$storage_account" ]; then
+        log_error "Neither AZURE_STORAGE_ACCOUNT nor AZURE_STORAGE_ACCOUNT_NAME environment variable is set"
         return 1
     fi
     
@@ -286,11 +289,11 @@ azure_login() {
     fi
     
     # Set Azure CLI environment variables for storage account key authentication
-    export AZURE_STORAGE_ACCOUNT="$AZURE_STORAGE_ACCOUNT_NAME"
+    export AZURE_STORAGE_ACCOUNT="$storage_account"
     export AZURE_STORAGE_KEY="$AZURE_STORAGE_ACCOUNT_KEY"
     
     log_info "Azure storage authentication configured using account key"
-    log_debug "Storage account: $AZURE_STORAGE_ACCOUNT_NAME"
+    log_debug "Storage account: $storage_account"
     log_debug "Using storage account key authentication (key length: ${#AZURE_STORAGE_ACCOUNT_KEY} characters)"
     
     return 0
