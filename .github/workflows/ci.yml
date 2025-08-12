@@ -19,6 +19,26 @@ on:
       - 'course_project/todo-cron/Dockerfile'
       - 'course_project/todo-cron/create_wikipedia_todo.sh'
       - 'course_project/todo-cron/backup_database.sh'
+  
+  # Also run on pushes to main (merges) to build images for production
+  push:
+    branches: [ main ]
+    paths:
+      # Same paths as PR triggers to ensure images are built
+      - 'course_project/todo-backend/src/**'
+      - 'course_project/todo-backend/Dockerfile'
+      - 'course_project/todo-backend/pyproject.toml'
+      - 'course_project/todo-backend/uv.lock'
+      - 'course_project/todo-backend/init.sql'
+      - 'course_project/todo-app/src/**'
+      - 'course_project/todo-app/Dockerfile'
+      - 'course_project/todo-app/pyproject.toml'
+      - 'course_project/todo-app/uv.lock'
+      - 'course_project/todo-app/templates/**'
+      - 'course_project/todo-app/openapi.yaml'
+      - 'course_project/todo-cron/Dockerfile'
+      - 'course_project/todo-cron/create_wikipedia_todo.sh'
+      - 'course_project/todo-cron/backup_database.sh'
 
 permissions:
   id-token: write  # Required for Azure authentication
