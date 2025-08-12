@@ -4,7 +4,20 @@ on:
   pull_request:
     branches: [ main ]
     paths:
-      - 'course_project/**'
+      # Only trigger on meaningful code changes that require rebuilds
+      - 'course_project/todo-backend/src/**'
+      - 'course_project/todo-backend/Dockerfile'
+      - 'course_project/todo-backend/pyproject.toml'
+      - 'course_project/todo-backend/uv.lock'
+      - 'course_project/todo-backend/init.sql'
+      - 'course_project/todo-app/src/**'
+      - 'course_project/todo-app/Dockerfile'
+      - 'course_project/todo-app/pyproject.toml'
+      - 'course_project/todo-app/uv.lock'
+      - 'course_project/todo-app/templates/**'
+      - 'course_project/todo-app/openapi.yaml'
+      - 'course_project/todo-cron/Dockerfile'
+      - 'course_project/todo-cron/create_wikipedia_todo.sh'
 
 permissions:
   id-token: write  # Required for Azure authentication
