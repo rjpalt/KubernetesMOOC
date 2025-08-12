@@ -8,6 +8,52 @@ azure:
   acr:
     loginServer: kubemooc.azurecr.io
     name: kubemooc
+  managedIdentities:
+    githubActionsCi:
+      name: github-actions-ci
+      clientId: a7c70b35-0eb3-4363-b0e1-1c48bae476cc
+      scope: "CI/CD - Image building and testing"
+      permissions:
+        - "AcrPush on kubemooc registry"
+      federatedCredentials:
+        - name: github-actions-ci
+          subject: "repo:rjpalt/KubernetesMOOC:pull_request"
+          usage: "Pull request testing and builds"
+        - name: github-actions-ci-main
+          subject: "repo:rjpalt/KubernetesMOOC:ref:refs/heads/main"
+          usage: "Main branch image builds"
+    githubActionsCd:
+      name: github-actions-todo-cd
+      clientId: d2e20c1d-c71a-43d8-ba21-463212e9596f
+      scope: "Production deployments to AKS"
+      permissions:
+        - "AcrPush on kubemooc registry"
+        - "Azure Kubernetes Service Contributor Role on kube-mooc cluster"
+      federatedCredentials:
+        - name: github-actions-ci-cd
+          subject: "repo:rjpalt/KubernetesMOOC:ref:refs/heads/main"
+          usage: "Production deployments from main branch"
+    keyvaultAccess:
+      name: keyvault-identity-kube-mooc
+      clientId: 9b82dc92-8be2-4de4-90e4-e99eefb44e9f
+      scope: "Kubernetes workload access to Azure Key Vault"
+      permissions:
+        - "Key Vault Secrets User on kube-mooc-secrets vault"
+      federatedCredentials:
+        - name: postgres-workload-identity
+          subject: "system:serviceaccount:project:postgres-service-account"
+          usage: "PostgreSQL pods accessing database credentials"
+    albController:
+      name: azure-alb-identity
+      scope: "Application Load Balancer controller operations"
+      permissions:
+        - "Reader on AKS node resource group"
+        - "AppGw for Containers Configuration Manager on node resource group"
+        - "Network Contributor on ALB subnet"
+      federatedCredentials:
+        - name: azure-alb-identity
+          subject: "system:serviceaccount:azure-alb-system:alb-controller-sa"
+          usage: "ALB controller managing Azure Application Gateway"
   storage:
     accountName: kubemoocbackups
     allowSharedKeyAccess: false

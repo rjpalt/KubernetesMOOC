@@ -343,7 +343,7 @@ jobs:
     name: Push Tested Images to ACR
     runs-on: ubuntu-latest
     needs: [code-quality, test-backend, test-frontend, test-microservice-integration]
-    if: github.actor != 'nektos/act'  # Skip when running with act locally
+    if: github.actor != 'nektos/act'
     
     steps:
     - name: Checkout code
@@ -382,7 +382,7 @@ jobs:
         cache-from: type=gha  # Reuse the exact same build from test job
         cache-to: type=gha,mode=max
 
-    - name: Push tested cron image to ACR
+    - name: Push cron image to ACR
       uses: docker/build-push-action@v5
       with:
         context: course_project/todo-cron

@@ -7,4 +7,3 @@ resources:
 - namespace.yaml
 - secret-provider-class.yaml
 - serviceaccount.yaml
-- backup-service-account.yaml
