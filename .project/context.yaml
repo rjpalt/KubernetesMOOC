@@ -8,6 +8,37 @@ azure:
   acr:
     loginServer: kubemooc.azurecr.io
     name: kubemooc
+  storage:
+    accountName: kubemoocbackups
+    allowSharedKeyAccess: false
+    networkRuleSetDefaultAction: Allow
+    backupContainer: database-backups
+    containers:
+      production: database-backups
+      feature: feature-backups
+      local: local-backups
+  backup:
+    identities:
+      production:
+        name: backup-production-identity
+        clientId: 50f96678-064c-463a-a3e3-2297a3b557f1
+        principalId: 7b093f7e-28fa-40c1-b134-2540e64a70f1
+        federatedCredential: backup-production-k8s
+        serviceAccount: system:serviceaccount:default:backup-serviceaccount
+        permissions:
+          - container: database-backups
+            role: Storage Blob Data Contributor
+      development:
+        name: backup-development-identity
+        clientId: 640dd28d-3d3e-416d-aaf6-85c52a1f0db5
+        principalId: 5da97818-5f7f-436d-8c97-64aecf0bbfa1
+        federatedCredential: backup-development-k8s
+        serviceAccount: system:serviceaccount:backup-shared:backup-serviceaccount
+        permissions:
+          - container: feature-backups
+            role: Storage Blob Data Contributor
+          - container: local-backups
+            role: Storage Blob Data Contributor
 kubernetes:
   featureNamespacePattern: feature-<branch>
   stableNamespaces:

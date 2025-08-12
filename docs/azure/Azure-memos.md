@@ -1559,3 +1559,93 @@ az identity federated-credential delete \
 - PersistentVolumes follow their reclaim policy (usually delete for dynamic provisioning)
 - No impact on other feature environments or production namespace
 - HTTPRoute deletion automatically removes traffic routing for the feature branch
+
+# Azure Blob Storage Creation #
+To create a storage account:
+```bash
+az storage account create \
+  --name kubemoocbackups \
+  --resource-group kubernetes-learning \
+  --location northeurope \
+  --sku Standard_LRS \
+  --kind StorageV2 \
+  --access-tier Hot
+```
+
+- **sku Standard_LRS**: This provides the cheapest redundancy option by keeping three copies of your data in a single data center, which is sufficient for this exercise.
+
+- **kind StorageV2**: This is the modern, general-purpose account type that gives you access to the latest features and the most cost-effective pricing models.
+
+- **access-tier Hot**: This tier is optimized for frequent reads and writes, making it the best choice for actively managing and potentially restoring recent backups.
+
+Create a container in the storage account:
+```bash
+az storage container create \
+  --name database-backups \
+  --account-name kubemoocbackups
+  --auth-mode
+```
+
+## Creating Managed Identity for Blob Storage Access & Federated Credential ##
+
+Fetch AKS OIDC issuer URL:
+
+```bash
+az aks show --resource-group kubernetes-learning --name kube-mooc --query "oidcIssuerProfile.issuerUrl" --output tsv
+```
+
+Create the managed idetity for production and development environments:
+```bash
+az identity create \
+  --name backup-production-identity \
+  --resource-group kubernetes-learning \
+  --location northeurope
+
+az identity create \
+  --name backup-development-identity \
+  --resource-group kubernetes-learning \
+  --location northeurope
+```
+
+Store the managed identity clientID in environment variables for setting the storage account permissions correctly:
+```bash
+# Production identity client ID
+PROD_CLIENT_ID=$(az identity show --name backup-production-identity --resource-group kubernetes-learning --query "clientId" --output tsv)
+echo "Production Client ID: $PROD_CLIENT_ID"
+
+# Development identity client ID
+DEV_CLIENT_ID=$(az identity show --name backup-development-identity --resource-group kubernetes-learning --query "clientId" --output tsv)
+echo "Development Client ID: $DEV_CLIENT_ID"
+```
+
+Assign the accounts respective Storage Blob Data Contributor Roles:
+```bash
+az role assignment create \
+  --assignee $PROD_CLIENT_ID \
+  --role "Storage Blob Data Contributor" \
+  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/kubernetes-learning/providers/Microsoft.Storage/storageAccounts/kubemoocbackups/blobServices/default/containers/database-backups"
+
+az role assignment create \
+  --assignee $DEV_CLIENT_ID \
+  --role "Storage Blob Data Contributor" \
+  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/kubernetes-learning/providers/Microsoft.Storage/storageAccounts/kubemoocbackups/blobServices/default/containers/feature-backups"
+
+az role assignment create \
+  --assignee $DEV_CLIENT_ID \
+  --role "Storage Blob Data Contributor" \
+  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/kubernetes-learning/providers/Microsoft.Storage/storageAccounts/kubemoocbackups/blobServices/default/containers/local-backups"
+```
+
+Create the federated credentials for the managed identities:
+```bash
+# Production backup identity - for main/default namespace
+az identity federated-credential create \
+  --name backup-production-k8s \
+  --identity-name backup-production-identity \
+  --resource-group kubernetes-learning \
+  --issuer https://northeurope.oic.prod-aks.azure.com/b7cff52d-a4ec-4367-903c-5cf05c061aca/9618e5d3-f054-4b6d-9871-1d5a7447d273/ \
+  --subject system:serviceaccount:default:backup-serviceaccount
+
+# NOTE: Development identity kept for future use, but no federated credential needed
+# Feature environments will not have backup functionality - they are disposable
+```

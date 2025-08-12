@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: todo-backup-cronjob
+  namespace: project
+spec:
+  # Runs every minute
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: postgres-backup-prod-service-account
+          containers:
+            - name: todo-cron
+              # WARNING: This image tag is automatically updated by CI/CD pipeline
+              # DO NOT manually edit - tag gets replaced with commit SHA during deployment  
+              image: kubemooc.azurecr.io/todo-app-cron:PLACEHOLDER-UPDATED-BY-CICD
+              imagePullPolicy: IfNotPresent
+              command: ["/usr/local/bin/backup_database.sh"]
+              env:
+                - name: LOG_LEVEL
+                  value: "INFO"
+                - name: POSTGRES_HOST
+                  value: "postgres-svc"
+                - name: POSTGRES_PORT
+                  value: "5432"
+                - name: POSTGRES_DB
+                  value: "todoapp"
+                - name: AZURE_STORAGE_ACCOUNT
+                  value: "kubemoocbackups"
+                - name: AZURE_STORAGE_CONTAINER
+                  value: "database-backups"
+                - name: POSTGRES_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: USER
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: postgres-secret
+                      key: PASSWORD

@@ -1,6 +1,6 @@
 services:
   todo-app-be:
-    image: todo-app-be:3.8-arm64
+    image: todo-app-be:3.10-arm64
     build:
       context: ./todo-backend
       dockerfile: Dockerfile
@@ -25,7 +25,7 @@ services:
       - postgres_prod
 
   todo-app-fe:
-    image: todo-app-fe:3.8-arm64
+    image: todo-app-fe:3.10-arm64
     build:
       context: ./todo-app
       dockerfile: Dockerfile
@@ -67,6 +67,31 @@ services:
       retries: 5
     networks:
       - todo-app-network
+
+  todo-cron:
+    image: todo-app-cron:3.10-arm64
+    build:
+      context: ./todo-cron
+      dockerfile: Dockerfile
+    container_name: todo-cron
+    env_file:
+      - docker-compose.env
+    environment:
+      - POSTGRES_HOST=postgres_prod
+      - POSTGRES_PORT=5432
+      # Set Azure CLI config directory to match mount point
+      - AZURE_CONFIG_DIR=/azure-config
+    volumes:
+      # Mount Azure CLI config to a simple path and set env var to point to it
+      - ~/.azure:/azure-config:ro
+    depends_on:
+      - postgres_prod
+    networks:
+      - todo-app-network
+    # Run as your user to access Azure credentials without permission issues
+    user: "${UID:-1000}:${GID:-1000}"
+    # Use backup loop mode for local testing
+    command: ["/usr/local/bin/backup_database.sh", "loop"]
   
 # Define volumes for image caching
 volumes:
