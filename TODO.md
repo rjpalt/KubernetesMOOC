@@ -121,6 +121,14 @@ Based on `.project/context.yaml`, the production backup should use:
 - [ ] Consider moving to `project` namespace if workload identity can be reconfigured
 - [ ] Add backup retention policy
 - [ ] Add monitoring/alerting for backup failures
+- [ ] **Reduce sensitive logging in backup script for production**
+  - **Why**: Current debug logging exposes Client ID, Tenant ID, and token content (security risk)
+  - **Action**: Mask sensitive values, remove token content logging, add PRODUCTION_MODE flag
+  - **Priority**: After authentication is confirmed working
+- [ ] **Document Azure Workload Identity federated token usage in Azure-memos.md**
+  - **Why**: Need reference for manually using az CLI inside AKS containers with federated tokens
+  - **Content**: How to authenticate with `az login --federated-token` using environment variables
+  - **Reference**: Current backup script implementation as working example
 
 ### Key Insights
 - The infrastructure was designed with specific naming patterns

@@ -11,7 +11,7 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
-          serviceAccountName: postgres-backup-prod-service-account
+          # Use default service account - no need for complex workload identity
           containers:
             - name: todo-cron
               # WARNING: This image tag is automatically updated by CI/CD pipeline
@@ -32,6 +32,17 @@ spec:
                   value: "kubemoocbackups"
                 - name: AZURE_STORAGE_CONTAINER
                   value: "database-backups"
+                # Simple Azure storage account key authentication
+                - name: AZURE_STORAGE_ACCOUNT_NAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: azure-storage-secret
+                      key: account-name
+                - name: AZURE_STORAGE_ACCOUNT_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: azure-storage-secret
+                      key: account-key
                 - name: POSTGRES_USER
                   valueFrom:
                     secretKeyRef:
