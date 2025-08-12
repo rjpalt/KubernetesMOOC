@@ -77,9 +77,13 @@ validate_config() {
     fi
     
     # Check if required tools are available
+    log_debug "Checking for pg_dump availability..."
     if ! command -v pg_dump >/dev/null 2>&1; then
         log_error "pg_dump is not available. Please install PostgreSQL client tools."
         return 1
+    else
+        log_debug "pg_dump found: $(which pg_dump)"
+        log_debug "pg_dump version: $(pg_dump --version)"
     fi
     
     if ! command -v az >/dev/null 2>&1; then
@@ -114,6 +118,7 @@ create_backup() {
     export PGPASSWORD="$POSTGRES_PASSWORD"
     
     # Create database backup using pg_dump
+    log_debug "Executing pg_dump command..."
     if pg_dump \
         --host="$POSTGRES_HOST" \
         --port="$POSTGRES_PORT" \
@@ -125,16 +130,27 @@ create_backup() {
         --if-exists \
         --create \
         --format=plain \
-        --file="$backup_path" 2>/dev/null; then
+        --file="$backup_path" 2>&1; then
         
         log_info "Database backup created successfully: $backup_filename"
         log_debug "Backup size: $(du -h "$backup_path" | cut -f1)"
+        log_debug "Backup file contents preview:"
+        log_debug "$(head -10 "$backup_path" 2>/dev/null || echo 'Unable to preview backup file')"
         echo "$backup_path"
         return 0
     else
-        log_error "Failed to create database backup"
-        # Clean up partial backup file
-        [ -f "$backup_path" ] && rm -f "$backup_path"
+        local exit_code=$?
+        log_error "Failed to create database backup (exit code: $exit_code)"
+        log_debug "Checking if partial backup file exists..."
+        if [ -f "$backup_path" ]; then
+            log_debug "Partial backup file size: $(du -h "$backup_path" | cut -f1)"
+            log_debug "Partial backup file preview:"
+            log_debug "$(head -10 "$backup_path" 2>/dev/null || echo 'Unable to read partial backup file')"
+            rm -f "$backup_path"
+            log_debug "Cleaned up partial backup file"
+        else
+            log_debug "No backup file was created"
+        fi
         return 1
     fi
 }
