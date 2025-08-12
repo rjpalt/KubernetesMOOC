@@ -56,13 +56,22 @@ azure:
           usage: "ALB controller managing Azure Application Gateway"
   storage:
     accountName: kubemoocbackups
-    allowSharedKeyAccess: false
+    allowSharedKeyAccess: true  # TEMPORARY COMPROMISE: Enabled for CronJob backup compatibility
     networkRuleSetDefaultAction: Allow
     backupContainer: database-backups
     containers:
       production: database-backups
       feature: feature-backups
       local: local-backups
+    # SECURITY COMPROMISE (temporary): Using storage account keys instead of Azure Workload Identity
+    # Root cause: Azure Workload Identity webhook not injecting environment variables into CronJob pods
+    # TODO: Revert to federated identity authentication during infrastructure revamp
+    authenticationMethod: storage-account-key  # Should be: workload-identity
+    temporaryCredentials:
+      enabled: true
+      reason: "Azure Workload Identity webhook compatibility issues with AKS CronJobs"
+      created: "2025-08-12"
+      revertBy: "Infrastructure revamp (see REVAMP_ROADMAP.md Phase 5)"
   backup:
     identities:
       production:

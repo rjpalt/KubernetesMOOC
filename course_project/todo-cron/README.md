@@ -20,9 +20,9 @@ Creates todo items with random Wikipedia articles to read.
 Creates database backups and uploads them to Azure Blob Storage.
 
 **Azure Authentication:**
-- **Production**: Uses Azure Workload Identity (`backup-production-identity`)
-- **Feature branches**: Uses Azure Workload Identity (`backup-development-identity`) 
-- **Local development**: Uses Azure CLI authentication (`az login`)
+- **Current (Temporary)**: Uses Azure Storage Account key authentication via Kubernetes Secret
+- **⚠️ Security Compromise**: This is a temporary workaround for Azure Workload Identity webhook compatibility issues
+- **Planned**: Revert to Azure Workload Identity during infrastructure revamp (see `REVAMP_ROADMAP.md`)
 
 **Environment Variables:**
 | Variable | Default | Description |

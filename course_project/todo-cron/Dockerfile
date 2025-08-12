@@ -1,12 +1,20 @@
-# Use Microsoft's official Azure CLI image (includes Alpine + Azure CLI pre-installed)
-FROM mcr.microsoft.com/azure-cli:2.56.0
+# Use PostgreSQL 17 base image to ensure client/server version compatibility
+FROM postgres:17-alpine
 
-# Install additional packages needed for our scripts
+# Install Azure CLI and additional tools
 RUN apk add --no-cache \
     bash \
     curl \
-    postgresql-client \
-    && rm -rf /var/cache/apk/*
+    python3 \
+    py3-pip \
+    gcc \
+    python3-dev \
+    libffi-dev \
+    openssl-dev \
+    musl-dev \
+    linux-headers && \
+    pip3 install --break-system-packages --no-cache-dir azure-cli && \
+    rm -rf /var/cache/apk/*
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S appgroup && \
