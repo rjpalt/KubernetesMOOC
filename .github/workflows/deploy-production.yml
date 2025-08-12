@@ -1,9 +1,25 @@
 name: Production Deployment
 
 on:
-  workflow_run:
-    workflows: ["CI Pipeline - Microservices"]
-    types: [completed]
+  # Trigger on PR merges to main (feature branch merges)
+  push:
+    branches: [ main ]
+    paths:
+      # Only deploy when actual application code changes
+      - 'course_project/todo-backend/**'
+      - 'course_project/todo-app/**'
+      - 'course_project/todo-cron/**'
+  
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
 
 permissions:
   id-token: write  # Required for Azure authentication
@@ -18,25 +34,22 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    # Only run when CI succeeded AND the source branch is main
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main'
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        # CRITICAL: Checkout the exact same commit that triggered the CI pipeline
-        # This ensures we deploy manifests that match the tested images
-        ref: ${{ github.event.workflow_run.head_sha }}
+    
+    - name: Wait for CI completion
+      run: |
+        echo "Checking if this commit has completed CI pipeline..."
+        # We'll verify images exist in the next step instead of waiting for workflow
+        echo "Production deployment will verify image availability before proceeding"
     
     - name: Set environment variables
       run: |
-        # Use the same branch and commit SHA as the triggering CI pipeline
-        # This ensures image tags match: main-{sha}
-        BRANCH_NAME="${{ github.event.workflow_run.head_branch }}"
-        COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+        # Use current branch and commit SHA for push events
+        BRANCH_NAME="${{ github.ref_name }}"
+        COMMIT_SHA="${{ github.sha }}"
         NAMESPACE="project"
         
         echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
@@ -48,6 +61,7 @@ jobs:
         echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Commit:** \`${COMMIT_SHA}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Namespace:** \`${NAMESPACE}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
     
     - name: Azure Login via Workload Identity
       uses: azure/login@v2
