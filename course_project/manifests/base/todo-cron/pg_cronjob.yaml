@@ -21,7 +21,7 @@ spec:
               command: ["/usr/local/bin/backup_database.sh"]
               env:
                 - name: LOG_LEVEL
-                  value: "INFO"
+                  value: "DEBUG"
                 - name: POSTGRES_HOST
                   value: "postgres-svc"
                 - name: POSTGRES_PORT

@@ -20,6 +20,12 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
 ## Active Tasks
 
 ### Critical
+- [ ] **Fix PostgreSQL Backup CronJob - Complete Rebuild**
+  - **Why**: Current Azure Workload Identity setup is broken; backup functionality not working
+  - **Scope**: Clean slate approach following documented infrastructure design
+  - **Details**: See dedicated section below for step-by-step plan
+
+### Critical
 - [ ] Review deployment pipelines with Copilot for optimization and best practices
   - **Why**: Recent health check fixes need validation; ensure robust CI/CD patterns
   - **Scope**: Production, feature branch, and cleanup workflows
@@ -50,6 +56,77 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
   - **Why**: Validate complete workflows before production
 - [ ] Set up GitOps with separate config repository
   - **Why**: Track actual deployed state, enable proper rollbacks
+
+## PostgreSQL Backup CronJob - Rebuild Plan
+
+### Current State Analysis
+**Problems:**
+- Service account in wrong namespace (`project` vs `default`)
+- Service account name mismatch (`postgres-backup-prod-service-account` vs `backup-serviceaccount`)
+- Azure Workload Identity environment variables not being injected
+- Backup uploads failing due to authentication issues
+
+**What Works:**
+- PostgreSQL database connectivity ✅
+- CronJob scheduling ✅
+- Local backup creation ✅
+- Script logic and error handling ✅
+
+### Step 1: Clean Up Current Implementation
+- [ ] Remove current broken service account
+  ```bash
+  kubectl delete serviceaccount postgres-backup-prod-service-account -n project
+  ```
+- [ ] Remove backup-service-account.yaml from manifests
+- [ ] Update kustomization.yaml to remove backup-service-account.yaml
+- [ ] Revert pg_cronjob.yaml to not use any service account (use default)
+
+### Step 2: Follow Documented Infrastructure Design
+Based on `.project/context.yaml`, the production backup should use:
+- **Namespace**: `default` (not `project`)
+- **Service Account**: `backup-serviceaccount`
+- **Managed Identity**: `backup-production-identity` (50f96678-064c-463a-a3e3-2297a3b557f1)
+- **Storage Container**: `database-backups`
+- **Federated Credential**: Already configured for `system:serviceaccount:default:backup-serviceaccount`
+
+### Step 3: Create Proper Service Account
+- [ ] Create new service account in `default` namespace:
+  ```yaml
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: backup-serviceaccount
+    namespace: default
+    annotations:
+      azure.workload.identity/client-id: "50f96678-064c-463a-a3e3-2297a3b557f1"
+    labels:
+      azure.workload.identity/use: "true"
+  ```
+
+### Step 4: Update CronJob Configuration
+- [ ] Move pg_cronjob to `default` namespace
+- [ ] Update serviceAccountName to `backup-serviceaccount`
+- [ ] Verify environment variables match storage account configuration
+- [ ] Keep enhanced logging (LOG_LEVEL: DEBUG) for verification
+
+### Step 5: Test and Validate
+- [ ] Deploy updated manifests
+- [ ] Verify Azure Workload Identity environment variables are injected
+- [ ] Test backup creation and Azure upload
+- [ ] Verify backups appear in `kubemoocbackups/database-backups` container
+- [ ] Reduce logging to INFO once working
+
+### Step 6: Consider Future Improvements
+- [ ] Document why backup runs in `default` vs `project` namespace
+- [ ] Consider moving to `project` namespace if workload identity can be reconfigured
+- [ ] Add backup retention policy
+- [ ] Add monitoring/alerting for backup failures
+
+### Key Insights
+- The infrastructure was designed with specific naming patterns
+- Azure federated credentials are already configured correctly
+- The issue is namespace/service account name mismatch, not Azure configuration
+- Following the documented design should resolve authentication issues
 
 ### Workflow Optimizations
 - [x] ~~Optimize CI/CD trigger paths for smarter rebuilds~~
