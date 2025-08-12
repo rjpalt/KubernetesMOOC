@@ -171,7 +171,8 @@ test_azure_access() {
     
     # Test Azure CLI authentication
     if ! az account show --output none 2>/dev/null; then
-        log_error "Azure CLI authentication failed. Please run 'az login' or configure managed identity."
+        log_error "Azure CLI authentication failed."
+        log_error "Workload identity may not be configured correctly."
         return 1
     fi
     
@@ -260,6 +261,7 @@ if [ "${1:-}" = "loop" ]; then
     log_info "Starting backup loop mode (interval: ${BACKUP_INTERVAL}s)"
     log_info "Note: In Kubernetes, use CronJob scheduling instead of loop mode"
     
+    # Run the backup loop immediately
     while true; do
         log_info "Running scheduled backup"
         main

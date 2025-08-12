@@ -65,27 +65,48 @@ TODO_BACKEND_URL=http://localhost:8000 ./create_wikipedia_todo.sh health
 ```
 
 ### Testing the Backup Script
-```bash
-# Make script executable
-chmod +x backup_database.sh
 
-# Test database backup (requires Azure CLI authentication)
-az login  # or use managed identity in production
+**Prerequisites:**
+- PostgreSQL 17 client tools: `brew install postgresql@17`
+- Azure CLI: `brew install azure-cli` 
+- Azure authentication: `az login`
+- Storage Blob Data Contributor role on kubemoocbackups storage account
+- Running PostgreSQL database: `docker compose up postgres_prod -d`
+
+**Setup:**
+```bash
+# Add PostgreSQL 17 tools to PATH (required for each session)
+export PATH="/opt/homebrew/opt/postgresql@17/bin:$PATH"
+
+# Authenticate with Azure (if not already done)
+az login
 
 # Set environment variables for local testing
 export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
 export POSTGRES_DB=todoapp
 export POSTGRES_USER=todouser
 export POSTGRES_PASSWORD=todopass
 export AZURE_STORAGE_ACCOUNT=kubemoocbackups
-export AZURE_STORAGE_CONTAINER=local-backups  # Use local-backups for development
-
-# Test backup
-LOG_LEVEL=DEBUG ./backup_database.sh
-
-# Health check
-./backup_database.sh health
+export AZURE_STORAGE_CONTAINER=local-backups
+export LOG_LEVEL=DEBUG
 ```
+
+**Testing:**
+```bash
+cd course_project/todo-cron
+
+# Make script executable
+chmod +x backup_database.sh
+
+# Health check (tests all connectivity)
+./backup_database.sh health
+
+# Single backup test
+./backup_database.sh
+```
+
+**Note:** Docker-based local testing is not recommended due to Azure CLI authentication complexity. Use direct local execution instead.
 
 ## Docker Image
 
@@ -108,19 +129,7 @@ docker run --rm \
   todo-cron:latest /usr/local/bin/create_wikipedia_todo.sh
 ```
 
-### Run Backup Script
-```bash
-docker run --rm \
-  -e POSTGRES_HOST=host.docker.internal \
-  -e POSTGRES_DB=todoapp \
-  -e POSTGRES_USER=todouser \
-  -e POSTGRES_PASSWORD=todopass \
-  -e AZURE_STORAGE_ACCOUNT=kubemoocbackups \
-  -e AZURE_STORAGE_CONTAINER=local-backups \
-  -e LOG_LEVEL=DEBUG \
-  -v ~/.azure:/home/appuser/.azure:ro \
-  todo-cron:latest /usr/local/bin/backup_database.sh
-```
+**Note:** For backup script testing, use local execution instead of Docker due to Azure authentication complexity.
 
 ## Error Handling
 

@@ -79,14 +79,18 @@ services:
     environment:
       - POSTGRES_HOST=postgres_prod
       - POSTGRES_PORT=5432
+      # Set Azure CLI config directory to match mount point
+      - AZURE_CONFIG_DIR=/azure-config
     volumes:
-      # Mount Azure CLI config for authentication
-      - ~/.azure:/home/cron/.azure:ro
+      # Mount Azure CLI config to a simple path and set env var to point to it
+      - ~/.azure:/azure-config:ro
     depends_on:
       - postgres_prod
     networks:
       - todo-app-network
-    # Use loop mode for local testing (Kubernetes will use CronJob scheduling)
+    # Run as your user to access Azure credentials without permission issues
+    user: "${UID:-1000}:${GID:-1000}"
+    # Use backup loop mode for local testing
     command: ["/usr/local/bin/backup_database.sh", "loop"]
   
 # Define volumes for image caching
