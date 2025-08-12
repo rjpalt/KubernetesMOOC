@@ -1,17 +1,12 @@
-# Use minimal Alpine Linux image
-FROM alpine:3.19
+# Use Microsoft's official Azure CLI image (includes Alpine + Azure CLI pre-installed)
+FROM mcr.microsoft.com/azure-cli:2.56.0
 
-# Install essential packages for both scripts
+# Install additional packages needed for our scripts
 RUN apk add --no-cache \
     bash \
     curl \
     postgresql-client \
-    python3 \
-    py3-pip \
     && rm -rf /var/cache/apk/*
-
-# Install Azure CLI
-RUN pip3 install --no-cache-dir azure-cli
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S appgroup && \

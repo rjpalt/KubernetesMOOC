@@ -10,6 +10,7 @@ POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-todopass}"
 AZURE_STORAGE_ACCOUNT="${AZURE_STORAGE_ACCOUNT:-}"
 AZURE_STORAGE_CONTAINER="${AZURE_STORAGE_CONTAINER:-database-backups}"
 LOG_LEVEL="${LOG_LEVEL:-INFO}"
+BACKUP_INTERVAL="${BACKUP_INTERVAL:-60}"  # Interval in seconds for local testing
 
 # Normalize log level to uppercase
 LOG_LEVEL=$(echo "$LOG_LEVEL" | tr '[:lower:]' '[:upper:]')
@@ -254,5 +255,18 @@ if [ "${1:-}" = "health" ]; then
     exit 0
 fi
 
-# Run main function
+# Loop mode for local testing (Kubernetes uses CronJob scheduling instead)
+if [ "${1:-}" = "loop" ]; then
+    log_info "Starting backup loop mode (interval: ${BACKUP_INTERVAL}s)"
+    log_info "Note: In Kubernetes, use CronJob scheduling instead of loop mode"
+    
+    while true; do
+        log_info "Running scheduled backup"
+        main
+        log_info "Backup completed, sleeping for ${BACKUP_INTERVAL} seconds"
+        sleep "$BACKUP_INTERVAL"
+    done
+fi
+
+# Run main function (single execution - used by Kubernetes CronJob)
 main "$@"
