@@ -400,6 +400,71 @@ Different environments use distinct path prefixes to avoid conflicts and enable 
 
 ## Azure Deployment
 
+### Azure Managed Identity Architecture
+
+The project uses Azure Workload Identity for passwordless authentication across multiple operational contexts. Each managed identity follows the principle of least privilege:
+
+#### GitHub Actions Identities
+
+**CI Identity (`github-actions-ci`)**
+- **Purpose**: Continuous Integration - testing and image building
+- **Scope**: Pull requests and main branch builds
+- **Permissions**: 
+  - ACR Push (container image publishing)
+- **Federated Credentials**:
+  - Pull requests: `repo:rjpalt/KubernetesMOOC:pull_request`
+  - Main branch: `repo:rjpalt/KubernetesMOOC:ref:refs/heads/main`
+- **Usage**: Used by CI workflow for testing code and building container images
+
+**CD Identity (`github-actions-todo-cd`)**
+- **Purpose**: Continuous Deployment - production releases
+- **Scope**: Main branch deployments only
+- **Permissions**:
+  - ACR Push (container image publishing)
+  - AKS Contributor (Kubernetes deployments)
+- **Federated Credentials**:
+  - Main branch: `repo:rjpalt/KubernetesMOOC:ref:refs/heads/main`
+- **Usage**: Used by deployment workflows for production releases
+
+#### Kubernetes Workload Identities
+
+**Key Vault Access (`keyvault-identity-kube-mooc`)**
+- **Purpose**: Secure access to database credentials and secrets
+- **Scope**: PostgreSQL and other services requiring secrets
+- **Permissions**:
+  - Key Vault Secrets User (read access to secrets)
+- **Federated Credentials**:
+  - PostgreSQL: `system:serviceaccount:project:postgres-service-account`
+- **Usage**: CSI Secrets Store Driver fetches credentials from Azure Key Vault
+
+**Application Load Balancer (`azure-alb-identity`)**
+- **Purpose**: Gateway API and ingress traffic management
+- **Scope**: ALB Controller operations
+- **Permissions**:
+  - Reader (AKS node resource group)
+  - ALB Configuration Manager (gateway provisioning)
+  - Network Contributor (subnet management)
+- **Federated Credentials**:
+  - ALB Controller: `system:serviceaccount:azure-alb-system:alb-controller-sa`
+- **Usage**: Azure Application Gateway for Containers management
+
+### Security Benefits
+
+**Separation of Concerns:**
+- CI identity can only build and test - cannot deploy to production
+- CD identity can deploy but only from main branch
+- Workload identities have minimal, service-specific permissions
+
+**No Stored Credentials:**
+- All authentication uses OIDC token exchange
+- No long-lived secrets stored in GitHub or Kubernetes
+- Automatic token expiration (30-60 minutes)
+
+**Audit Trail:**
+- All identity usage logged in Azure Activity Log
+- Clear attribution of actions to specific identities
+- Federated credential subjects prevent unauthorized access
+
 ### Azure Resources
 - **Resource Group**: `kubernetes-learning` (North Europe region)
 - **AKS Cluster**: `kube-mooc` (1 node, monitoring enabled)
