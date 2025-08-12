@@ -1638,10 +1638,14 @@ az role assignment create \
 
 Create the federated credentials for the managed identities:
 ```bash
+# Production backup identity - for main/default namespace
 az identity federated-credential create \
   --name backup-production-k8s \
   --identity-name backup-production-identity \
   --resource-group kubernetes-learning \
   --issuer https://northeurope.oic.prod-aks.azure.com/b7cff52d-a4ec-4367-903c-5cf05c061aca/9618e5d3-f054-4b6d-9871-1d5a7447d273/ \
   --subject system:serviceaccount:default:backup-serviceaccount
+
+# NOTE: Development identity kept for future use, but no federated credential needed
+# Feature environments will not have backup functionality - they are disposable
 ```
