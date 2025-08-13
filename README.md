@@ -97,6 +97,8 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - The related scripts are located in the [course_project/manifests/base/todo-cron](course_project/manifests/base/todo-cron) directory.
   - Note that the backup script is using a service account with a key and not a managed identity due to technical difficulties in enabling the federated identity token wihin the AKS cluster. This is a stop-gap solution that will be removed in the next step to replace the whole database with a DBaaS solution.
   - The related workflows are running correctly, but they, too, will be refactgored for better usability in the next step.
+  - ![Image of backups](https://github.com/user-attachments/assets/9aab15e7-0d98-4f42-ba34-abcc7bf72f18)
+
 
 
 ## Development & Environment Management
