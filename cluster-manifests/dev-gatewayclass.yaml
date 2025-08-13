@@ -1,0 +1,7 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: azure-alb-dev
+spec:
+  controllerName: alb.networking.azure.io/alb-controller
+  description: "Azure ALB for development environments"
