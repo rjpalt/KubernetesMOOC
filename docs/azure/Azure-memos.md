@@ -1844,4 +1844,215 @@ az role assignment create \
 **Common Error**: `LinkedAuthorizationFailed` indicates missing subnet join permissions (role #3 above).
 
 **Verification**: After running these commands, the ApplicationLoadBalancer should provision successfully within 2-3 minutes.
+
+-----
+
+# Azure Application Gateway for Containers (AGC) - BYO Deployment
+
+## Critical Architecture Requirement
+
+⚠️ **CRITICAL**: Azure Application Gateway for Containers (AGC) MUST be deployed in the same Virtual Network (VNet) as your AKS cluster. Deploying AGC in a separate VNet will cause connectivity failures with Azure CNI overlay networking.
+
+### Why Same VNet is Required
+
+When using Azure CNI with overlay mode, the ALB Controller cannot establish proper connectivity to an AGC deployed in a different VNet. This manifests as:
+- Gateway resources remain in "Unknown" or "Pending" state
+- ALB Controller logs show connectivity timeouts
+- HTTP traffic fails to reach backend services
+
+### Successful Architecture Pattern
+
 ```
+AKS Cluster VNet (e.g., aks-vnet-12345)
+├── AKS Subnet (10.224.0.0/16) - Node pools
+└── AGC Subnet (10.225.0.0/24) - Application Gateway for Containers
+```
+
+## BYO Deployment Steps
+
+### Prerequisites
+- AKS cluster with ALB Controller installed
+- Azure CLI authenticated and configured
+- Same VNet as AKS cluster identified
+
+### Step 1: Set Environment Variables
+
+```bash
+# Core Infrastructure
+RESOURCE_GROUP="<your-resource-group>"
+AGC_NAME="<your-agc-name>"
+VNET_NAME="<aks-vnet-name>"  # SAME VNet as AKS cluster
+VNET_RESOURCE_GROUP="<node-resource-group>"  # Usually MC_<rg>_<cluster>_<region>
+AGC_SUBNET_NAME="agc-subnet"
+
+# Identity (should already exist from ALB Controller setup)
+IDENTITY_RESOURCE_NAME="azure-alb-identity"
+```
+
+### Step 2: Create AGC Subnet in AKS VNet
+
+```bash
+# Create subnet in the SAME VNet as AKS cluster
+az network vnet subnet create \
+  --resource-group $VNET_RESOURCE_GROUP \
+  --vnet-name $VNET_NAME \
+  --name $AGC_SUBNET_NAME \
+  --address-prefixes 10.225.0.0/24 \
+  --delegations Microsoft.ServiceNetworking/trafficControllers
+```
+
+### Step 3: Create Application Gateway for Containers
+
+```bash
+# Create the AGC resource
+az network alb create \
+  --resource-group $RESOURCE_GROUP \
+  --name $AGC_NAME \
+  --location <region>
+```
+
+### Step 4: Create Subnet Association
+
+```bash
+# Get subnet ID
+AGC_SUBNET_ID=$(az network vnet subnet show \
+  --resource-group $VNET_RESOURCE_GROUP \
+  --vnet-name $VNET_NAME \
+  --name $AGC_SUBNET_NAME \
+  --query id -o tsv)
+
+# Create association between AGC and subnet
+az network alb association create \
+  --resource-group $RESOURCE_GROUP \
+  --alb-name $AGC_NAME \
+  --name "association-1" \
+  --subnet $AGC_SUBNET_ID
+```
+
+### Step 5: Create Frontend
+
+```bash
+# Create frontend for the AGC
+az network alb frontend create \
+  --resource-group $RESOURCE_GROUP \
+  --alb-name $AGC_NAME \
+  --name "frontend"
+```
+
+### Step 6: Get AGC Resource ID
+
+```bash
+# Get the full AGC resource ID for Gateway annotation
+AGC_RESOURCE_ID=$(az network alb show \
+  --resource-group $RESOURCE_GROUP \
+  --name $AGC_NAME \
+  --query id -o tsv)
+
+echo "AGC Resource ID: $AGC_RESOURCE_ID"
+```
+
+## Kubernetes Gateway Configuration
+
+### Create Gateway with BYO Annotation
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agc-byo-gateway
+  namespace: <your-namespace>
+  annotations:
+    # BYO deployment - specify the AGC resource ID directly
+    alb.networking.azure.io/alb-id: <AGC_RESOURCE_ID>
+spec:
+  gatewayClassName: azure-alb-external
+  listeners:
+  - name: http-listener
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: Same
+  addresses:
+  - type: alb.networking.azure.io/alb-frontend
+    value: frontend
+```
+
+### Create HTTPRoute for Application
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: app-route
+  namespace: <your-namespace>
+spec:
+  parentRefs:
+  - name: agc-byo-gateway
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: <your-service>
+      port: 80
+```
+
+## Deployment Strategy Comparison
+
+| Strategy | Use Case | Annotations | VNet Requirement |
+|----------|----------|-------------|------------------|
+| **ALB Managed** | Production environments | `alb-namespace`, `alb-name` | Same VNet |
+| **BYO** | Development/Feature environments | `alb-id` | Same VNet |
+
+### When to Use BYO vs ALB Managed
+
+- **BYO (Bring-Your-Own)**: When you need explicit control over AGC lifecycle, multiple environments, or when CNI overlay causes managed deployment issues
+- **ALB Managed**: When you want the ALB Controller to automatically manage the AGC lifecycle
+
+## Verification Steps
+
+1. **Check Gateway Status**:
+   ```bash
+   kubectl get gateway <gateway-name> -n <namespace>
+   # Should show PROGRAMMED=True and an ADDRESS
+   ```
+
+2. **Test Connectivity**:
+   ```bash
+   curl http://<gateway-address>/
+   ```
+
+3. **Check ALB Controller Logs** (if issues):
+   ```bash
+   kubectl logs -n azure-alb-system -l app=alb-controller --tail=50
+   ```
+
+## Troubleshooting
+
+### Gateway Stuck in "Unknown" State
+- **Cause**: AGC deployed in different VNet than AKS cluster
+- **Solution**: Redeploy AGC in same VNet as AKS cluster
+
+### "Waiting for overlay extension config" Messages
+- **Cause**: Normal during initial setup, ALB Controller synchronizing with AGC
+- **Solution**: Wait 2-3 minutes for synchronization to complete
+
+### Frontend Not Found Errors
+- **Cause**: Frontend name mismatch between AGC and Gateway spec
+- **Solution**: Verify frontend name matches in both Azure and Gateway YAML
+
+-----
+
+## Implementation Timeline - AGC BYO Success (August 13, 2025)
+
+### Achievements
+- ✅ **AGC BYO Deployment**: Successfully deployed using same VNet as AKS cluster
+- ✅ **Gateway Validation**: Gateway API resources properly configured and PROGRAMMED
+- ✅ **Test Application**: nginx test service accessible via AGC routing
+- ✅ **Architecture Documentation**: Critical VNet placement requirement documented
+- ✅ **Feature Environment Isolation**: Separate gateway ready for feature branch deployments
+```
+
+https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/how-to-backend-mtls-gateway-api?tabs=byo
