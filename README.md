@@ -91,6 +91,12 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
     - Add NetworkPolicies and edge auth (Entra ID or OAuth proxy) for preview environment security
     - Consider Azure Functions-based provisioning service: GitHub Actions → OIDC → Azure Function → provision resources; improves security and centralized control
 - [3.8](https://github.com/rjpalt/KubernetesMOOC/tree/3.8/course_project) - The environment teardown workflow is implemented in the [cleanup-feature-environment.yaml](.github/workflows/cleanup-feature-environment.yaml) [here](https://github.com/rjpalt/KubernetesMOOC/actions/runs/16858557720/job/47755265970) is an example of the workflow run for deleted branch ex-3-8.
+- [3.9]
+- [3.10](https://github.com/rjpalt/KubernetesMOOC/tree/3.10/course_project) - Containerized database backups to Azure Blob Storage
+  - The backup script is located in the [course_project/todo-cron/backup_database.sh](course_project/todo-cron/backup_database.sh) file.
+  - The related scripts are located in the [course_project/manifests/base/todo-cron](course_project/manifests/base/todo-cron) directory.
+  - Note that the backup script is using a service account with a key and not a managed identity due to technical difficulties in enabling the federated identity token wihin the AKS cluster. This is a stop-gap solution that will be removed in the next step to replace the whole database with a DBaaS solution.
+  - The related workflows are running correctly, but they, too, will be refactgored for better usability in the next step.
 
 
 ## Development & Environment Management

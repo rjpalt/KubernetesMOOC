@@ -31,9 +31,9 @@
 | 2025-08-09 | 2 | Chapter 4: 3.7 | 76.5 |
 | 2025-08-10 | 4 | Chapter 4: 3.8: Implement document overhaul, feature environment teardown | 80.5 |
 | 2025-08-11 | 1 | Chapter 4: 3.9 & 3.10 | 81.5 |
-| 2025-08-12 | 0 | Chapter 4: 3.11 | 81.5 |
-| 2025-08-13 | 0 | Chapter 4: 3.12 | 81.5 |
-| 2025-08-14 | 0 | Chapter 5: 4.1 | 81.5 |
-| 2025-08-15 | 0 | Chapter 5: 4.2 | 81.5 |
-| 2025-08-16 | 0 | Chapter 5: 4.3 | 81.5 |
-| 2025-08-17 | 0 | Chapter 5: 4.4 | 81.5 |
+| 2025-08-12 | 5 | Chapter 4: 3.10 | 86.5 |
+| 2025-08-13 | 4.5 | Chapter 4: 3.9 + Refactor Infrastructure and CI/CD| 91 |
+| 2025-08-14 | 0 | Chapter 5: 4.1 | 86.5 |
+| 2025-08-15 | 0 | Chapter 5: 4.2 | 86.5 |
+| 2025-08-16 | 0 | Chapter 5: 4.3 | 86.5 |
+| 2025-08-17 | 0 | Chapter 5: 4.4 | 86.5 |
