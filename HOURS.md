@@ -33,7 +33,7 @@
 | 2025-08-11 | 1 | Chapter 4: 3.9 & 3.10 | 81.5 |
 | 2025-08-12 | 5 | Chapter 4: 3.10 | 86.5 |
 | 2025-08-13 | 6 | Chapter 4: 3.9 + Refactor Infrastructure and CI/CD| 92.5 |
-| 2025-08-14 | 0 | Chapter 5: 4.1 | 91 |
-| 2025-08-15 | 0 | Chapter 5: 4.2 | 91 |
-| 2025-08-16 | 0 | Chapter 5: 4.3 | 91 |
-| 2025-08-17 | 0 | Chapter 5: 4.4 | 91 |
+| 2025-08-14 | 6.5 | Chapter 5: 4.1 - Azure Function provisioning system deployed and verified | 99 |
+| 2025-08-15 | 0 | Chapter 5: 4.2 | 98.5 |
+| 2025-08-16 | 0 | Chapter 5: 4.3 | 98.5 |
+| 2025-08-17 | 0 | Chapter 5: 4.4 | 98.5 |

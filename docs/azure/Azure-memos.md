@@ -212,6 +212,84 @@ kubectl get ingress
 
 # Azure Workload Identity for GitHub Actions CI/CD
 
+## Provisioning Function Managed Identity Setup (August 14, 2025)
+
+### Azure Function Environment Provisioning
+
+For the **kubemooc-provisioning-func** Azure Function, we created a dedicated managed identity `mi-provisioning-function` with the following role assignments to support automated environment provisioning:
+
+#### Required Role Assignments for mi-provisioning-function
+
+```bash
+# Get the managed identity principal ID
+IDENTITY_PRINCIPAL_ID=$(az identity show --name mi-provisioning-function --resource-group <AUTOMATION_RESOURCE_GROUP> --query principalId -o tsv)
+
+# PostgreSQL Database Management
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Contributor" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<POSTGRES_RESOURCE_GROUP>/providers/Microsoft.DBforPostgreSQL/flexibleServers/<POSTGRES_SERVER_NAME>"
+
+# Managed Identity Operations (for federated credential management)
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Managed Identity Operator" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<AUTOMATION_RESOURCE_GROUP>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<APP_MANAGED_IDENTITY_NAME>"
+
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Managed Identity Contributor" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<AUTOMATION_RESOURCE_GROUP>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<APP_MANAGED_IDENTITY_NAME>"
+
+# AKS Cluster Access (for namespace creation and OIDC issuer access)
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Reader" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<AKS_RESOURCE_GROUP>/providers/Microsoft.ContainerService/managedClusters/<AKS_CLUSTER_NAME>"
+
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Azure Kubernetes Service RBAC Writer" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<AKS_RESOURCE_GROUP>/providers/Microsoft.ContainerService/managedClusters/<AKS_CLUSTER_NAME>"
+```
+
+#### Function Environment Variables
+
+The provisioning function requires these environment variables to be set in the Azure Function App configuration:
+
+```bash
+AZURE_SUBSCRIPTION_ID=<YOUR_AZURE_SUBSCRIPTION_ID>
+POSTGRES_RESOURCE_GROUP=<POSTGRES_RESOURCE_GROUP>
+POSTGRES_SERVER_NAME=<POSTGRES_SERVER_NAME>
+POSTGRES_ADMIN_USER=<POSTGRES_ADMIN_USER>
+POSTGRES_ADMIN_PASSWORD=<stored-in-azure-portal>
+MANAGED_IDENTITY_RESOURCE_GROUP=<AUTOMATION_RESOURCE_GROUP>
+MANAGED_IDENTITY_NAME=<APP_MANAGED_IDENTITY_NAME>
+MANAGED_IDENTITY_CLIENT_ID=<APP_MANAGED_IDENTITY_CLIENT_ID>
+AKS_RESOURCE_GROUP=<AKS_RESOURCE_GROUP>
+AKS_CLUSTER_NAME=<AKS_CLUSTER_NAME>
+```
+
+**Note**: All actual values are stored in `.project/context.yaml` and should not be committed to version control.
+
+#### Function Capabilities
+
+The deployed function creates complete branch environments with a single HTTP POST:
+
+1. **PostgreSQL Database**: Creates branch-specific database on shared server
+2. **Federated Credential**: Sets up workload identity for branch namespace 
+3. **Kubernetes Namespace**: Creates namespace with AGC gateway access labels
+
+**Function URL**: `https://<FUNCTION_APP_NAME>.azurewebsites.net/api/provision`
+
+**Usage**:
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"branch_name": "feature-xyz"}' \
+  "https://<FUNCTION_APP_NAME>.azurewebsites.net/api/provision?code=<function-key>"
+```
+
 ## Why Separate Identities for CI and CD?
 
 In production environments, it's crucial to follow the **principle of least privilege** and separate concerns between different pipeline stages, even when they share the same underlying infrastructure.
@@ -2101,6 +2179,108 @@ spec:
 - ✅ **Test Application**: nginx test service accessible via AGC routing
 - ✅ **Architecture Documentation**: Critical VNet placement requirement documented
 - ✅ **Feature Environment Isolation**: Separate gateway ready for feature branch deployments
-```
 
 https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/how-to-backend-mtls-gateway-api?tabs=byo
+
+# Implementing Azure Functions #
+
+For improved management and secuity, we will create a new resource group.
+
+```bash
+az group create --name kubemooc-automation-rg --location northeurope
+```
+
+Create a Storage Account for the Function App:
+```bash
+az storage account create \
+  --name kubemoocautofuncsa \
+  --resource-group kubemooc-automation-rg \
+  --location northeurope \
+  --sku Standard_LRS \
+  --kind StorageV2
+```
+
+- For function code storage
+- Function state management
+- Trigger conditions (if not HTTP requests)
+- Key management for HTTP triggers
+
+Create Application Insights for monitoring:
+```bash
+az monitor app-insights component create \
+  --app kubemooc-provisioning-func-ai \
+  --location northeurope \
+  --resource-group kubemooc-automation-rg \
+  --application-type web
+```
+
+- Live metrics
+- Centralized logs
+- Exception tracking
+- Performance analysis
+- Application Map
+
+Create a Function App:
+```bash
+az functionapp create \
+  --name kubemooc-provisioning-func \
+  --resource-group kubemooc-automation-rg \
+  --storage-account kubemoocautofuncsa \
+  --consumption-plan-location northeurope \
+  --runtime python \
+  --functions-version 4 \
+  --os-type Linux \
+  --app-insights kubemooc-provisioning-func-ai
+```
+
+## Managed Identities for Function App ##
+Creation of a managed identity for the todo-app to access Azure resources securely in the resource group for the Function App:
+
+```bash
+az identity create \
+  --name mi-todo-app-dev \
+  --resource-group kubemooc-automation-rg \
+  --location northeurope
+```
+
+Creation of a managed identity for the provisioning function:
+```bash
+az identity create \
+  --name mi-provisioning-function \
+  --resource-group kubemooc-automation-rg \
+  --location northeurope
+```
+
+Assign correct permissions for both:
+```bash
+az role assignment create \
+  --assignee b0cd045b-2d5d-40df-a431-d040d28cc24e \
+  --role "Reader" \
+  --scope /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubernetes-learning/providers/Microsoft.DBforPostgreSQL/flexibleServers/kubemooc-postgres-feature
+```
+
+ Note that you have to dig out the Correct scope of your PostgreServer if it's not in the same resource group as the Function App. Also the name for it.
+
+ Grant mi-provisioning-function permission to manage identities in the resource group:
+ ```bash
+ az role assignment create \
+  --assignee 5acb9e8d-449f-4f46-9073-4b1d764d25e6 \
+  --role "Managed Identity Operator" \
+  --scope /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubemooc-automation-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/mi-todo-app-dev
+```
+
+Grant mi-provisioning-function Contributor role for the PostgreSQL server:
+```bash
+az role assignment create \
+  --assignee 5acb9e8d-449f-4f46-9073-4b1d764d25e6 \
+  --role "Contributor" \
+  --scope /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubernetes-learning/providers/Microsoft.DBforPostgreSQL/flexibleServers/kubemooc-postgres-feature
+```
+
+Grant the mi-provisioning-function access to your AKS Cluster with RBAC writer role so that it can create namespaces and other resources:
+```bash
+az role assignment create \
+  --assignee 5acb9e8d-449f-4f46-9073-4b1d764d25e6 \
+  --role "Azure Kubernetes Service RBAC Writer" \
+  --scope /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubernetes-learning/providers/Microsoft.ContainerService/managedClusters/kube-mooc
+```
