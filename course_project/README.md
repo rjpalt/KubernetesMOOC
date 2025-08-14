@@ -2,6 +2,15 @@
 
 Two-service todo application: **todo-backend** (REST API) and **todo-app** (Frontend with image caching). The **todo-cron** service provides automated Wikipedia todo generation and database backup to Azure Blob Storage.
 
+## Database-as-a-Service (DBaaS) Transition (In Progress)
+
+We are migrating from containerized PostgreSQL to Azure Database for PostgreSQL Flexible Server:
+
+- **Production:** `kubemooc-postgres-prod` (North Europe, B1ms, no HA)
+- **Feature/Automation:** `kubemooc-postgres-feature` (North Europe, B1ms, no HA)
+
+Feature branch automation will create databases on the feature server. See `.project/context.yaml` for details.
+
 ## Architecture
 
 - **todo-backend** (Port 8001): FastAPI REST API for todo CRUD operations
