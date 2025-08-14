@@ -1,5 +1,53 @@
 # Azure AKS Version of Course Project #
 
+## Setting up Azure PostgreSQL Flexible Server (DBaaS)
+
+### Production and Feature Environments
+
+- **Production server:**
+  - Name: `kubemooc-postgres-prod`
+  - Location: `northeurope`
+  - SKU: `Standard_B1ms` (Burstable, low-cost)
+  - High Availability: Disabled
+
+- **Feature server:**
+  - Name: `kubemooc-postgres-feature`
+  - Location: `northeurope`
+  - SKU: `Standard_B1ms`
+  - High Availability: Disabled
+
+#### Azure CLI Example
+
+```bash
+az postgres flexible-server create \
+  --resource-group kubernetes-learning \
+  --name kubemooc-postgres-prod \
+  --location northeurope \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --high-availability Disabled \
+  --storage-size 32 \
+  --version 16 \
+  --admin-user kubemoocadmin \
+  --public-access 0.0.0.0 \
+  --yes
+
+az postgres flexible-server create \
+  --resource-group kubernetes-learning \
+  --name kubemooc-postgres-feature \
+  --location northeurope \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --high-availability Disabled \
+  --storage-size 32 \
+  --version 16 \
+  --admin-user kubemoocadmin \
+  --public-access 0.0.0.0 \
+  --yes
+```
+
+See `.project/context.yaml` for server details. Feature branch automation should create databases on the feature server.
+
 ## Exercise 4.1 - Setting up Azure AKS environment ##
 ### Azure CLI Commands ###
 Installing Azure CLI on macOS:
