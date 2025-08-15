@@ -1,3 +1,15 @@
+import asyncio
+import logging
+import os
+
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+
+from src.config.settings import settings
+
+from .models import Base
+
 """Database connection management with async SQLAlchemy. Handles local and Azure Cloud, yeah."""
 """
 Database connection management using asynchronous SQLAlchemy.
@@ -35,18 +47,6 @@ Configuration:
 Logging:
     All major operations and errors are logged using the standard Python logging module.
 """
-
-import asyncio
-import logging
-import os
-
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
-
-from src.config.settings import settings
-
-from .models import Base
 
 logger = logging.getLogger(__name__)
 
