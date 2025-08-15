@@ -287,9 +287,9 @@ jobs:
         Your feature branch \`${{ env.BRANCH_NAME }}\` has been deployed to its own isolated environment!
         
         ### 🌐 Access Information
-        - **Feature URL**: http://feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/
-        - **Backend Health**: http://feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health
-        - **API Documentation**: http://feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/
+        - **Feature URL**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/
+        - **Backend Health**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health
+        - **API Documentation**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/
         - **Namespace**: \`${{ env.NAMESPACE }}\`
         
         ### 📊 Deployment Details
