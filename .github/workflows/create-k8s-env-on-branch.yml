@@ -1,13 +1,13 @@
 name: Create Kubernetes Environment on Branch
 
 on:
-  push:
-    branches:
-      - 'ex-*'
+  create
 
 jobs:
   create-k8s-env:
     runs-on: ubuntu-latest
+    # Only run if a branch was created (not a tag) and it matches ex-* pattern
+    if: github.ref_type == 'branch' && startsWith(github.ref_name, 'ex-')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -15,11 +15,13 @@ jobs:
       - name: Validate branch name
         id: validate_branch
         run: |
-          if [[ "${GITHUB_REF##*/}" != ex-* ]]; then
+          # Since we already filtered in the job condition, this should always pass
+          # but we keep it for consistency and to set the output variable
+          if [[ "${GITHUB_REF_NAME}" != ex-* ]]; then
             echo "::error ::Branch name does not start with ex-"
             exit 1
           fi
-          echo "branch_name=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+          echo "branch_name=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
 
       - name: Call Azure Provisioning Function
         id: provision
