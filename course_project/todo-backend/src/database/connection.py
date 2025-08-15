@@ -1,4 +1,4 @@
-"""Database connection management with async SQLAlchemy."""
+"""Database connection management with async SQLAlchemy. Handles local and Azure Cloud, yeah."""
 
 import asyncio
 import logging
@@ -7,6 +7,8 @@ import os
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+
+from src.config.settings import settings
 
 from .models import Base
 
@@ -19,29 +21,18 @@ class DatabaseManager:
     def __init__(self):
         self.engine: AsyncEngine | None = None
         self.session_factory: async_sessionmaker[AsyncSession] | None = None
-        self._database_url = self._get_database_url()
 
-    def _get_database_url(self) -> str:
-        """Get database URL from environment variables."""
-        # For local development
-        if db_url := os.getenv("DATABASE_URL"):
-            return db_url
-
-        # Build from components
-        host = os.getenv("POSTGRES_HOST", "localhost")
-        port = os.getenv("POSTGRES_PORT", "5432")
-        database = os.getenv("POSTGRES_DB", "todoapp")
-        username = os.getenv("POSTGRES_USER", "todouser")
-        password = os.getenv("POSTGRES_PASSWORD", "todopass")
-
-        return f"postgresql+asyncpg://{username}:{password}@{host}:{port}/{database}"
+    @property
+    def database_url(self) -> str:
+        """Get database URL from enhanced settings."""
+        return settings.database_url
 
     async def initialize(self) -> None:
         """Initialize database connection with connection pooling."""
         try:
             # Create async engine with connection pooling
             self.engine = create_async_engine(
-                self._database_url,
+                self.database_url,
                 # Connection pool settings
                 pool_size=5,  # Number of connections to maintain
                 max_overflow=10,  # Additional connections when pool is full

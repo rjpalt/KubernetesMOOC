@@ -1,0 +1,26 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agc-feature-gateway
+  namespace: agc-shared
+  annotations:
+    # BYO deployment - specify the AGC resource ID directly
+    alb.networking.azure.io/alb-id: /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubernetes-learning/providers/Microsoft.ServiceNetworking/trafficControllers/agc-aks-native
+spec:
+  gatewayClassName: azure-alb-external
+  listeners:
+  - name: http-listener
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      # Allow feature branch namespaces to use this gateway
+      namespaces:
+        from: Selector
+        selector:
+          matchLabels:
+            dev-gateway-access: allowed
+      kinds:
+        - kind: HTTPRoute
+  addresses:
+  - type: alb.networking.azure.io/alb-frontend
+    value: frontend

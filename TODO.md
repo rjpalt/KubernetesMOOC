@@ -6,6 +6,7 @@ This document tracks tasks and features for the KubernetesMOOC project, includin
 | Task | Status | Priority | Next Action |
 |------|--------|----------|-------------|
 | Review Deployment Pipelines | 🔄 Active | **CRITICAL** | Audit workflows with Copilot |
+| Optimize CI triggers for .github/docs | 📝 TODO | LOW | Update CI so changes to .github or docs do not trigger full CI run |
 | Preview Environment DNS | ⏸️ Future | MEDIUM | Plan ExternalDNS setup |
 | Database Isolation | 🔄 Active | HIGH | Azure Functions webhook automation |
 | E2E Testing | ⏸️ Future | HIGH | Playwright setup |
