@@ -1,0 +1,112 @@
+name: Create Kubernetes Environment on Branch
+
+on:
+  push:
+    branches:
+      - 'ex-*'
+
+jobs:
+  create-k8s-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate branch name
+        id: validate_branch
+        run: |
+          if [[ "${GITHUB_REF##*/}" != ex-* ]]; then
+            echo "::error ::Branch name does not start with ex-"
+            exit 1
+          fi
+          echo "branch_name=${GITHUB_REF##*/}" >> $GITHUB_OUTPUT
+
+      - name: Call Azure Provisioning Function
+        id: provision
+        env:
+          FUNCTION_URL: ${{ secrets.AZURE_PROVISIONING_FUNCTION_URL }}
+          FUNCTION_KEY: ${{ secrets.AZURE_PROVISIONING_FUNCTION_KEY }}
+          BRANCH_NAME: ${{ steps.validate_branch.outputs.branch_name }}
+        run: |
+          if [ -z "$FUNCTION_URL" ] || [ -z "$FUNCTION_KEY" ]; then
+            echo "::error ::Azure Function URL or Key not set in secrets"
+            exit 1
+          fi
+          
+          echo "🚀 Calling Azure Provisioning Function for branch: $BRANCH_NAME"
+          echo "Function URL: $FUNCTION_URL"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$FUNCTION_URL?code=$FUNCTION_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"branch_name\": \"$BRANCH_NAME\"}")
+          
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          STATUS=$(echo "$RESPONSE" | tail -n1)
+          
+          echo "📡 HTTP Status: $STATUS"
+          echo "📋 Response Body:"
+          echo "$BODY" | jq . || echo "$BODY"
+          
+          # Save response for summary step
+          echo "response_body=$BODY" >> $GITHUB_OUTPUT
+          echo "http_status=$STATUS" >> $GITHUB_OUTPUT
+          
+          if [ "$STATUS" -ne 200 ]; then
+            echo "::error ::HTTP request failed with status $STATUS"
+            exit 1
+          fi
+          
+          # Check if the response indicates success
+          PROVISION_STATUS=$(echo "$BODY" | jq -r '.status // "unknown"')
+          if [ "$PROVISION_STATUS" = "error" ]; then
+            ERROR_MSG=$(echo "$BODY" | jq -r '.error // "Unknown error"')
+            echo "::error ::Provisioning failed: $ERROR_MSG"
+            exit 1
+          elif [ "$PROVISION_STATUS" = "success" ]; then
+            echo "✅ Provisioning completed successfully"
+          else
+            echo "::warning ::Unknown provisioning status: $PROVISION_STATUS"
+          fi
+
+      - name: Display Deployment Summary
+        if: always()
+        env:
+          RESPONSE_BODY: ${{ steps.provision.outputs.response_body }}
+          HTTP_STATUS: ${{ steps.provision.outputs.http_status }}
+          BRANCH_NAME: ${{ steps.validate_branch.outputs.branch_name }}
+        run: |
+          echo "## 📊 Deployment Summary for Branch: $BRANCH_NAME"
+          echo "### HTTP Response"
+          echo "- Status Code: $HTTP_STATUS"
+          
+          if [ -n "$RESPONSE_BODY" ]; then
+            echo "### Provisioning Details"
+            
+            # Extract key information from response
+            STATUS=$(echo "$RESPONSE_BODY" | jq -r '.status // "unknown"')
+            CORRELATION_ID=$(echo "$RESPONSE_BODY" | jq -r '.correlation_id // "N/A"')
+            DURATION=$(echo "$RESPONSE_BODY" | jq -r '.timing.total_duration_seconds // "N/A"')
+            
+            echo "- Provisioning Status: $STATUS"
+            echo "- Correlation ID: $CORRELATION_ID"
+            echo "- Duration: ${DURATION}s"
+            
+            if [ "$STATUS" = "success" ]; then
+              echo "### ✅ Successfully Created Resources"
+              DATABASE=$(echo "$RESPONSE_BODY" | jq -r '.resources.database // "N/A"')
+              NAMESPACE=$(echo "$RESPONSE_BODY" | jq -r '.resources.namespace // "N/A"')
+              echo "- Database: $DATABASE"
+              echo "- Kubernetes Namespace: $NAMESPACE"
+            elif [ "$STATUS" = "error" ]; then
+              echo "### ❌ Provisioning Failed"
+              ERROR_MSG=$(echo "$RESPONSE_BODY" | jq -r '.error // "Unknown error"')
+              echo "- Error: $ERROR_MSG"
+            fi
+            
+            echo "### 🔍 Full Response"
+            echo "\`\`\`json"
+            echo "$RESPONSE_BODY" | jq . || echo "$RESPONSE_BODY"
+            echo "\`\`\`"
+          else
+            echo "### ❌ No response data available"
+          fi
