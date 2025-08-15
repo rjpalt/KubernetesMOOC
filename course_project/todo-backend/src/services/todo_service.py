@@ -23,7 +23,7 @@ class TodoService:
         """Create a new todo."""
         return await self._db.create_todo(todo_data.text)
 
-    async def update_todo(self, todo_id: str, text: str = None, status: TodoStatus = None) -> Todo | None:
+    async def update_todo(self, todo_id: str, text: str | None = None, status: TodoStatus | None = None) -> Todo | None:
         """Update an existing todo."""
         return await self._db.update_todo(todo_id, text, status)
 
