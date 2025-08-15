@@ -8,8 +8,9 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
-from .models import Base
 from config.settings import settings
+
+from .models import Base
 
 logger = logging.getLogger(__name__)
 
