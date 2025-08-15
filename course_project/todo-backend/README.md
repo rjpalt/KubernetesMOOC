@@ -21,6 +21,13 @@ Backend service for the todo application. Provides REST API endpoints for managi
 - `PUT /todos/{id}` - Update todo (JSON)  
 - `DELETE /todos/{id}` - Delete todo
 
+Important deployment note - routing expectations
+-------------------------------------------------
+
+- The backend expects to receive API calls in JSON format on its `/todos` endpoints. Browser form submissions for creating todos are handled by the frontend service and are sent to the frontend `/todos` route as `application/x-www-form-urlencoded`.
+- The frontend converts the form data to JSON and then calls the backend's `POST /todos` endpoint internally. Therefore, any gateway/ingress/HTTPRoute must route browser requests for `/todos` to the **frontend** service, not directly to the backend. Routing `/todos` directly to the backend will bypass the frontend's conversion step and can result in request parsing errors.
+
+
 ## Database Setup
 
 ### Local Development
