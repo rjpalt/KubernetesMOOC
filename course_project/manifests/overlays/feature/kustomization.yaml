@@ -16,6 +16,9 @@ resources:
   - ../../base/todo-fe/
   - ../../base/todo-cron/
   # Note: Excluding ../../base/postgres/ - using Azure Database for PostgreSQL
+  
+  # Feature-specific SecretProviderClass for Azure Key Vault integration
+  - secret-provider-class-feature.yaml
 
 # JSON patches for Azure PostgreSQL integration and HTTPRoute customization
 patches:
@@ -35,7 +38,7 @@ patches:
               driver: secrets-store.csi.k8s.io
               readOnly: true
               volumeAttributes:
-                secretProviderClass: postgres-secret-provider
+                secretProviderClass: postgres-secret-provider-feature
       - op: add
         path: /spec/template/spec/containers/0/volumeMounts
         value:
@@ -69,28 +72,6 @@ patches:
       - op: replace
         path: /spec/rules/4/matches/0/path/value
         value: /feature-BRANCH_NAME/
-  
-  # Update Secret Provider Class for feature database credentials
-  - target:
-      kind: SecretProviderClass
-      name: postgres-secret-provider
-    patch: |-
-      - op: replace
-        path: /spec/parameters/objects
-        value: |
-          array:
-            - |
-              objectName: postgres-feature-user
-              objectType: secret
-            - |
-              objectName: postgres-feature-password
-              objectType: secret
-      - op: replace
-        path: /spec/secretObjects/0/data/0/objectName
-        value: postgres-feature-user
-      - op: replace
-        path: /spec/secretObjects/0/data/1/objectName
-        value: postgres-feature-password
 
 images:
   - name: kubemooc.azurecr.io/todo-app-be
