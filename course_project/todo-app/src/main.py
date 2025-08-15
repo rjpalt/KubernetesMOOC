@@ -1,4 +1,4 @@
-"""Main application entry point - clean and modular."""
+"""Main application entry point - clean and modular. Crispy"""
 
 # Trigger CI/CD pipeline test - Azure Files storage update
 # Testing azurefile-csi ReadWriteMany PVC deployment
