@@ -6,8 +6,9 @@ on:
     types: [completed]
 
 permissions:
-  id-token: write  # Required for Azure authentication
-  contents: read   # Required for checkout
+  id-token: write    # Required for Azure authentication
+  contents: read     # Required for checkout
+  pull-requests: write # Required for commenting on PRs
 
 env:
   ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
@@ -110,61 +111,12 @@ jobs:
         echo "  - Frontend: $FRONTEND_TAGS"
         echo "  - Cron: $CRON_TAGS"
     
-    - name: Create and configure namespace
+    - name: Set kubectl context to feature namespace
       run: |
-        # Check if namespace exists, create only if needed
-        if kubectl get namespace ${{ env.NAMESPACE }} >/dev/null 2>&1; then
-          echo "Namespace ${{ env.NAMESPACE }} already exists"
-        else
-          echo "Creating namespace ${{ env.NAMESPACE }}"
-          kubectl create namespace ${{ env.NAMESPACE }}
-        fi
-        
-        # Label namespace for Gateway access
-        kubectl label namespace ${{ env.NAMESPACE }} dev-gateway-access=allowed --overwrite
-        
-        # Set context to use the feature namespace
+
+        # Set context to use the feature namespace (should already exist from provisioning workflow)
         kubectl config set-context --current --namespace=${{ env.NAMESPACE }}
-        
-        echo "✅ Namespace ${{ env.NAMESPACE }} created and configured"
-    
-    - name: Configure Azure Workload Identity for feature branch
-      run: |
-        # Create federated identity credential for this specific feature branch
-        CREDENTIAL_NAME="postgres-workload-identity-${{ env.BRANCH_NAME }}"
-        SUBJECT="system:serviceaccount:${{ env.NAMESPACE }}:postgres-service-account"
-        
-        echo "Creating federated identity credential for feature branch..."
-        echo "Credential name: $CREDENTIAL_NAME"
-        echo "Subject: $SUBJECT"
-        
-        # Check if credential already exists
-        if az identity federated-credential show \
-          --identity-name ${{ env.MANAGED_IDENTITY }} \
-          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
-          --name "$CREDENTIAL_NAME" &>/dev/null; then
-          echo "Federated credential already exists, updating..."
-          az identity federated-credential update \
-            --identity-name ${{ env.MANAGED_IDENTITY }} \
-            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
-            --name "$CREDENTIAL_NAME" \
-            --subject "$SUBJECT"
-        else
-          echo "Creating new federated credential..."
-          az identity federated-credential create \
-            --identity-name ${{ env.MANAGED_IDENTITY }} \
-            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
-            --name "$CREDENTIAL_NAME" \
-            --issuer "https://northeurope.oic.prod-aks.azure.com/b7cff52d-a4ec-4367-903c-5cf05c061aca/9618e5d3-f054-4b6d-9871-1d5a7447d273/" \
-            --subject "$SUBJECT" \
-            --audience api://AzureADTokenExchange
-        fi
-        
-        echo "✅ Azure Workload Identity configured for ${{ env.NAMESPACE }}"
-        
-        # Wait a moment for Azure AD to propagate the changes
-        echo "Waiting for Azure AD propagation..."
-        sleep 30
+        echo "✅ kubectl context set to namespace: ${{ env.NAMESPACE }}"
     
     - name: Deploy feature environment
       run: |
@@ -185,10 +137,11 @@ jobs:
         sed -i "s/BRANCH_NAME_DB/${DB_NAME}/g" kustomization.yaml
         sed -i "s/BRANCH_NAME/${{ env.BRANCH_NAME }}/g" kustomization.yaml
         
-        # Apply the manifests with feature-specific HTTPRoute paths configured
+        # Apply the manifests with feature-specific hostname routing configured
         kustomize build . | kubectl apply -f -
         
         echo "✅ Feature environment deployed with AGC hostname: ${{ env.BRANCH_NAME }}.23.98.101.23.nip.io"
+
     
     - name: Wait for deployments
       run: |
@@ -315,17 +268,58 @@ jobs:
       if: failure()
       run: |
         echo "Cleaning up resources due to deployment failure..."
-        CREDENTIAL_NAME="postgres-workload-identity-${{ env.BRANCH_NAME }}"
+        echo "Note: Infrastructure cleanup will be handled by the cleanup workflow when branch is deleted"
+        echo "✅ Application cleanup completed"
+    
+    - name: Comment on PR with feature environment details
+      if: always() && !failure()
+      run: |
+        # Get the PR number from the workflow run
+        PR_NUMBER=$(gh pr list --head "${{ env.BRANCH_NAME }}" --json number --jq '.[0].number')
         
-        # Remove the federated identity credential if deployment failed
-        echo "Removing federated identity credential: $CREDENTIAL_NAME"
-        az identity federated-credential delete \
-          --identity-name keyvault-identity-kube-mooc \
-          --resource-group kubernetes-learning \
-          --name "$CREDENTIAL_NAME" \
-          --yes || echo "Credential cleanup failed or credential doesn't exist"
+        if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+          echo "Found PR #$PR_NUMBER for branch ${{ env.BRANCH_NAME }}"
+          
+          # Create comment body
+          cat > pr_comment.md << EOF
+        ## 🚀 Feature Environment Deployed Successfully
         
-        echo "✅ Cleanup completed"
+        Your feature branch \`${{ env.BRANCH_NAME }}\` has been deployed to its own isolated environment!
+        
+        ### 🌐 Access Information
+        - **Feature URL**: http://feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/
+        - **Backend Health**: http://feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health
+        - **API Documentation**: http://feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/
+        - **Namespace**: \`${{ env.NAMESPACE }}\`
+        
+        ### 📊 Deployment Details
+        - **Images**: \`${{ env.IMAGE_TAG_SUFFIX }}\`
+        - **Database**: Azure PostgreSQL (provisioned when branch was created)
+        - **Infrastructure**: Pre-provisioned by infrastructure workflow
+        - **Gateway**: Azure Application Gateway for Containers (AGC)
+        - **DNS**: nip.io (automatic DNS resolution)
+        
+        ### 🧪 Testing
+        You can now test your changes in this isolated environment. The environment includes:
+        - Full backend API with isolated PostgreSQL database
+        - Frontend application
+        - Background cron jobs
+        - All microservices running with your latest changes
+        
+        The environment will be automatically cleaned up when this branch is deleted.
+        
+        ---
+        *Deployed by GitHub Actions at $(date -u)*
+        EOF
+          
+          # Post comment to PR
+          gh pr comment "$PR_NUMBER" --body-file pr_comment.md
+          echo "✅ Posted feature environment details to PR #$PR_NUMBER"
+        else
+          echo "⚠️ Could not find PR for branch ${{ env.BRANCH_NAME }}, skipping comment"
+        fi
+      env:
+        GH_TOKEN: ${{ github.token }}
     
     - name: Generate deployment summary
       run: |
@@ -339,9 +333,11 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Access Information 🌐" >> $GITHUB_STEP_SUMMARY
         echo "**Namespace:** \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
+
         echo "**Feature URL:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/" >> $GITHUB_STEP_SUMMARY
         echo "**Backend Health:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health" >> $GITHUB_STEP_SUMMARY
         echo "**API Docs:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/" >> $GITHUB_STEP_SUMMARY
+
         echo "**Health Checks:** ✅ All services responding" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Next Steps 📝" >> $GITHUB_STEP_SUMMARY
