@@ -76,7 +76,7 @@ class TestTodoBackendClient:
             assert todos[1].status == TodoStatus.DONE
 
             # Verify HTTP call was made correctly
-            mock_client.get.assert_called_once_with("http://test-backend:8001/todos")
+            mock_client.get.assert_called_once_with("http://test-backend:8001/api/todos")
 
     @pytest.mark.asyncio
     async def test_get_all_todos_http_error(self):
@@ -173,7 +173,7 @@ class TestTodoBackendClient:
 
             # Verify HTTP call
             mock_client.post.assert_called_once_with(
-                "http://test-backend:8001/todos", json={"text": "New todo from frontend"}
+                "http://test-backend:8001/api/todos", json={"text": "New todo from frontend"}
             )
 
     @pytest.mark.asyncio
