@@ -2,6 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Feature branch overlay - used for deploying feature branches to separate namespaces
+# Excludes PostgreSQL StatefulSet since using Azure Database for PostgreSQL
 # Usage: 
 #   cd course_project/manifests/overlays/feature
 #   kustomize edit set namespace feature-branch-name
@@ -9,11 +10,37 @@ kind: Kustomization
 #   kustomize build . | kubectl apply -f -
 
 resources:
-  - ../../base
+  # Include all base resources except PostgreSQL
+  - ../../base/shared/
+  - ../../base/todo-be/
+  - ../../base/todo-fe/
+  - ../../base/todo-cron/
+  # Note: Excluding ../../base/postgres/ - using Azure Database for PostgreSQL
 
-# Patch HTTPRoute to use feature-specific path prefix
-# This replaces runtime kubectl patching with Infrastructure as Code approach
+# JSON patches for Azure PostgreSQL integration and HTTPRoute customization
 patches:
+  - target:
+      kind: Deployment
+      name: todo-app-be
+    patch: |-
+      - op: add
+        path: /spec/template/spec/serviceAccountName
+        value: postgres-service-account
+      - op: add
+        path: /spec/template/spec/volumes
+        value:
+          - name: secrets-store
+            csi:
+              driver: secrets-store.csi.k8s.io
+              readOnly: true
+              volumeAttributes:
+                secretProviderClass: postgres-secret-provider
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts
+        value:
+          - name: secrets-store
+            mountPath: /mnt/secrets-store
+            readOnly: true
   - target:
       kind: HTTPRoute
       name: todo-app
