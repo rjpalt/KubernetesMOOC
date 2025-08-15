@@ -1,5 +1,53 @@
 # Azure AKS Version of Course Project #
 
+## Setting up Azure PostgreSQL Flexible Server (DBaaS)
+
+### Production and Feature Environments
+
+- **Production server:**
+  - Name: `kubemooc-postgres-prod`
+  - Location: `northeurope`
+  - SKU: `Standard_B1ms` (Burstable, low-cost)
+  - High Availability: Disabled
+
+- **Feature server:**
+  - Name: `kubemooc-postgres-feature`
+  - Location: `northeurope`
+  - SKU: `Standard_B1ms`
+  - High Availability: Disabled
+
+#### Azure CLI Example
+
+```bash
+az postgres flexible-server create \
+  --resource-group kubernetes-learning \
+  --name kubemooc-postgres-prod \
+  --location northeurope \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --high-availability Disabled \
+  --storage-size 32 \
+  --version 16 \
+  --admin-user kubemoocadmin \
+  --public-access 0.0.0.0 \
+  --yes
+
+az postgres flexible-server create \
+  --resource-group kubernetes-learning \
+  --name kubemooc-postgres-feature \
+  --location northeurope \
+  --sku-name Standard_B1ms \
+  --tier Burstable \
+  --high-availability Disabled \
+  --storage-size 32 \
+  --version 16 \
+  --admin-user kubemoocadmin \
+  --public-access 0.0.0.0 \
+  --yes
+```
+
+See `.project/context.yaml` for server details. Feature branch automation should create databases on the feature server.
+
 ## Exercise 4.1 - Setting up Azure AKS environment ##
 ### Azure CLI Commands ###
 Installing Azure CLI on macOS:
@@ -20,18 +68,18 @@ az account show
 
 Creating a resource group
 ```bash
-az group create --name kubernetes-learning --location northeurope
+az group create --name <RESOURCE_GROUP_NAME> --location <AZURE_REGION>
 ```
 
 ### Setting up AKS Cluster ###
 Creating an AKS cluster:
 ```bash
-az aks create --resource-group kubernetes-learning --name kube-mooc --node-count 1 --enable-addons monitoring --generate-ssh-keys
+az aks create --resource-group <RESOURCE_GROUP_NAME> --name <AKS_CLUSTER_NAME> --node-count 1 --enable-addons monitoring --generate-ssh-keys
 ```
 
 ## #Connecting Kubectl to AKS ###
 ```bash
-az aks get-credentials --resource-group kubernetes-learning --name kube-mooc
+az aks get-credentials --resource-group <RESOURCE_GROUP_NAME> --name <AKS_CLUSTER_NAME>
 ```
 
 Checking the connection:
@@ -53,13 +101,12 @@ Docs are here: https://learn.microsoft.com/en-us/azure/aks/cluster-container-reg
 
 Creating an ACR:
 ```bash
-az acr create --resource-group kubernetes-learning --name kubemooc --sku Basic
+az acr create --resource-group <RESOURCE_GROUP_NAME> --name <ACR_NAME> --sku Basic
 ```
 
 ## Attaching ACR to AKS ##
 ```bash
-az aks update --name kube-mooc --resource-group kubernetes-learning --atta
-ch-acr kubemooc
+az aks update --name <AKS_CLUSTER_NAME> --resource-group <RESOURCE_GROUP_NAME> --attach-acr <ACR_NAME>
 ```
 
 **Note: Might have to do from the GUI**
@@ -67,17 +114,17 @@ ch-acr kubemooc
 ## Pushing images to ACR ##
 Logging in to ACR:
 ```bash
-az acr login --name kubemooc
+az acr login --name <ACR_NAME>
 ```
 
 Tagging the image:
 ```bash
-docker tag ping-pong-app:3.1 kubemooc.azurecr.io/ping-pong-app:3.1
+docker tag ping-pong-app:3.1 <ACR_NAME>.azurecr.io/ping-pong-app:3.1
 ```
 
 Pushing the image to ACR:
 ```bash
-docker push kubemooc.azurecr.io/ping-pong-app:3.1
+docker push <ACR_NAME>.azurecr.io/ping-pong-app:3.1
 ```
 
 ## Manifest changes for Azure AKS ##
@@ -116,17 +163,17 @@ docker build --platform linux/amd64 -t log-output-app:3.1 .
 
 After that the app needs to be tagged:
 ```bash
-docker tag log-output-app:3.1 kubemooc.azurecr.io/log-output-app:3.1
+docker tag log-output-app:3.1 <ACR_NAME>.azurecr.io/log-output-app:3.1
 ```
 
 And then pushed to the ACR:
 ```bash
-docker push kubemooc.azurecr.io/log-output-app:3.1
+docker push <ACR_NAME>.azurecr.io/log-output-app:3.1
 ```
 
 Command to check the tags of the images in the ACR:
 ```bash
-az acr repository show-tags --name kubemooc --repository log-output-app --output table
+az acr repository show-tags --name <ACR_NAME> --repository log-output-app --output table
 ```
 
 ### Enabling AKS App Routing for Ingress ###
@@ -140,7 +187,7 @@ See Microsoft Learn documentation for details: https://learn.microsoft.com/en-us
 - External IP provisioning takes 2-3 minutes after proper configuration
 
 ```bash
-az aks approuting enable --resource-group kubernetes-learning --name kube-mooc
+az aks approuting enable --resource-group <RESOURCE_GROUP_NAME> --name <AKS_CLUSTER_NAME>
 ```
 
 Check app routing status:
@@ -164,6 +211,84 @@ kubectl get ingress
 ```
 
 # Azure Workload Identity for GitHub Actions CI/CD
+
+## Provisioning Function Managed Identity Setup (August 14, 2025)
+
+### Azure Function Environment Provisioning
+
+For the **kubemooc-provisioning-func** Azure Function, we created a dedicated managed identity `mi-provisioning-function` with the following role assignments to support automated environment provisioning:
+
+#### Required Role Assignments for mi-provisioning-function
+
+```bash
+# Get the managed identity principal ID
+IDENTITY_PRINCIPAL_ID=$(az identity show --name mi-provisioning-function --resource-group <AUTOMATION_RESOURCE_GROUP> --query principalId -o tsv)
+
+# PostgreSQL Database Management
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Contributor" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<POSTGRES_RESOURCE_GROUP>/providers/Microsoft.DBforPostgreSQL/flexibleServers/<POSTGRES_SERVER_NAME>"
+
+# Managed Identity Operations (for federated credential management)
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Managed Identity Operator" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<AUTOMATION_RESOURCE_GROUP>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<APP_MANAGED_IDENTITY_NAME>"
+
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Managed Identity Contributor" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<AUTOMATION_RESOURCE_GROUP>/providers/Microsoft.ManagedIdentity/userAssignedIdentities/<APP_MANAGED_IDENTITY_NAME>"
+
+# AKS Cluster Access (for namespace creation and OIDC issuer access)
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Reader" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<AKS_RESOURCE_GROUP>/providers/Microsoft.ContainerService/managedClusters/<AKS_CLUSTER_NAME>"
+
+az role assignment create \
+  --assignee $IDENTITY_PRINCIPAL_ID \
+  --role "Azure Kubernetes Service RBAC Writer" \
+  --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<AKS_RESOURCE_GROUP>/providers/Microsoft.ContainerService/managedClusters/<AKS_CLUSTER_NAME>"
+```
+
+#### Function Environment Variables
+
+The provisioning function requires these environment variables to be set in the Azure Function App configuration:
+
+```bash
+AZURE_SUBSCRIPTION_ID=<YOUR_AZURE_SUBSCRIPTION_ID>
+POSTGRES_RESOURCE_GROUP=<POSTGRES_RESOURCE_GROUP>
+POSTGRES_SERVER_NAME=<POSTGRES_SERVER_NAME>
+POSTGRES_ADMIN_USER=<POSTGRES_ADMIN_USER>
+POSTGRES_ADMIN_PASSWORD=<stored-in-azure-portal>
+MANAGED_IDENTITY_RESOURCE_GROUP=<AUTOMATION_RESOURCE_GROUP>
+MANAGED_IDENTITY_NAME=<APP_MANAGED_IDENTITY_NAME>
+MANAGED_IDENTITY_CLIENT_ID=<APP_MANAGED_IDENTITY_CLIENT_ID>
+AKS_RESOURCE_GROUP=<AKS_RESOURCE_GROUP>
+AKS_CLUSTER_NAME=<AKS_CLUSTER_NAME>
+```
+
+**Note**: All actual values are stored in `.project/context.yaml` and should not be committed to version control.
+
+#### Function Capabilities
+
+The deployed function creates complete branch environments with a single HTTP POST:
+
+1. **PostgreSQL Database**: Creates branch-specific database on shared server
+2. **Federated Credential**: Sets up workload identity for branch namespace 
+3. **Kubernetes Namespace**: Creates namespace with AGC gateway access labels
+
+**Function URL**: `https://<FUNCTION_APP_NAME>.azurewebsites.net/api/provision`
+
+**Usage**:
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"branch_name": "feature-xyz"}' \
+  "https://<FUNCTION_APP_NAME>.azurewebsites.net/api/provision?code=<function-key>"
+```
 
 ## Why Separate Identities for CI and CD?
 
@@ -191,22 +316,22 @@ Even though our feature and production environments currently share the same AKS
 # Create dedicated CI identity for build and push operations
 az identity create \
   --name github-actions-ci \
-  --resource-group kubernetes-learning \
-  --location northeurope
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --location <AZURE_REGION>
 
 # Grant ACR push permissions (minimal needed for CI)
 az role assignment create \
-  --assignee $(az identity show -g kubernetes-learning -n github-actions-ci --query clientId -o tsv) \
+  --assignee $(az identity show -g <RESOURCE_GROUP_NAME> -n github-actions-ci --query clientId -o tsv) \
   --role AcrPush \
-  --scope $(az acr show --name kubemooc --query id --output tsv)
+  --scope $(az acr show --name <ACR_NAME> --query id --output tsv)
 
 # Create federated credential for pull requests
 az identity federated-credential create \
   --name github-actions-ci \
   --identity-name github-actions-ci \
-  --resource-group kubernetes-learning \
+  --resource-group <RESOURCE_GROUP_NAME> \
   --issuer https://token.actions.githubusercontent.com \
-  --subject repo:rjpalt/KubernetesMOOC:pull_request \
+  --subject repo:<GITHUB_USERNAME>/<GITHUB_REPO>:pull_request \
   --audience api://AzureADTokenExchange
 ```
 
@@ -217,17 +342,17 @@ az identity federated-credential create \
 # Originally created with:
 az identity create \
   --name github-actions-todo-cd \
-  --resource-group kubernetes-learning \
-  --location northeurope
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --location <AZURE_REGION>
 
 # Has AKS deployment permissions + ACR access
 # Federated credential for main branch only:
 az identity federated-credential create \
   --name github-actions-ci-cd \
   --identity-name github-actions-todo-cd \
-  --resource-group kubernetes-learning \
+  --resource-group <RESOURCE_GROUP_NAME> \
   --issuer https://token.actions.githubusercontent.com \
-  --subject repo:rjpalt/KubernetesMOOC:ref:refs/heads/main \
+  --subject repo:<GITHUB_USERNAME>/<GITHUB_REPO>:ref:refs/heads/main \
   --audience api://AzureADTokenExchange
 ```
 
@@ -275,10 +400,10 @@ graph TD
 
 ```bash
 # Set CI identity for pull request builds
-gh secret set AZURE_CI_CLIENT_ID --body "a7c70b35-0eb3-4363-b0e1-1c48bae476cc"
+gh secret set AZURE_CI_CLIENT_ID --body "<CI_MANAGED_IDENTITY_CLIENT_ID>"
 
 # CD identity remains for production deployments
-# AZURE_CLIENT_ID = "d2e20c1d-c71a-43d8-ba21-463212e9596f"
+# AZURE_CLIENT_ID = "<CD_MANAGED_IDENTITY_CLIENT_ID>"
 ```
 
 -----
@@ -310,8 +435,8 @@ In this phase, we'll set up the foundational components. We will enable Workload
 First, define some environment variables for your resource group and AKS cluster name to make subsequent commands easier to run and read.
 
 ```bash
-RESOURCE_GROUP='kubernetes-learning'
-AKS_NAME='kube-mooc'
+RESOURCE_GROUP='<RESOURCE_GROUP_NAME>'
+AKS_NAME='<AKS_CLUSTER_NAME>'
 ```
 
 ### 1.2. Enable AKS Features for Workload Identity
@@ -705,8 +830,8 @@ This policy tells the ALB Controller to use `/health` instead of `/` for health 
 ## Resource Discovery
 ```bash
 # Example pattern - you'll need to adapt with your actual values
-RESOURCE_GROUP="kubernetes-learning"
-AKS_CLUSTER="kube-mooc"
+RESOURCE_GROUP="<RESOURCE_GROUP_NAME>"
+AKS_CLUSTER="<AKS_CLUSTER_NAME>"
 
 # Fetch and store cluster info
 AKS_RESOURCE_ID=$(az aks show --resource-group $RESOURCE_GROUP --name $AKS_CLUSTER --query id -o tsv)
@@ -719,7 +844,7 @@ echo "Subscription ID: $SUBSCRIPTION_ID"
 
 ## Identity Management
 ```bash
-IDENTITY_NAME="keyvault-identity-kube-mooc"
+IDENTITY_NAME="keyvault-identity-<PROJECT_NAME>"
 
 # Create a Managed Identity for AKS to access Key Vault
 az identity create --resource-group $RESOURCE_GROUP --name $IDENTITY_NAME
@@ -746,7 +871,7 @@ echo "OIDC Issuer: $AKS_OIDC_ISSUER"
 
 ## AKV Creation and Configuration
 ```bash
-KEYVAULT_NAME="kv-kubemooc-$(date +%s)"
+KEYVAULT_NAME="kv-<PROJECT_NAME>-$(date +%s)"
 echo "Key Vault Name: $KEYVAULT_NAME"
 ```
 
@@ -756,7 +881,7 @@ Create the Key Vault:
 az keyvault create \
   --name $KEYVAULT_NAME \
   --resource-group $RESOURCE_GROUP \
-  --location northeurope \
+  --location <AZURE_REGION> \
   --enable-rbac-authorization
 
 # Get the Key Vault resource ID for future use
@@ -844,7 +969,7 @@ metadata:
   name: postgres-service-account
   namespace: project
   annotations:
-    azure.workload.identity/client-id: 9b82dc92-8be2-4de4-90e4-e99eefb44e9f
+    azure.workload.identity/client-id: <KEYVAULT_MANAGED_IDENTITY_CLIENT_ID>
 ```
 
 ```yaml
@@ -858,9 +983,9 @@ spec:
   parameters:
     usePodIdentity: "false"
     useVMManagedIdentity: "false"
-    clientID: "9b82dc92-8be2-4de4-90e4-e99eefb44e9f"
-    keyvaultName: "kv-kubemooc-1754386572"
-    tenantId: "b7cff52d-a4ec-4367-903c-5cf05c061aca"
+    clientID: "<KEYVAULT_MANAGED_IDENTITY_CLIENT_ID>"
+    keyvaultName: "<KEY_VAULT_NAME>"
+    tenantId: "<AZURE_TENANT_ID>"
     objects: |
       array:
         - |
@@ -918,7 +1043,7 @@ Architecture Overview
 
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐│   Azure Key     │    │   Kubernetes     │    │   Application   ││     Vault       │◄──►│   CSI Driver     │◄──►│     Pods        ││                 │    │                  │    │                 ││ postgres-user   │    │ postgres-secret  │    │ POSTGRES_USER   ││ postgres-pass   │    │ (K8s Secret)     │    │ POSTGRES_PASS   │└─────────────────┘    └──────────────────┘    └─────────────────┘
 Key Components Created
-Azure Managed Identity (keyvault-identity-kube-mooc)
+Azure Managed Identity (<KEYVAULT_IDENTITY_NAME>)
 
 Identity that can access Key Vault secrets
 Granted "Key Vault Secrets User" role
@@ -1071,9 +1196,9 @@ Creates a dedicated Azure identity that GitHub Actions will assume during pipeli
 
 ```bash
 az identity create \
-  --resource-group kubernetes-learning \
+  --resource-group <RESOURCE_GROUP_NAME> \
   --name github-actions-todo-cd \
-  --location northeurope
+  --location <AZURE_REGION>
 ```
 
 **Why a dedicated identity?** Separation of concerns - this identity has only the permissions needed for CI/CD operations, following the principle of least privilege.
@@ -1089,7 +1214,7 @@ SUBSCRIPTION_ID=$(az account show --query id --output tsv)
 
 ### 2. Get the Managed Identity Client ID
 ```bash
-GITHUB_IDENTITY=$(az identity show --resource-group kubernetes-learning --name github-actions-todo-cd --query clientId --output tsv)
+GITHUB_IDENTITY=$(az identity show --resource-group <RESOURCE_GROUP_NAME> --name github-actions-todo-cd --query clientId --output tsv)
 ```
 
 ### 3. Assign ACR Push Role to Managed Identity
@@ -1097,17 +1222,17 @@ GITHUB_IDENTITY=$(az identity show --resource-group kubernetes-learning --name g
 az role assignment create \
   --assignee $GITHUB_IDENTITY \
   --role AcrPush \
-  --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/kubernetes-learning/providers/Microsoft.ContainerRegistry/registries/kubemooc
+  --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.ContainerRegistry/registries/<ACR_NAME>
 ```
 
-**What this enables:** The identity can push Docker images to the `kubemooc` registry. The `AcrPush` role includes permissions to authenticate, push images, and manage repository metadata.
+**What this enables:** The identity can push Docker images to the `<ACR_NAME>` registry. The `AcrPush` role includes permissions to authenticate, push images, and manage repository metadata.
 
 ### 4. Grant AKS Contributor Role to Managed Identity
 ```bash
 az role assignment create \
   --assignee $GITHUB_IDENTITY \
   --role "Azure Kubernetes Service Contributor Role" \
-  --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/kubernetes-learning/providers/Microsoft.ContainerService/managedClusters/kube-mooc
+  --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.ContainerService/managedClusters/<AKS_CLUSTER_NAME>
 ```
 
 **What this enables:** The identity can connect to the AKS cluster, retrieve kubeconfig credentials, and execute kubectl commands for deployment operations.
@@ -1120,9 +1245,9 @@ Establishes the OIDC trust relationship between your GitHub repository and the A
 az identity federated-credential create \
   --name "github-actions-ci-cd" \
   --identity-name "github-actions-todo-cd" \
-  --resource-group "kubernetes-learning" \
+  --resource-group "<RESOURCE_GROUP_NAME>" \
   --issuer "https://token.actions.githubusercontent.com" \
-  --subject "repo:rjpalt/KubernetesMOOC:ref:refs/heads/main"
+  --subject "repo:<GITHUB_USERNAME>/<GITHUB_REPO>:ref:refs/heads/main"
 ```
 
 **Critical Security Configuration:**
@@ -1141,14 +1266,14 @@ Gather the values needed to configure GitHub repository secrets and workflow fil
 
 ```bash
 echo "=== GitHub Repository Secrets ==="
-echo "AZURE_CLIENT_ID: $(az identity show --resource-group kubernetes-learning --name github-actions-todo-cd --query clientId --output tsv)"
+echo "AZURE_CLIENT_ID: $(az identity show --resource-group <RESOURCE_GROUP_NAME> --name github-actions-todo-cd --query clientId --output tsv)"
 echo "AZURE_TENANT_ID: $(az account show --query tenantId --output tsv)"
 echo "AZURE_SUBSCRIPTION_ID: $(az account show --query id --output tsv)"
 echo ""
 echo "=== Azure Resource Information ==="
-echo "ACR_LOGIN_SERVER: kubemooc.azurecr.io"
-echo "AKS_CLUSTER_NAME: kube-mooc"
-echo "AKS_RESOURCE_GROUP: kubernetes-learning"
+echo "ACR_LOGIN_SERVER: <ACR_NAME>.azurecr.io"
+echo "AKS_CLUSTER_NAME: <AKS_CLUSTER_NAME>"
+echo "AKS_RESOURCE_GROUP: <RESOURCE_GROUP_NAME>"
 ```
 
 **Required GitHub Secrets:**
@@ -1261,7 +1386,7 @@ containers:
 - name: todo-backend
   # WARNING: This image tag is automatically updated by CI/CD pipeline
   # DO NOT manually edit - tag gets replaced with commit SHA during deployment
-  image: kubemooc.azurecr.io/todo-app-be:PLACEHOLDER-UPDATED-BY-CICD
+  image: <ACR_NAME>.azurecr.io/todo-app-be:PLACEHOLDER-UPDATED-BY-CICD
 ```
 
 **Why This Works:**
@@ -1303,10 +1428,164 @@ kubectl apply -k manifests/base/       # ❌ Fails - placeholder tag doesn't exi
 **Emergency Override (if needed):**
 ```bash
 # Only for emergencies - temporarily fix placeholder tag
-kubectl set image deployment/todo-app-fe todo-app-fe=kubemooc.azurecr.io/todo-app-fe:actual-tag
+kubectl set image deployment/todo-app-fe todo-app-fe=<ACR_NAME>.azurecr.io/todo-app-fe:actual-tag
 ```
 
 This pattern is used by many organizations to **prevent deployment accidents** and ensure **proper process compliance**.
+
+---
+
+# REVAMP_ROADMAP.md Phase 1.2 Implementation - Separate ALB Infrastructure for Development
+
+## Successfully Implemented Development Gateway Infrastructure Using BYOD Approach
+
+**REVAMP_ROADMAP Phase 1.2: COMPLETE** ✅
+
+### Root Cause and Solution Summary
+
+**Problem:** Azure CNI Overlay mode is incompatible with ALB Controller's managed deployment approach, causing "overlay extension config timeout" errors.
+
+**Solution:** Implement BYOD (Bring-Your-Own-Deployment) approach with manually created AGC resource and proper subnet sizing.
+
+**Key Requirements Discovered:**
+1. **Minimum subnet size**: AGC associations require at least 500 IP addresses (`/23` subnet minimum)
+2. **BYOD approach**: Manual AGC creation bypasses CNI overlay limitations
+3. **Proper permissions**: ALB controller needs Network Contributor role on each subnet
+
+### Working Implementation
+
+**Step 1: Create Properly Sized Development Subnet**
+```bash
+# AGC requires minimum 500 IPs - use /23 subnet (512 addresses)
+az network vnet subnet create \
+  --resource-group <MC_RESOURCE_GROUP> \
+  --vnet-name <VNET_NAME> \
+  --name subnet-alb-dev-large \
+  --address-prefix 10.228.0.0/23 \
+  --delegations 'Microsoft.ServiceNetworking/trafficControllers'
+```
+
+**Step 2: Create Manual AGC and Association**
+```bash
+# Create AGC resource manually (already done: <MANUAL_AGC_NAME>)
+az network alb create -g <RESOURCE_GROUP_NAME> -n <MANUAL_AGC_NAME>
+
+# Create association between manual AGC and development subnet
+az network alb association create \
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --name dev-association \
+  --alb-name <MANUAL_AGC_NAME> \
+  --subnet "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<MC_RESOURCE_GROUP>/providers/Microsoft.Network/virtualNetworks/<VNET_NAME>/subnets/subnet-alb-dev-large"
+```
+
+**Step 3: Configure Kubernetes ApplicationLoadBalancer with BYOD**
+```yaml
+apiVersion: alb.networking.azure.io/v1
+kind: ApplicationLoadBalancer
+metadata:
+  name: dev-alb
+  namespace: azure-alb-system
+  annotations:
+    # BYOD annotation references manual AGC
+    alb.networking.azure.io/alb-id: /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.ServiceNetworking/trafficControllers/<MANUAL_AGC_NAME>
+spec:
+  associations:
+  - /subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<MC_RESOURCE_GROUP>/providers/Microsoft.Network/virtualNetworks/<VNET_NAME>/subnets/subnet-alb-dev-large
+```
+
+**Final Results:**
+- ✅ dev-alb: `DEPLOYMENT: False` (CNI overlay extension error) BUT gateway works!
+- ✅ dev-gateway: Address `<DEV_GATEWAY_FQDN>` (assigned and responding)
+- ✅ Architecture: Complete infrastructure separation between production and development
+
+**Key Discovery:** BYOD approach successfully bypasses CNI overlay limitations. Even though ALB reports deployment issues due to overlay extension conflicts, the actual gateway functionality works perfectly via manual AGC associations.
+
+### Network Architecture Achieved
+
+```
+Production Environment:
+nsa2/k8s-nsa2-gateway → default-alb (managed) → subnet-alb (10.226.0.0/24)
+
+Development Environment:
+azure-alb-system/dev-gateway → dev-alb → <MANUAL_AGC_NAME> (manual) → subnet-alb-dev-large (10.228.0.0/23)
+```
+
+### Azure CNI Overlay Compatibility Matrix
+
+**Root Cause:** Azure CNI Overlay mode has limited compatibility with ALB Controller managed deployments.
+
+**Supported CNI modes for ALB:**
+- ✅ Azure CNI (standard mode) - Full managed deployment support
+- ✅ Azure CNI with pod subnet - Full managed deployment support
+- ⚠️ Azure CNI Overlay - **Managed deployment fails, BYOD approach works**
+- ❌ Kubenet - Not supported
+
+**Our Configuration (CNI Overlay):**
+```json
+"networkPlugin": "azure",
+"networkPluginMode": "overlay", 
+"podCidr": "10.244.0.0/16"
+```
+
+### Permission Requirements
+
+The ALB controller managed identity requires:
+1. **AppGw Configuration Manager** role on resource group containing AGC
+2. **Network Contributor** role on each subnet used for associations
+
+```bash
+# Required permissions (already applied)
+ALB_IDENTITY_PRINCIPAL_ID="<ALB_IDENTITY_PRINCIPAL_ID>"
+RESOURCE_GROUP_ID="/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<MC_RESOURCE_GROUP>"
+
+az role assignment create \
+  --assignee-object-id $ALB_IDENTITY_PRINCIPAL_ID \
+  --assignee-principal-type ServicePrincipal \
+  --scope $RESOURCE_GROUP_ID \
+  --role "fbc52c3f-28ad-4303-a892-8a056630b8f1"  # AppGw Configuration Manager
+
+az role assignment create \
+  --assignee-object-id $ALB_IDENTITY_PRINCIPAL_ID \
+  --assignee-principal-type ServicePrincipal \
+  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<MC_RESOURCE_GROUP>/providers/Microsoft.Network/virtualNetworks/<VNET_NAME>/subnets/subnet-alb-dev-large" \
+  --role "4d97b98b-1d4f-4787-a291-c67834d212e7"  # Network Contributor
+```
+
+### Troubleshooting Resources
+
+- **Microsoft Documentation**: [BYOD Quickstart Guide](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/quickstart-create-application-gateway-for-containers-byo-deployment?tabs=existing-vnet-subnet)
+- **CNI Overlay Issues**: [CloudTrooper AGC Troubleshooting](https://blog.cloudtrooper.net/2025/03/10/application-gateway-for-containers-a-not-so-gentle-intro-2/)
+- **Subnet Requirements**: AGC associations require minimum `/23` subnet (500+ IP addresses)
+- **Permission Troubleshooting**: Check both resource group and subnet-specific role assignments
+
+### Key Learnings
+
+1. **BYOD Approach Essential**: For Azure CNI Overlay environments, manual AGC creation is required
+2. **Subnet Sizing Critical**: `/24` subnets (256 IPs) are insufficient - need `/23` minimum (512 IPs)
+3. **Infrastructure Separation Achieved**: Production and development ALBs now operate independently
+4. **Permission Granularity**: Azure requires subnet-specific Network Contributor permissions for each ALB deployment
+5. **CNI Overlay Limitation**: Even `/23` subnets fail with overlay extensions expecting `/24` - BYOD bypasses this entirely
+
+**Final Architecture Analysis:**
+```
+Production ALB (default-alb):
+- Type: Managed deployment (ALB controller auto-creates AGC)
+- AGC: <PRODUCTION_AGC_ID> (auto-created in MC resource group)
+- Status: DEPLOYMENT: True (works despite CNI overlay)
+- Subnet: subnet-alb (10.226.0.0/24)
+- Gateway: <PRODUCTION_GATEWAY_FQDN> (responding)
+
+Development ALB (dev-alb):  
+- Type: BYOD (manual AGC reference via annotation)
+- AGC: <MANUAL_AGC_NAME> (manually created in <RESOURCE_GROUP_NAME> RG)
+- Status: DEPLOYMENT: False (CNI overlay extension conflict)
+- Subnet: subnet-alb-dev-large (10.228.0.0/23)
+- Gateway: <DEV_GATEWAY_FQDN> (responding despite ALB status)
+```
+
+**Critical Learning:** BYOD approach successfully achieves working gateway infrastructure despite ALB controller reporting deployment failures. The manual AGC association bypasses CNI overlay extension issues while providing functional load balancing.
+
+**Phase 1.2 provides the foundation for isolated development environments with separate gateway infrastructure.**
 
 ## Handling Volumes with Azure CSI Driver ##
 
@@ -1460,8 +1739,8 @@ When a feature branch is no longer needed, both Kubernetes and Azure resources m
 ### 1. Connect to AKS Cluster
 ```bash
 # Connect to cluster (or use existing context)
-az aks get-credentials --resource-group kubernetes-learning --name kube-mooc
-kubectl config use-context kube-mooc
+az aks get-credentials --resource-group <RESOURCE_GROUP_NAME> --name <AKS_CLUSTER_NAME>
+kubectl config use-context <AKS_CLUSTER_NAME>
 ```
 
 ### 2. Emergency CronJob Suspension (if needed)
@@ -1496,15 +1775,15 @@ kubectl get namespace feature-BRANCH_NAME 2>/dev/null || echo "Namespace success
 ```bash
 # Delete federated identity credential for the branch
 az identity federated-credential delete \
-  --identity-name keyvault-identity-kube-mooc \
-  --resource-group kubernetes-learning \
+  --identity-name <KEYVAULT_IDENTITY_NAME> \
+  --resource-group <RESOURCE_GROUP_NAME> \
   --name "postgres-workload-identity-BRANCH_NAME" \
   --yes
 
 # Verify credential deletion
 az identity federated-credential show \
-  --identity-name keyvault-identity-kube-mooc \
-  --resource-group kubernetes-learning \
+  --identity-name <KEYVAULT_IDENTITY_NAME> \
+  --resource-group <RESOURCE_GROUP_NAME> \
   --name "postgres-workload-identity-BRANCH_NAME" 2>/dev/null && echo "ERROR: Credential still exists" || echo "SUCCESS: Credential deleted"
 ```
 
@@ -1529,8 +1808,8 @@ kubectl get all,pvc,secrets,httproutes -n feature-BRANCH_NAME
 
 # Confirm Azure cleanup
 az identity federated-credential list \
-  --identity-name keyvault-identity-kube-mooc \
-  --resource-group kubernetes-learning \
+  --identity-name <KEYVAULT_IDENTITY_NAME> \
+  --resource-group <RESOURCE_GROUP_NAME> \
   --query "[?name=='postgres-workload-identity-BRANCH_NAME']"
 ```
 
@@ -1547,8 +1826,8 @@ kubectl delete namespace feature-ex-3-7
 
 # 4. Clean up Azure federated credential
 az identity federated-credential delete \
-  --identity-name keyvault-identity-kube-mooc \
-  --resource-group kubernetes-learning \
+  --identity-name <KEYVAULT_IDENTITY_NAME> \
+  --resource-group <RESOURCE_GROUP_NAME> \
   --name "postgres-workload-identity-ex-3-7" \
   --yes
 ```
@@ -1564,9 +1843,9 @@ az identity federated-credential delete \
 To create a storage account:
 ```bash
 az storage account create \
-  --name kubemoocbackups \
-  --resource-group kubernetes-learning \
-  --location northeurope \
+  --name <STORAGE_ACCOUNT_NAME> \
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --location <AZURE_REGION> \
   --sku Standard_LRS \
   --kind StorageV2 \
   --access-tier Hot
@@ -1582,8 +1861,8 @@ Create a container in the storage account:
 ```bash
 az storage container create \
   --name database-backups \
-  --account-name kubemoocbackups
-  --auth-mode
+  --account-name <STORAGE_ACCOUNT_NAME> \
+  --auth-mode login
 ```
 
 ## Creating Managed Identity for Blob Storage Access & Federated Credential ##
@@ -1591,30 +1870,30 @@ az storage container create \
 Fetch AKS OIDC issuer URL:
 
 ```bash
-az aks show --resource-group kubernetes-learning --name kube-mooc --query "oidcIssuerProfile.issuerUrl" --output tsv
+az aks show --resource-group <RESOURCE_GROUP_NAME> --name <AKS_CLUSTER_NAME> --query "oidcIssuerProfile.issuerUrl" --output tsv
 ```
 
 Create the managed idetity for production and development environments:
 ```bash
 az identity create \
   --name backup-production-identity \
-  --resource-group kubernetes-learning \
-  --location northeurope
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --location <AZURE_REGION>
 
 az identity create \
   --name backup-development-identity \
-  --resource-group kubernetes-learning \
-  --location northeurope
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --location <AZURE_REGION>
 ```
 
 Store the managed identity clientID in environment variables for setting the storage account permissions correctly:
 ```bash
 # Production identity client ID
-PROD_CLIENT_ID=$(az identity show --name backup-production-identity --resource-group kubernetes-learning --query "clientId" --output tsv)
+PROD_CLIENT_ID=$(az identity show --name backup-production-identity --resource-group <RESOURCE_GROUP_NAME> --query "clientId" --output tsv)
 echo "Production Client ID: $PROD_CLIENT_ID"
 
 # Development identity client ID
-DEV_CLIENT_ID=$(az identity show --name backup-development-identity --resource-group kubernetes-learning --query "clientId" --output tsv)
+DEV_CLIENT_ID=$(az identity show --name backup-development-identity --resource-group <RESOURCE_GROUP_NAME> --query "clientId" --output tsv)
 echo "Development Client ID: $DEV_CLIENT_ID"
 ```
 
@@ -1623,17 +1902,17 @@ Assign the accounts respective Storage Blob Data Contributor Roles:
 az role assignment create \
   --assignee $PROD_CLIENT_ID \
   --role "Storage Blob Data Contributor" \
-  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/kubernetes-learning/providers/Microsoft.Storage/storageAccounts/kubemoocbackups/blobServices/default/containers/database-backups"
+  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.Storage/storageAccounts/<STORAGE_ACCOUNT_NAME>/blobServices/default/containers/database-backups"
 
 az role assignment create \
   --assignee $DEV_CLIENT_ID \
   --role "Storage Blob Data Contributor" \
-  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/kubernetes-learning/providers/Microsoft.Storage/storageAccounts/kubemoocbackups/blobServices/default/containers/feature-backups"
+  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.Storage/storageAccounts/<STORAGE_ACCOUNT_NAME>/blobServices/default/containers/feature-backups"
 
 az role assignment create \
   --assignee $DEV_CLIENT_ID \
   --role "Storage Blob Data Contributor" \
-  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/kubernetes-learning/providers/Microsoft.Storage/storageAccounts/kubemoocbackups/blobServices/default/containers/local-backups"
+  --scope "/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<RESOURCE_GROUP_NAME>/providers/Microsoft.Storage/storageAccounts/<STORAGE_ACCOUNT_NAME>/blobServices/default/containers/local-backups"
 ```
 
 Create the federated credentials for the managed identities:
@@ -1642,10 +1921,366 @@ Create the federated credentials for the managed identities:
 az identity federated-credential create \
   --name backup-production-k8s \
   --identity-name backup-production-identity \
-  --resource-group kubernetes-learning \
-  --issuer https://northeurope.oic.prod-aks.azure.com/b7cff52d-a4ec-4367-903c-5cf05c061aca/9618e5d3-f054-4b6d-9871-1d5a7447d273/ \
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --issuer <AKS_OIDC_ISSUER> \
   --subject system:serviceaccount:default:backup-serviceaccount
 
 # NOTE: Development identity kept for future use, but no federated credential needed
 # Feature environments will not have backup functionality - they are disposable
+
+---
+
+## Development ALB Controller Permissions
+
+**Critical**: When adding new subnets for ALB, the ALB controller identity needs specific permissions. Based on [official Microsoft documentation](https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/quickstart-deploy-application-gateway-for-containers-alb-controller):
+
+```bash
+# Required role assignments for ALB controller identity
+RESOURCE_GROUP='<RESOURCE_GROUP_NAME>'
+IDENTITY_RESOURCE_NAME='azure-alb-identity'
+mcResourceGroup="<MC_RESOURCE_GROUP>"
+
+principalId="$(az identity show -g $RESOURCE_GROUP -n $IDENTITY_RESOURCE_NAME --query principalId -otsv)"
+mcResourceGroupId=$(az group show --name $mcResourceGroup --query id -otsv)
+
+# 1. Reader role on MC resource group (usually already exists)
+az role assignment create \
+  --assignee-object-id $principalId \
+  --assignee-principal-type ServicePrincipal \
+  --scope $mcResourceGroupId \
+  --role "acdd72a7-3385-48ef-bd42-f606fba81ae7"
+
+# 2. AppGw for Containers Configuration Manager role (often missing)
+az role assignment create \
+  --assignee-object-id $principalId \
+  --assignee-principal-type ServicePrincipal \
+  --scope $mcResourceGroupId \
+  --role "fbc52c3f-28ad-4303-a892-8a056630b8f1"
+
+# 3. Network Contributor on each ALB subnet (required for new subnets)
+ALB_SUBNET_ID="/subscriptions/<SUBSCRIPTION_ID>/resourceGroups/<MC_RESOURCE_GROUP>/providers/Microsoft.Network/virtualNetworks/<VNET_NAME>/subnets/subnet-alb-dev"
+
+az role assignment create \
+  --assignee-object-id $principalId \
+  --assignee-principal-type ServicePrincipal \
+  --scope $ALB_SUBNET_ID \
+  --role "4d97b98b-1d4f-4787-a291-c67834d212e7"
+```
+
+**Common Error**: `LinkedAuthorizationFailed` indicates missing subnet join permissions (role #3 above).
+
+**Verification**: After running these commands, the ApplicationLoadBalancer should provision successfully within 2-3 minutes.
+
+-----
+
+# Azure Application Gateway for Containers (AGC) - BYO Deployment
+
+## Critical Architecture Requirement
+
+⚠️ **CRITICAL**: Azure Application Gateway for Containers (AGC) MUST be deployed in the same Virtual Network (VNet) as your AKS cluster. Deploying AGC in a separate VNet will cause connectivity failures with Azure CNI overlay networking.
+
+### Why Same VNet is Required
+
+When using Azure CNI with overlay mode, the ALB Controller cannot establish proper connectivity to an AGC deployed in a different VNet. This manifests as:
+- Gateway resources remain in "Unknown" or "Pending" state
+- ALB Controller logs show connectivity timeouts
+- HTTP traffic fails to reach backend services
+
+### Successful Architecture Pattern
+
+```
+AKS Cluster VNet (e.g., aks-vnet-12345)
+├── AKS Subnet (10.224.0.0/16) - Node pools
+└── AGC Subnet (10.225.0.0/24) - Application Gateway for Containers
+```
+
+## BYO Deployment Steps
+
+### Prerequisites
+- AKS cluster with ALB Controller installed
+- Azure CLI authenticated and configured
+- Same VNet as AKS cluster identified
+
+### Step 1: Set Environment Variables
+
+```bash
+# Core Infrastructure
+RESOURCE_GROUP="<your-resource-group>"
+AGC_NAME="<your-agc-name>"
+VNET_NAME="<aks-vnet-name>"  # SAME VNet as AKS cluster
+VNET_RESOURCE_GROUP="<node-resource-group>"  # Usually MC_<rg>_<cluster>_<region>
+AGC_SUBNET_NAME="agc-subnet"
+
+# Identity (should already exist from ALB Controller setup)
+IDENTITY_RESOURCE_NAME="azure-alb-identity"
+```
+
+### Step 2: Create AGC Subnet in AKS VNet
+
+```bash
+# Create subnet in the SAME VNet as AKS cluster
+az network vnet subnet create \
+  --resource-group $VNET_RESOURCE_GROUP \
+  --vnet-name $VNET_NAME \
+  --name $AGC_SUBNET_NAME \
+  --address-prefixes 10.225.0.0/24 \
+  --delegations Microsoft.ServiceNetworking/trafficControllers
+```
+
+### Step 3: Create Application Gateway for Containers
+
+```bash
+# Create the AGC resource
+az network alb create \
+  --resource-group $RESOURCE_GROUP \
+  --name $AGC_NAME \
+  --location <region>
+```
+
+### Step 4: Create Subnet Association
+
+```bash
+# Get subnet ID
+AGC_SUBNET_ID=$(az network vnet subnet show \
+  --resource-group $VNET_RESOURCE_GROUP \
+  --vnet-name $VNET_NAME \
+  --name $AGC_SUBNET_NAME \
+  --query id -o tsv)
+
+# Create association between AGC and subnet
+az network alb association create \
+  --resource-group $RESOURCE_GROUP \
+  --alb-name $AGC_NAME \
+  --name "association-1" \
+  --subnet $AGC_SUBNET_ID
+```
+
+### Step 5: Create Frontend
+
+```bash
+# Create frontend for the AGC
+az network alb frontend create \
+  --resource-group $RESOURCE_GROUP \
+  --alb-name $AGC_NAME \
+  --name "frontend"
+```
+
+### Step 6: Get AGC Resource ID
+
+```bash
+# Get the full AGC resource ID for Gateway annotation
+AGC_RESOURCE_ID=$(az network alb show \
+  --resource-group $RESOURCE_GROUP \
+  --name $AGC_NAME \
+  --query id -o tsv)
+
+echo "AGC Resource ID: $AGC_RESOURCE_ID"
+```
+
+## Kubernetes Gateway Configuration
+
+### Create Gateway with BYO Annotation
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: agc-byo-gateway
+  namespace: <your-namespace>
+  annotations:
+    # BYO deployment - specify the AGC resource ID directly
+    alb.networking.azure.io/alb-id: <AGC_RESOURCE_ID>
+spec:
+  gatewayClassName: azure-alb-external
+  listeners:
+  - name: http-listener
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: Same
+  addresses:
+  - type: alb.networking.azure.io/alb-frontend
+    value: frontend
+```
+
+### Create HTTPRoute for Application
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: app-route
+  namespace: <your-namespace>
+spec:
+  parentRefs:
+  - name: agc-byo-gateway
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: <your-service>
+      port: 80
+```
+
+## Deployment Strategy Comparison
+
+| Strategy | Use Case | Annotations | VNet Requirement |
+|----------|----------|-------------|------------------|
+| **ALB Managed** | Production environments | `alb-namespace`, `alb-name` | Same VNet |
+| **BYO** | Development/Feature environments | `alb-id` | Same VNet |
+
+### When to Use BYO vs ALB Managed
+
+- **BYO (Bring-Your-Own)**: When you need explicit control over AGC lifecycle, multiple environments, or when CNI overlay causes managed deployment issues
+- **ALB Managed**: When you want the ALB Controller to automatically manage the AGC lifecycle
+
+## Verification Steps
+
+1. **Check Gateway Status**:
+   ```bash
+   kubectl get gateway <gateway-name> -n <namespace>
+   # Should show PROGRAMMED=True and an ADDRESS
+   ```
+
+2. **Test Connectivity**:
+   ```bash
+   curl http://<gateway-address>/
+   ```
+
+3. **Check ALB Controller Logs** (if issues):
+   ```bash
+   kubectl logs -n azure-alb-system -l app=alb-controller --tail=50
+   ```
+
+## Troubleshooting
+
+### Gateway Stuck in "Unknown" State
+- **Cause**: AGC deployed in different VNet than AKS cluster
+- **Solution**: Redeploy AGC in same VNet as AKS cluster
+
+### "Waiting for overlay extension config" Messages
+- **Cause**: Normal during initial setup, ALB Controller synchronizing with AGC
+- **Solution**: Wait 2-3 minutes for synchronization to complete
+
+### Frontend Not Found Errors
+- **Cause**: Frontend name mismatch between AGC and Gateway spec
+- **Solution**: Verify frontend name matches in both Azure and Gateway YAML
+
+-----
+
+## Implementation Timeline - AGC BYO Success (August 13, 2025)
+
+### Achievements
+- ✅ **AGC BYO Deployment**: Successfully deployed using same VNet as AKS cluster
+- ✅ **Gateway Validation**: Gateway API resources properly configured and PROGRAMMED
+- ✅ **Test Application**: nginx test service accessible via AGC routing
+- ✅ **Architecture Documentation**: Critical VNet placement requirement documented
+- ✅ **Feature Environment Isolation**: Separate gateway ready for feature branch deployments
+
+https://learn.microsoft.com/en-us/azure/application-gateway/for-containers/how-to-backend-mtls-gateway-api?tabs=byo
+
+# Implementing Azure Functions #
+
+For improved management and secuity, we will create a new resource group.
+
+```bash
+az group create --name kubemooc-automation-rg --location northeurope
+```
+
+Create a Storage Account for the Function App:
+```bash
+az storage account create \
+  --name kubemoocautofuncsa \
+  --resource-group kubemooc-automation-rg \
+  --location northeurope \
+  --sku Standard_LRS \
+  --kind StorageV2
+```
+
+- For function code storage
+- Function state management
+- Trigger conditions (if not HTTP requests)
+- Key management for HTTP triggers
+
+Create Application Insights for monitoring:
+```bash
+az monitor app-insights component create \
+  --app kubemooc-provisioning-func-ai \
+  --location northeurope \
+  --resource-group kubemooc-automation-rg \
+  --application-type web
+```
+
+- Live metrics
+- Centralized logs
+- Exception tracking
+- Performance analysis
+- Application Map
+
+Create a Function App:
+```bash
+az functionapp create \
+  --name kubemooc-provisioning-func \
+  --resource-group kubemooc-automation-rg \
+  --storage-account kubemoocautofuncsa \
+  --consumption-plan-location northeurope \
+  --runtime python \
+  --functions-version 4 \
+  --os-type Linux \
+  --app-insights kubemooc-provisioning-func-ai
+```
+
+## Managed Identities for Function App ##
+Creation of a managed identity for the todo-app to access Azure resources securely in the resource group for the Function App:
+
+```bash
+az identity create \
+  --name mi-todo-app-dev \
+  --resource-group kubemooc-automation-rg \
+  --location northeurope
+```
+
+Creation of a managed identity for the provisioning function:
+```bash
+az identity create \
+  --name mi-provisioning-function \
+  --resource-group kubemooc-automation-rg \
+  --location northeurope
+```
+
+Assign correct permissions for both:
+```bash
+az role assignment create \
+  --assignee b0cd045b-2d5d-40df-a431-d040d28cc24e \
+  --role "Reader" \
+  --scope /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubernetes-learning/providers/Microsoft.DBforPostgreSQL/flexibleServers/kubemooc-postgres-feature
+```
+
+ Note that you have to dig out the Correct scope of your PostgreServer if it's not in the same resource group as the Function App. Also the name for it.
+
+ Grant mi-provisioning-function permission to manage identities in the resource group:
+ ```bash
+ az role assignment create \
+  --assignee 5acb9e8d-449f-4f46-9073-4b1d764d25e6 \
+  --role "Managed Identity Operator" \
+  --scope /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubemooc-automation-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/mi-todo-app-dev
+```
+
+Grant mi-provisioning-function Contributor role for the PostgreSQL server:
+```bash
+az role assignment create \
+  --assignee 5acb9e8d-449f-4f46-9073-4b1d764d25e6 \
+  --role "Contributor" \
+  --scope /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubernetes-learning/providers/Microsoft.DBforPostgreSQL/flexibleServers/kubemooc-postgres-feature
+```
+
+Grant the mi-provisioning-function access to your AKS Cluster with RBAC writer role so that it can create namespaces and other resources:
+```bash
+az role assignment create \
+  --assignee 5acb9e8d-449f-4f46-9073-4b1d764d25e6 \
+  --role "Azure Kubernetes Service RBAC Writer" \
+  --scope /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubernetes-learning/providers/Microsoft.ContainerService/managedClusters/kube-mooc
 ```

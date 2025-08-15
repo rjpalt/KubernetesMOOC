@@ -113,6 +113,7 @@ jobs:
     
     - name: Set kubectl context to feature namespace
       run: |
+
         # Set context to use the feature namespace (should already exist from provisioning workflow)
         kubectl config set-context --current --namespace=${{ env.NAMESPACE }}
         echo "✅ kubectl context set to namespace: ${{ env.NAMESPACE }}"
@@ -130,13 +131,17 @@ jobs:
           ${{ env.ACR_LOGIN_SERVER }}/todo-app-fe=${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }} \
           ${{ env.ACR_LOGIN_SERVER }}/todo-app-cron=${{ env.ACR_LOGIN_SERVER }}/todo-app-cron:${{ env.IMAGE_TAG_SUFFIX }}
         
-        # Replace BRANCH_NAME placeholder in HTTPRoute patches with actual branch name
+        # Replace BRANCH_NAME placeholders in HTTPRoute patches with actual branch name
+        # Handle both hostname (BRANCH_NAME) and database name (BRANCH_NAME_DB) placeholders
+        DB_NAME=$(echo "${{ env.BRANCH_NAME }}" | tr '-' '_')
+        sed -i "s/BRANCH_NAME_DB/${DB_NAME}/g" kustomization.yaml
         sed -i "s/BRANCH_NAME/${{ env.BRANCH_NAME }}/g" kustomization.yaml
         
         # Apply the manifests with feature-specific hostname routing configured
         kustomize build . | kubectl apply -f -
         
-        echo "✅ Feature environment deployed with hostname: feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io"
+        echo "✅ Feature environment deployed with AGC hostname: ${{ env.BRANCH_NAME }}.23.98.101.23.nip.io"
+
     
     - name: Wait for deployments
       run: |
@@ -328,9 +333,11 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Access Information 🌐" >> $GITHUB_STEP_SUMMARY
         echo "**Namespace:** \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Feature URL:** http://feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/" >> $GITHUB_STEP_SUMMARY
-        echo "**Backend Health:** http://feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health" >> $GITHUB_STEP_SUMMARY
-        echo "**API Docs:** http://feature-${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/" >> $GITHUB_STEP_SUMMARY
+
+        echo "**Feature URL:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/" >> $GITHUB_STEP_SUMMARY
+        echo "**Backend Health:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health" >> $GITHUB_STEP_SUMMARY
+        echo "**API Docs:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/" >> $GITHUB_STEP_SUMMARY
+
         echo "**Health Checks:** ✅ All services responding" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Next Steps 📝" >> $GITHUB_STEP_SUMMARY

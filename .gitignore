@@ -67,3 +67,6 @@ docker-compose.yaml.backup
 
 # Ignore revamp roadmap (project planning document)
 REVAMP_ROADMAP.md
+
+# Ignore implementation tracking
+IMPLEMENTATION_TODO.md

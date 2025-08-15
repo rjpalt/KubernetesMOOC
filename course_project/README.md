@@ -2,6 +2,15 @@
 
 Two-service todo application: **todo-backend** (REST API) and **todo-app** (Frontend with image caching). The **todo-cron** service provides automated Wikipedia todo generation and database backup to Azure Blob Storage.
 
+## Database-as-a-Service (DBaaS) Transition (In Progress)
+
+We are migrating from containerized PostgreSQL to Azure Database for PostgreSQL Flexible Server:
+
+- **Production:** `kubemooc-postgres-prod` (North Europe, B1ms, no HA)
+- **Feature/Automation:** `kubemooc-postgres-feature` (North Europe, B1ms, no HA)
+
+Feature branch automation will create databases on the feature server. See `.project/context.yaml` for details.
+
 ## Architecture
 
 - **todo-backend** (Port 8001): FastAPI REST API for todo CRUD operations
@@ -321,12 +330,23 @@ kubectl apply -k manifests/overlays/production/
 The deployment pipeline creates separate environments for each branch with complete isolation:
 
 - **Main Branch**: Deploys to `project` namespace using `overlays/production/`
+  - **Gateway Access**: Uses production gateway (`k8s-nsa2-gateway` in `nsa2` namespace)
+  - **Label Required**: `gateway-access=allowed` for production gateway access
+  - **Routing**: Path-based routing via `/project/` prefix
+
 - **Feature Branches**: Deploy to `feature-{branch-name}` namespace using `overlays/feature/`
-- **Gateway Access**: Feature namespaces automatically labeled with `gateway-access=allowed` for routing
-- **Path Isolation**: Each environment uses unique URL paths (`/project/` vs `/feature-{branch}/`)
+  - **Gateway Access**: Uses development gateway (`agc-feature-gateway` in `agc-shared` namespace)
+  - **Label Required**: `dev-gateway-access=allowed` for development gateway access
+  - **Routing**: DNS-based routing via `feature-{branch}.example.com` (planned)
+
+- **Gateway Isolation**: Production and development use completely separate Application Gateway for Containers:
+  - **Production**: ALB managed deployment (`default-alb` in `nsa2` namespace)
+  - **Development**: BYO deployment (`agc-aks-native` AGC with `agc-feature-gateway`)
+
 - **Complete Isolation**: Each feature environment has dedicated resources:
   - Separate namespace with RBAC isolation
-  - Isolated Gateway API routes
+  - Isolated Gateway API routes through development AGC
+  - Independent DNS endpoints (planned)
 - **Overlay Maintenance**: Feature overlay patches HTTPRoute paths for a fixed set of endpoints. When adding new public endpoints, update `manifests/overlays/feature/kustomization.yaml` accordingly. CI replaces `BRANCH_NAME` placeholders during deploy.
 - **Automatic Cleanup**: Feature environments can be cleaned up when branches are deleted (see [Deprovisioning Feature Environments](../docs/azure/Azure-memos.md#deprovisioning-feature-environments) for detailed cleanup procedures)
 

@@ -1,4 +1,4 @@
-"""Database operations for todos."""
+"""Database operations for todos. Compliant with PSQL, biatch."""
 
 from sqlalchemy import delete, func, select, update
 
@@ -8,7 +8,11 @@ from .models import TodoDB
 
 
 class TodoDatabase:
-    """Database operations for Todo entities."""
+    """Database operations for Todo entities.
+
+    All operations are async and handle database sessions with proper rollback on errors.
+    Uses SQLAlchemy async sessions for PostgreSQL compatibility.
+    """
 
     async def create_todo(self, text: str) -> Todo:
         """Create a new todo item."""

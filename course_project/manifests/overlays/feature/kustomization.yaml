@@ -1,14 +1,14 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Feature branch overlay - used for deploying feature branches to separate namespaces
-# Excludes PostgreSQL StatefulSet since using Azure Database for PostgreSQL
+# Feature branch overlay - uses Azure Database for PostgreSQL instead of containerized PostgreSQL
 # Usage: 
 #   cd course_project/manifests/overlays/feature
 #   kustomize edit set namespace feature-branch-name
 #   kustomize edit set image [images...]
 #   kustomize build . | kubectl apply -f -
 
+# Include all base resources except PostgreSQL
 resources:
   # Include all base resources except PostgreSQL
   - ../../base/shared/
@@ -16,9 +16,66 @@ resources:
   - ../../base/todo-fe/
   - ../../base/todo-cron/
   # Note: Excluding ../../base/postgres/ - using Azure Database for PostgreSQL
+  
+  # Feature-specific SecretProviderClass for Azure Key Vault integration
+  - secret-provider-class-feature.yaml
 
-# JSON patches for Azure PostgreSQL integration and HTTPRoute customization
+# JSON patches for Azure PostgreSQL integration and AGC gateway migration
 patches:
+  # Replace the entire HTTPRoute to use AGC gateway with hostname-based routing
+  - target:
+      kind: HTTPRoute
+      name: todo-app
+    patch: |-
+      - op: replace
+        path: /spec/parentRefs
+        value:
+          - name: agc-feature-gateway
+            namespace: agc-shared
+      - op: add
+        path: /spec/hostnames
+        value:
+          - "BRANCH_NAME.23.98.101.23.nip.io"
+      - op: replace
+        path: /spec/rules
+        value:
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /be-health
+            backendRefs:
+              - name: todo-app-be-svc
+                port: 2506
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /docs
+            backendRefs:
+              - name: todo-app-be-svc
+                port: 2506
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /image
+            backendRefs:
+              - name: todo-app-fe-svc
+                port: 2507
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /todos
+            backendRefs:
+              - name: todo-app-be-svc
+                port: 2506
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /
+            backendRefs:
+              - name: todo-app-fe-svc
+                port: 2507
+
+  # Add service account and Secret Provider Class volume to backend deployment
   - target:
       kind: Deployment
       name: todo-app-be
@@ -34,35 +91,26 @@ patches:
               driver: secrets-store.csi.k8s.io
               readOnly: true
               volumeAttributes:
-                secretProviderClass: postgres-secret-provider
+                secretProviderClass: postgres-secret-provider-feature
       - op: add
         path: /spec/template/spec/containers/0/volumeMounts
         value:
           - name: secrets-store
             mountPath: /mnt/secrets-store
             readOnly: true
-  - target:
-      kind: HTTPRoute
-      name: todo-app
-    patch: |-
       - op: replace
-        path: /spec/rules/0/matches/0/path/value
-        value: /feature-BRANCH_NAME/be-health
+        path: /spec/template/spec/containers/0/env/3/value
+        value: "kubemooc-postgres-feature.postgres.database.azure.com"
       - op: replace
-        path: /spec/rules/1/matches/0/path/value
-        value: /feature-BRANCH_NAME/docs/
-      - op: replace
-        path: /spec/rules/2/matches/0/path/value
-        value: /feature-BRANCH_NAME/image
-      - op: replace
-        path: /spec/rules/3/matches/0/path/value
-        value: /feature-BRANCH_NAME/todos
-      - op: replace
-        path: /spec/rules/4/matches/0/path/value
-        value: /feature-BRANCH_NAME/
+        path: /spec/template/spec/containers/0/env/5/value
+        value: "BRANCH_NAME_DB"
 
 images:
   - name: kubemooc.azurecr.io/todo-app-be
     newTag: latest
   - name: kubemooc.azurecr.io/todo-app-fe
     newTag: latest
+  - name: kubemooc.azurecr.io/todo-app-cron
+    newTag: latest
+
+namespace: feature-BRANCH_NAME
