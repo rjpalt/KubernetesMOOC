@@ -1,5 +1,10 @@
 name: Feature Branch Deployment
 
+# NOTE: The deployed feature hostname uses the branch name directly (no leading
+# "feature-" namespace prefix). Example for branch `ex-c3-e9`:
+#   http://ex-c3-e9.23.98.101.23.nip.io/
+
+
 on:
   workflow_run:
     workflows: ["CI Pipeline - Microservices"]
@@ -287,7 +292,8 @@ jobs:
         Your feature branch \`${{ env.BRANCH_NAME }}\` has been deployed to its own isolated environment!
         
         ### 🌐 Access Information
-        - **Feature URL**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/
+        - **Feature URL**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/  
+          _Note: the deployed DNS uses the branch name directly (example: http://ex-c3-e9.23.98.101.23.nip.io/) — it does not include a `feature-` prefix._
         - **Backend Health**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health
         - **API Documentation**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/
         - **Namespace**: \`${{ env.NAMESPACE }}\`
@@ -332,9 +338,9 @@ jobs:
         echo "| Cron | ✅ Deployed | \`kubemooc.azurecr.io/todo-app-cron:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Access Information 🌐" >> $GITHUB_STEP_SUMMARY
-        echo "**Namespace:** \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
-
+        echo "**Namespace:** \\`${{ env.NAMESPACE }}\\`" >> $GITHUB_STEP_SUMMARY
         echo "**Feature URL:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/" >> $GITHUB_STEP_SUMMARY
+        echo "**Note:** Deployed DNS uses the branch name directly (example: http://ex-c3-e9.23.98.101.23.nip.io/) — no leading 'feature-' prefix." >> $GITHUB_STEP_SUMMARY
         echo "**Backend Health:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health" >> $GITHUB_STEP_SUMMARY
         echo "**API Docs:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/" >> $GITHUB_STEP_SUMMARY
 

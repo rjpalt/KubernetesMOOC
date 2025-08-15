@@ -91,7 +91,9 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
     - Add NetworkPolicies and edge auth (Entra ID or OAuth proxy) for preview environment security
     - Consider Azure Functions-based provisioning service: GitHub Actions → OIDC → Azure Function → provision resources; improves security and centralized control
 - [3.8](https://github.com/rjpalt/KubernetesMOOC/tree/3.8/course_project) - The environment teardown workflow is implemented in the [cleanup-feature-environment.yaml](.github/workflows/cleanup-feature-environment.yaml) [here](https://github.com/rjpalt/KubernetesMOOC/actions/runs/16858557720/job/47755265970) is an example of the workflow run for deleted branch ex-3-8.
-- [3.9]
+- [3.9](https://github.com/rjpalt/KubernetesMOOC/tree/3.9/course_project) - Implemented Azure Functions for environment provisioning, DBaas for feature environment
+  - The revamp of the environment is still a bit in progress. The feature environment is now using a DBaaS solution while production si still using the containerized PostgreSQL. Over the following exercises I will revamp the situation.
+  - Now the feature environment uses DNS based routing isntead of using the HTTPRoute URL reqriting, which was clunky. The solution uses nip.io and still has a little bit of work to be done, but it's coming up.
 - [3.10](https://github.com/rjpalt/KubernetesMOOC/tree/3.10/course_project) - Containerized database backups to Azure Blob Storage
   - The backup script is located in the [course_project/todo-cron/backup_database.sh](course_project/todo-cron/backup_database.sh) file.
   - The related scripts are located in the [course_project/manifests/base/todo-cron](course_project/manifests/base/todo-cron) directory.
