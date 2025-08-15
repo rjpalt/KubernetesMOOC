@@ -38,6 +38,19 @@ spec:
     - matches:
       - path:
           type: PathPrefix
+          value: /project/api/
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: todo-app-be-svc
+          port: 2506
+    - matches:
+      - path:
+          type: PathPrefix
           value: /project/image
       filters:
         - type: URLRewrite
