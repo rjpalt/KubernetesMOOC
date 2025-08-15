@@ -10,13 +10,14 @@ kind: Kustomization
 
 # Include all base resources except PostgreSQL
 resources:
-  - ../../base/shared
-  - ../../base/todo-be
-  - ../../base/todo-fe
-  - ../../base/todo-cron
+  # Include all base resources except PostgreSQL
+  - ../../base/shared/
+  - ../../base/todo-be/
+  - ../../base/todo-fe/
+  - ../../base/todo-cron/
   # Note: Excluding ../../base/postgres/ - using Azure Database for PostgreSQL
 
-# Patches for Azure PostgreSQL integration and feature-specific routing
+# JSON patches for Azure PostgreSQL integration and HTTPRoute customization
 patches:
   # Add service account and Secret Provider Class volume to backend deployment
   - target:
