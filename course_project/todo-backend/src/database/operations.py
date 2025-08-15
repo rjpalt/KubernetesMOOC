@@ -9,7 +9,7 @@ from .models import TodoDB
 
 class TodoDatabase:
     """Database operations for Todo entities.
-    
+
     All operations are async and handle database sessions with proper rollback on errors.
     Uses SQLAlchemy async sessions for PostgreSQL compatibility.
     """
