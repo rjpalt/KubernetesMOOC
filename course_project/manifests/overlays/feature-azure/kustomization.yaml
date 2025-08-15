@@ -1,0 +1,61 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Feature branch overlay for Azure PostgreSQL - used for deploying feature branches with Azure Database
+# This overlay removes the containerized PostgreSQL and uses Azure Database for PostgreSQL instead
+# Usage: 
+#   cd course_project/manifests/overlays/feature-azure
+#   kustomize edit set namespace feature-branch-name
+#   kustomize edit set image [images...]
+#   kustomize build . | kubectl apply -f -
+
+resources:
+  - ../../base/shared  # Include shared resources (namespace, service account, etc.)
+  - ../../base/todo-be  # Include backend
+  - ../../base/todo-fe  # Include frontend
+  - ../../base/todo-cron  # Include cron jobs
+  # Explicitly exclude: ../../base/postgres (we use Azure PostgreSQL instead)
+
+components:
+  - feature-azure-config  # Custom configuration for Azure PostgreSQL
+
+# Patch HTTPRoute to use feature-specific path prefix
+patches:
+  - target:
+      kind: HTTPRoute
+      name: todo-app
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/matches/0/path/value
+        value: /feature-BRANCH_NAME/be-health
+      - op: replace
+        path: /spec/rules/1/matches/0/path/value
+        value: /feature-BRANCH_NAME/docs/
+      - op: replace
+        path: /spec/rules/2/matches/0/path/value
+        value: /feature-BRANCH_NAME/image
+      - op: replace
+        path: /spec/rules/3/matches/0/path/value
+        value: /feature-BRANCH_NAME/todos
+      - op: replace
+        path: /spec/rules/4/matches/0/path/value
+        value: /feature-BRANCH_NAME/
+
+  # Patch backend deployment to use Azure PostgreSQL environment detection
+  - target:
+      kind: Deployment
+      name: todo-app-be
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: ENVIRONMENT
+          value: "feature"
+
+images:
+  - name: kubemooc.azurecr.io/todo-app-be
+    newTag: latest
+  - name: kubemooc.azurecr.io/todo-app-fe
+    newTag: latest
+  - name: kubemooc.azurecr.io/todo-app-cron
+    newTag: latest
