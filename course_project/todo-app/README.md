@@ -18,12 +18,13 @@ A FastAPI-based todo application that combines task management with background i
 - **Container Testing**: Built-in shutdown endpoint for testing container resilience
 
 ### Architecture
-- **Modern UI**: Jinja2 templated responsive web interface with proper separation of concerns
-- **Modular Architecture**: Clean separation between configuration, business logic, API routes, and data models
-- **Dependency Injection**: Proper service layer with dependency injection instead of global variables
-- **Template Inheritance**: Modular HTML templates for maintainable code
-- **Testable Design**: Each component can be tested in isolation
-- **SOLID Principles**: Single Responsibility, proper abstractions, and clean interfaces
+
+### Routing & service communication (IMPORTANT)
+
+- The frontend is the HTTP entry point for browser interactions and is responsible for handling HTML form submissions for todos.
+- The HTML todo form submits using `application/x-www-form-urlencoded` to the frontend's `/todos` route (e.g. via HTMX). The frontend converts that form data to a JSON payload and calls the backend's `POST /todos` endpoint.
+- Therefore, gateway/ingress/HTTPRoute configuration MUST route `/todos` requests to the frontend service (not directly to the backend). Routing `/todos` directly to the backend will bypass the frontend's form-to-JSON conversion and will cause data-format errors.
+- When using host-based or path-prefix routing (Gateway API / Ingress), ensure the `base_path` / `API_BASE_PATH` settings and any URLRewrite filters are configured so the frontend receives the browser request first. Document and verify routing changes during any migration from path-based rewriting to hostname-based routing.
 
 ## Quick Start (Local Development)
 
