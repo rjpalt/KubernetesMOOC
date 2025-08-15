@@ -65,8 +65,8 @@ patches:
                 type: PathPrefix
                 value: /todos
             backendRefs:
-              - name: todo-app-be-svc
-                port: 2506
+              - name: todo-app-fe-svc
+                port: 2507
           - matches:
             - path:
                 type: PathPrefix
@@ -104,6 +104,15 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/env/5/value
         value: "BRANCH_NAME_DB"
+
+  # Fix API_BASE_PATH for hostname-based routing (should be empty, not "/")
+  - target:
+      kind: Deployment
+      name: todo-app-fe
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/3/value
+        value: ""
 
 images:
   - name: kubemooc.azurecr.io/todo-app-be
