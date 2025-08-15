@@ -1,4 +1,4 @@
-"""Database connection management with async SQLAlchemy. Handles local and Cloud."""
+"""Database connection management with async SQLAlchemy. Handles local and Azure Cloud, yeah."""
 
 import asyncio
 import logging
