@@ -56,250 +56,84 @@ jobs:
         echo "**Commit:** \`${COMMIT_SHA}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Namespace:** \`${NAMESPACE}\`" >> $GITHUB_STEP_SUMMARY
     
-    - name: Azure Login via Workload Identity
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    
-    - name: Connect to AKS cluster
+    - name: Call Azure Deployment Function
+      id: deploy_function
+      env:
+        FUNCTION_URL: ${{ secrets.AZURE_DEPLOYMENT_FUNCTION_URL }}
+        FUNCTION_KEY: ${{ secrets.AZURE_DEPLOYMENT_FUNCTION_KEY }}
+        BRANCH_NAME: ${{ env.BRANCH_NAME }}
+        COMMIT_SHA: ${{ env.COMMIT_SHA }}
       run: |
-        az aks get-credentials \
-          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
-          --name ${{ env.AKS_CLUSTER_NAME }}
-    
-    - name: Verify images exist in registry
-      run: |
-        echo "Verifying that tested images exist in registry..."
-        IMAGE_SUFFIX="${{ env.IMAGE_TAG_SUFFIX }}"
-        
-        # Check if all required images exist and fail if any are missing
-        echo "Checking backend image..."
-        BACKEND_TAGS=$(az acr repository show-tags \
-          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
-          --repository todo-app-be \
-          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
-          --output tsv)
-        
-        if [ -z "$BACKEND_TAGS" ]; then
-          echo "❌ Backend image with tag containing '${IMAGE_SUFFIX}' not found!"
+        if [ -z "$FUNCTION_URL" ] || [ -z "$FUNCTION_KEY" ]; then
+          echo "::error ::Azure Deployment Function URL or Key not set in secrets"
           exit 1
         fi
-        
-        echo "Checking frontend image..."
-        FRONTEND_TAGS=$(az acr repository show-tags \
-          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
-          --repository todo-app-fe \
-          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
-          --output tsv)
-        
-        if [ -z "$FRONTEND_TAGS" ]; then
-          echo "❌ Frontend image with tag containing '${IMAGE_SUFFIX}' not found!"
+
+        echo "🚀 Calling Azure Deployment Function for branch: $BRANCH_NAME"
+        echo "Function URL: $FUNCTION_URL"
+
+        # POST request to deployment function
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$FUNCTION_URL?code=$FUNCTION_KEY" \
+          -H "Content-Type: application/json" \
+          -d "{\"branch_name\": \"$BRANCH_NAME\", \"commit_sha\": \"$COMMIT_SHA\"}")
+
+        BODY=$(echo "$RESPONSE" | head -n -1)
+        STATUS=$(echo "$RESPONSE" | tail -n1)
+
+        echo "📡 HTTP Status: $STATUS"
+        echo "📋 Response Body:"
+        echo "$BODY" | jq . || echo "$BODY"
+
+        echo "response_body=$BODY" >> $GITHUB_OUTPUT
+        echo "http_status=$STATUS" >> $GITHUB_OUTPUT
+
+        if [ "$STATUS" -ne 200 ]; then
+          echo "::error ::HTTP request failed with status $STATUS"
           exit 1
         fi
-        
-        echo "Checking cron image..."
-        CRON_TAGS=$(az acr repository show-tags \
-          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
-          --repository todo-app-cron \
-          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
-          --output tsv)
-        
-        if [ -z "$CRON_TAGS" ]; then
-          echo "❌ Cron image with tag containing '${IMAGE_SUFFIX}' not found!"
+
+        SUCCESS=$(echo "$BODY" | jq -r '.success // false')
+        if [ "$SUCCESS" != "true" ]; then
+          ERR_MSG=$(echo "$BODY" | jq -r '.error_details // .message // "Unknown error"')
+          echo "::error ::Deployment function reported failure: $ERR_MSG"
           exit 1
         fi
-        
-        echo "✅ All tested images found in registry:"
-        echo "  - Backend: $BACKEND_TAGS"
-        echo "  - Frontend: $FRONTEND_TAGS"
-        echo "  - Cron: $CRON_TAGS"
-    
-    - name: Set kubectl context to feature namespace
-      run: |
 
-        # Set context to use the feature namespace (should already exist from provisioning workflow)
-        kubectl config set-context --current --namespace=${{ env.NAMESPACE }}
-        echo "✅ kubectl context set to namespace: ${{ env.NAMESPACE }}"
-    
-    - name: Deploy feature environment
-      run: |
-        cd course_project/manifests/overlays/feature
-        
-        # Configure namespace for this feature branch
-        kustomize edit set namespace ${{ env.NAMESPACE }}
-        
-        # Set the tested image tags
-        kustomize edit set image \
-          ${{ env.ACR_LOGIN_SERVER }}/todo-app-be=${{ env.ACR_LOGIN_SERVER }}/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }} \
-          ${{ env.ACR_LOGIN_SERVER }}/todo-app-fe=${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }} \
-          ${{ env.ACR_LOGIN_SERVER }}/todo-app-cron=${{ env.ACR_LOGIN_SERVER }}/todo-app-cron:${{ env.IMAGE_TAG_SUFFIX }}
-        
-        # Replace BRANCH_NAME placeholders in HTTPRoute patches with actual branch name
-        # Handle both hostname (BRANCH_NAME) and database name (BRANCH_NAME_DB) placeholders
-        DB_NAME=$(echo "${{ env.BRANCH_NAME }}" | tr '-' '_')
-        sed -i "s/BRANCH_NAME_DB/${DB_NAME}/g" kustomization.yaml
-        sed -i "s/BRANCH_NAME/${{ env.BRANCH_NAME }}/g" kustomization.yaml
-        
-        # Apply the manifests with feature-specific hostname routing configured
-        kustomize build . | kubectl apply -f -
-        
-        echo "✅ Feature environment deployed with AGC hostname: ${{ env.BRANCH_NAME }}.23.98.101.23.nip.io"
+        echo "✅ Deployment function completed successfully"
 
-    
-    - name: Wait for deployments
-      run: |
-        echo "Waiting for deployments to be ready..."
-        
-        # Note: No PostgreSQL StatefulSet to wait for - using Azure Database for PostgreSQL
-        echo "Using Azure Database for PostgreSQL (no StatefulSet to wait for)"
-        
-        # Use deployment rollout status instead of individual pod waits
-        # This avoids race conditions with terminating pods during rolling updates
-        kubectl rollout status deployment/todo-app-be --timeout=300s
-        echo "✅ Backend deployment ready"
-        
-        kubectl rollout status deployment/todo-app-fe --timeout=300s
-        echo "✅ Frontend deployment ready"
-    
-    - name: Verify feature environment health
-      run: |
-        echo "Verifying feature environment health..."
-        
-        # Get service information
-        kubectl get services -o wide
-        
-        # Find a ready backend pod using field selector (avoids terminating pods)
-        echo "Finding ready backend pod..."
-        BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-be --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-        
-        if [ -z "$BACKEND_POD" ]; then
-          echo "No running backend pods found, waiting briefly..."
-          sleep 10
-          BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-be --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
-        fi
-        
-        echo "Found backend pod: $BACKEND_POD"
-        
-        # Debug: Check what's actually running in the backend pod
-        echo "Debugging backend pod configuration..."
-        kubectl describe pod $BACKEND_POD -n ${{ env.NAMESPACE }}
-        echo "Checking backend pod logs..."
-        kubectl logs $BACKEND_POD -n ${{ env.NAMESPACE }} --tail=20
-        echo "Checking if backend is listening on expected ports..."
-        kubectl exec $BACKEND_POD -n ${{ env.NAMESPACE }} -- netstat -tlnp 2>/dev/null || kubectl exec $BACKEND_POD -n ${{ env.NAMESPACE }} -- ss -tlnp 2>/dev/null || echo "netstat/ss not available"
-        
-        # Test backend health with port-forward to the correct port
-        echo "Testing backend health..."
-        kubectl port-forward pod/$BACKEND_POD 8001:2506 &
-        PORT_FORWARD_PID=$!
-        sleep 5
-        
-        if curl -f --max-time 10 http://localhost:8001/be-health; then
-          echo "✅ Backend health check passed"
-        else
-          echo "❌ Backend health check failed, trying alternative ports..."
-          kill $PORT_FORWARD_PID 2>/dev/null || true
-          
-          # Try port 8001 (common local development port)
-          echo "Trying port-forward to 8001:8001..."
-          kubectl port-forward pod/$BACKEND_POD 8002:8001 &
-          PORT_FORWARD_PID=$!
-          sleep 5
-          
-          if curl -f --max-time 10 http://localhost:8002/be-health; then
-            echo "✅ Backend health check passed on port 8001"
-          else
-            echo "❌ Backend health check failed on both ports"
-            kill $PORT_FORWARD_PID 2>/dev/null || true
-            exit 1
-          fi
-        fi
-        
-        kill $PORT_FORWARD_PID 2>/dev/null || true
-        
-        # Find a ready frontend pod using field selector
-        echo "Finding ready frontend pod..."
-        FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        # Extract useful fields for later steps
+        DEPLOYMENT_URL=$(echo "$BODY" | jq -r '.deployment_url // ""')
+        NAMESPACE=$(echo "$BODY" | jq -r '.namespace // ""')
+        HEALTH_COUNT=$(echo "$BODY" | jq -r '.health_checks | length // 0')
 
-        
-        if [ -z "$FRONTEND_POD" ]; then
-          echo "No running frontend pods found, waiting briefly..."
-          sleep 10
-          FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
-
-        fi
-        
-        echo "Found frontend pod: $FRONTEND_POD"
-        
-        # Debug: Check what's actually running in the frontend pod
-        echo "Debugging frontend pod configuration..."
-        kubectl describe pod $FRONTEND_POD -n ${{ env.NAMESPACE }}
-        echo "Checking frontend pod logs..."
-        kubectl logs $FRONTEND_POD -n ${{ env.NAMESPACE }} --tail=20
-        
-        # Test frontend health with port-forward
-        echo "Testing frontend health..."
-        kubectl port-forward pod/$FRONTEND_POD 8000:2507 &
-        PORT_FORWARD_PID=$!
-        sleep 5
-        
-        if curl -f --max-time 10 http://localhost:8000/health; then
-          echo "✅ Frontend health check passed"
-        else
-          echo "❌ Frontend health check failed, trying alternative ports..."
-          kill $PORT_FORWARD_PID 2>/dev/null || true
-          
-          # Try port 8000 (common local development port)
-          echo "Trying port-forward to 8000:8000..."
-          kubectl port-forward pod/$FRONTEND_POD 8003:8000 &
-          PORT_FORWARD_PID=$!
-          sleep 5
-          
-          if curl -f --max-time 10 http://localhost:8003/health; then
-            echo "✅ Frontend health check passed on port 8000"
-          else
-            echo "❌ Frontend health check failed on both ports"
-            kill $PORT_FORWARD_PID 2>/dev/null || true
-            exit 1
-          fi
-        fi
-        
-        kill $PORT_FORWARD_PID 2>/dev/null || true
-        echo "✅ All health checks passed"
-    
-    - name: Cleanup on failure
-      if: failure()
-      run: |
-        echo "Cleaning up resources due to deployment failure..."
-        echo "Note: Infrastructure cleanup will be handled by the cleanup workflow when branch is deleted"
-        echo "✅ Application cleanup completed"
+        echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+        echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
+        echo "health_count=$HEALTH_COUNT" >> $GITHUB_OUTPUT
     
     - name: Comment on PR with feature environment details
       if: always() && !failure()
       run: |
         # Get the PR number from the workflow run
-        PR_NUMBER=$(gh pr list --head "${{ env.BRANCH_NAME }}" --json number --jq '.[0].number')
+        PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --json number --jq '.[0].number')
         
         if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
-          echo "Found PR #$PR_NUMBER for branch ${{ env.BRANCH_NAME }}"
+          echo "Found PR #$PR_NUMBER for branch $BRANCH_NAME"
           
           # Create comment body
           cat > pr_comment.md << EOF
         ## 🚀 Feature Environment Deployed Successfully
         
-        Your feature branch \`${{ env.BRANCH_NAME }}\` has been deployed to its own isolated environment!
+        Your feature branch \`$BRANCH_NAME\` has been deployed to its own isolated environment!
         
         ### 🌐 Access Information
-        - **Feature URL**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/  
+        - **Feature URL**: http://$BRANCH_NAME.23.98.101.23.nip.io/  
           _Note: the deployed DNS uses the branch name directly (example: http://ex-c3-e9.23.98.101.23.nip.io/) — it does not include a `feature-` prefix._
-        - **Backend Health**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health
-        - **API Documentation**: http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/
-        - **Namespace**: \`${{ env.NAMESPACE }}\`
+        - **Backend Health**: http://$BRANCH_NAME.23.98.101.23.nip.io/be-health
+        - **API Documentation**: http://$BRANCH_NAME.23.98.101.23.nip.io/docs/
+        - **Namespace**: \`$NAMESPACE\`
         
         ### 📊 Deployment Details
-        - **Images**: \`${{ env.IMAGE_TAG_SUFFIX }}\`
+        - **Images**: \`$IMAGE_TAG_SUFFIX\`
         - **Database**: Azure PostgreSQL (provisioned when branch was created)
         - **Infrastructure**: Pre-provisioned by infrastructure workflow
         - **Gateway**: Azure Application Gateway for Containers (AGC)
@@ -322,31 +156,37 @@ jobs:
           gh pr comment "$PR_NUMBER" --body-file pr_comment.md
           echo "✅ Posted feature environment details to PR #$PR_NUMBER"
         else
-          echo "⚠️ Could not find PR for branch ${{ env.BRANCH_NAME }}, skipping comment"
+          echo "⚠️ Could not find PR for branch $BRANCH_NAME, skipping comment"
         fi
       env:
         GH_TOKEN: ${{ github.token }}
     
     - name: Generate deployment summary
       run: |
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "## Deployment Results 📊" >> $GITHUB_STEP_SUMMARY
-        echo "| Component | Status | Image |" >> $GITHUB_STEP_SUMMARY
-        echo "|-----------|--------|-------|" >> $GITHUB_STEP_SUMMARY
-        echo "| Backend | ✅ Deployed | \`kubemooc.azurecr.io/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
-        echo "| Frontend | ✅ Deployed | \`kubemooc.azurecr.io/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
-        echo "| Cron | ✅ Deployed | \`kubemooc.azurecr.io/todo-app-cron:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "## Access Information 🌐" >> $GITHUB_STEP_SUMMARY
-        echo "**Namespace:** \\`${{ env.NAMESPACE }}\\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Feature URL:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/" >> $GITHUB_STEP_SUMMARY
-        echo "**Note:** Deployed DNS uses the branch name directly (example: http://ex-c3-e9.23.98.101.23.nip.io/) — no leading 'feature-' prefix." >> $GITHUB_STEP_SUMMARY
-        echo "**Backend Health:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/be-health" >> $GITHUB_STEP_SUMMARY
-        echo "**API Docs:** http://${{ env.BRANCH_NAME }}.23.98.101.23.nip.io/docs/" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Deployment Results 📊" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status | Image |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | ✅ Deployed | \`kubemooc.azurecr.io/todo-app-be:$IMAGE_TAG_SUFFIX\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | ✅ Deployed | \`kubemooc.azurecr.io/todo-app-fe:$IMAGE_TAG_SUFFIX\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cron | ✅ Deployed | \`kubemooc.azurecr.io/todo-app-cron:$IMAGE_TAG_SUFFIX\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Access Information 🌐" >> $GITHUB_STEP_SUMMARY
+          DEPLOY_NS="${{ steps.deploy_function.outputs.namespace }}"
+          if [ -z "$DEPLOY_NS" ]; then DEPLOY_NS="${NAMESPACE}"; fi
+          DEPLOY_URL="${{ steps.deploy_function.outputs.deployment_url }}"
+          if [ -z "$DEPLOY_URL" ]; then DEPLOY_URL="http://${BRANCH_NAME}.23.98.101.23.nip.io/"; fi
+          HEALTH_COUNT="${{ steps.deploy_function.outputs.health_count }}"
+          if [ -z "$HEALTH_COUNT" ]; then HEALTH_COUNT="0"; fi
 
-        echo "**Health Checks:** ✅ All services responding" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "## Next Steps 📝" >> $GITHUB_STEP_SUMMARY
-        echo "- Test your feature in the isolated environment" >> $GITHUB_STEP_SUMMARY
-        echo "- Run E2E tests against this environment" >> $GITHUB_STEP_SUMMARY
-        echo "- Environment will be cleaned up when branch is deleted" >> $GITHUB_STEP_SUMMARY
+          echo "**Namespace:** \`$DEPLOY_NS\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Feature URL:** $DEPLOY_URL" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Deployed DNS uses the branch name directly (example: http://ex-c3-e9.23.98.101.23.nip.io/) — no leading 'feature-' prefix." >> $GITHUB_STEP_SUMMARY
+          echo "**Backend Health:** http://$BRANCH_NAME.23.98.101.23.nip.io/be-health" >> $GITHUB_STEP_SUMMARY
+          echo "**API Docs:** http://$BRANCH_NAME.23.98.101.23.nip.io/docs/" >> $GITHUB_STEP_SUMMARY
+          echo "**Health Checks:** Parsed $HEALTH_COUNT checks from function response" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Next Steps 📝" >> $GITHUB_STEP_SUMMARY
+          echo "- Test your feature in the isolated environment" >> $GITHUB_STEP_SUMMARY
+          echo "- Run E2E tests against this environment" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment will be cleaned up when branch is deleted" >> $GITHUB_STEP_SUMMARY
