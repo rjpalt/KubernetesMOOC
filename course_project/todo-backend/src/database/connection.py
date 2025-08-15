@@ -1,4 +1,40 @@
 """Database connection management with async SQLAlchemy. Handles local and Azure Cloud, yeah."""
+"""
+Database connection management using asynchronous SQLAlchemy.
+
+This module provides the `DatabaseManager` class, which encapsulates the logic for initializing,
+managing, and closing asynchronous database connections and sessions. It is designed to work with
+both local and Azure Cloud environments, supporting connection pooling and robust health checks.
+
+Key Features:
+- Asynchronous database engine creation with configurable connection pooling.
+- Session factory management for generating async database sessions.
+- Automatic creation of database tables based on SQLAlchemy models.
+- Health check functionality with retry logic and exponential backoff to ensure database connectivity.
+- Graceful shutdown and disposal of database connections.
+
+Classes:
+    DatabaseManager:
+        Handles the lifecycle of the database engine and session factory, provides methods for
+        initialization, health checking, session retrieval, and cleanup.
+
+Global Variables:
+    db_manager:
+        A singleton instance of `DatabaseManager` for use throughout the application.
+
+Usage:
+    1. Call `await db_manager.initialize()` during application startup to set up the database.
+    2. Use `db_manager.get_session()` to obtain an async session for database operations.
+    3. Optionally, use `await db_manager.health_check()` to verify connectivity.
+    4. Call `await db_manager.close()` during application shutdown to release resources.
+
+Configuration:
+    The database connection URL and other settings are sourced from the application's configuration
+    (see `src.config.settings`). Connection pool parameters can be adjusted as needed.
+
+Logging:
+    All major operations and errors are logged using the standard Python logging module.
+"""
 
 import asyncio
 import logging
