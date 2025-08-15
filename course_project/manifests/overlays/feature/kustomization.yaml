@@ -56,6 +56,13 @@ patches:
           - matches:
             - path:
                 type: PathPrefix
+                value: /api
+            backendRefs:
+              - name: todo-app-be-svc
+                port: 2506
+          - matches:
+            - path:
+                type: PathPrefix
                 value: /image
             backendRefs:
               - name: todo-app-fe-svc

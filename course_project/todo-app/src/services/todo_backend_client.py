@@ -24,7 +24,7 @@ class TodoBackendClient:
         """Fetch all todos from backend service."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.backend_url}/todos")
+                response = await client.get(f"{self.backend_url}/api/todos")
                 response.raise_for_status()
 
                 # Convert response to Todo objects
@@ -42,7 +42,7 @@ class TodoBackendClient:
         """Create a new todo via backend service."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(f"{self.backend_url}/todos", json={"text": text})
+                response = await client.post(f"{self.backend_url}/api/todos", json={"text": text})
                 response.raise_for_status()
 
                 todo_data = response.json()
@@ -65,7 +65,7 @@ class TodoBackendClient:
                 update_data["status"] = status.value
 
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.put(f"{self.backend_url}/todos/{todo_id}", json=update_data)
+                response = await client.put(f"{self.backend_url}/api/todos/{todo_id}", json=update_data)
                 response.raise_for_status()
 
                 todo_data = response.json()
@@ -82,7 +82,7 @@ class TodoBackendClient:
         """Delete a todo via backend service."""
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.delete(f"{self.backend_url}/todos/{todo_id}")
+                response = await client.delete(f"{self.backend_url}/api/todos/{todo_id}")
 
                 if response.status_code == 404:
                     return False
@@ -101,7 +101,7 @@ class TodoBackendClient:
         """Check backend service health."""
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{self.backend_url}/be-health")
+                response = await client.get(f"{self.backend_url}/api/be-health")
                 response.raise_for_status()
                 return response.json()
         except Exception as e:
