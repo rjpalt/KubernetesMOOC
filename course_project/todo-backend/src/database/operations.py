@@ -1,4 +1,4 @@
-"""Database operations for todos. Compliant with PSQL."""
+"""Database operations for todos. Compliant with PSQL, biatch."""
 
 from sqlalchemy import delete, func, select, update
 
