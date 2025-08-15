@@ -20,8 +20,61 @@ resources:
   # Feature-specific SecretProviderClass for Azure Key Vault integration
   - secret-provider-class-feature.yaml
 
-# JSON patches for Azure PostgreSQL integration and HTTPRoute customization
+# JSON patches for Azure PostgreSQL integration and AGC gateway migration
 patches:
+  # Replace the entire HTTPRoute to use AGC gateway with hostname-based routing
+  - target:
+      kind: HTTPRoute
+      name: todo-app
+    patch: |-
+      - op: replace
+        path: /spec/parentRefs
+        value:
+          - name: agc-feature-gateway
+            namespace: agc-shared
+      - op: add
+        path: /spec/hostnames
+        value:
+          - "BRANCH_NAME.23.98.101.23.nip.io"
+      - op: replace
+        path: /spec/rules
+        value:
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /be-health
+            backendRefs:
+              - name: todo-app-be-svc
+                port: 2506
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /docs
+            backendRefs:
+              - name: todo-app-be-svc
+                port: 2506
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /image
+            backendRefs:
+              - name: todo-app-fe-svc
+                port: 2507
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /todos
+            backendRefs:
+              - name: todo-app-be-svc
+                port: 2506
+          - matches:
+            - path:
+                type: PathPrefix
+                value: /
+            backendRefs:
+              - name: todo-app-fe-svc
+                port: 2507
+
   # Add service account and Secret Provider Class volume to backend deployment
   - target:
       kind: Deployment
@@ -50,28 +103,7 @@ patches:
         value: "kubemooc-postgres-feature.postgres.database.azure.com"
       - op: replace
         path: /spec/template/spec/containers/0/env/5/value
-        value: "ex_3_9"
-  
-  # Update HTTPRoute for feature-specific paths
-  - target:
-      kind: HTTPRoute
-      name: todo-app
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/matches/0/path/value
-        value: /feature-BRANCH_NAME/be-health
-      - op: replace
-        path: /spec/rules/1/matches/0/path/value
-        value: /feature-BRANCH_NAME/docs/
-      - op: replace
-        path: /spec/rules/2/matches/0/path/value
-        value: /feature-BRANCH_NAME/image
-      - op: replace
-        path: /spec/rules/3/matches/0/path/value
-        value: /feature-BRANCH_NAME/todos
-      - op: replace
-        path: /spec/rules/4/matches/0/path/value
-        value: /feature-BRANCH_NAME/
+        value: "BRANCH_NAME_DB"
 
 images:
   - name: kubemooc.azurecr.io/todo-app-be
@@ -81,4 +113,4 @@ images:
   - name: kubemooc.azurecr.io/todo-app-cron
     newTag: latest
 
-namespace: feature-ex-3-9
+namespace: feature-BRANCH_NAME
