@@ -1,41 +1,84 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Feature branch overlay - used for deploying feature branches to separate namespaces
+# Feature branch overlay - uses Azure Database for PostgreSQL instead of containerized PostgreSQL
 # Usage: 
 #   cd course_project/manifests/overlays/feature
 #   kustomize edit set namespace feature-branch-name
 #   kustomize edit set image [images...]
 #   kustomize build . | kubectl apply -f -
 
+  # Include shared resources (namespace, service account, health checks, routing)
+  
+  # Include application services (but NOT postgres - we use Azure PostgreSQL)
 resources:
-  - ../../base
+- ../../base/shared
+- ../../base/todo-be
+- ../../base/todo-fe
+- ../../base/todo-cron
 
 # Patch HTTPRoute to use feature-specific path prefix
 # This replaces runtime kubectl patching with Infrastructure as Code approach
+
+  # Patch backend deployment to use Azure PostgreSQL
+
+  # Patch Secret Provider Class to use feature database credentials
 patches:
-  - target:
-      kind: HTTPRoute
-      name: todo-app
-    patch: |-
-      - op: replace
-        path: /spec/rules/0/matches/0/path/value
-        value: /feature-BRANCH_NAME/be-health
-      - op: replace
-        path: /spec/rules/1/matches/0/path/value
-        value: /feature-BRANCH_NAME/docs/
-      - op: replace
-        path: /spec/rules/2/matches/0/path/value
-        value: /feature-BRANCH_NAME/image
-      - op: replace
-        path: /spec/rules/3/matches/0/path/value
-        value: /feature-BRANCH_NAME/todos
-      - op: replace
-        path: /spec/rules/4/matches/0/path/value
-        value: /feature-BRANCH_NAME/
+- patch: |-
+    - op: replace
+      path: /spec/rules/0/matches/0/path/value
+      value: /feature-BRANCH_NAME/be-health
+    - op: replace
+      path: /spec/rules/1/matches/0/path/value
+      value: /feature-BRANCH_NAME/docs/
+    - op: replace
+      path: /spec/rules/2/matches/0/path/value
+      value: /feature-BRANCH_NAME/image
+    - op: replace
+      path: /spec/rules/3/matches/0/path/value
+      value: /feature-BRANCH_NAME/todos
+    - op: replace
+      path: /spec/rules/4/matches/0/path/value
+      value: /feature-BRANCH_NAME/
+  target:
+    kind: HTTPRoute
+    name: todo-app
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/env/3/value
+      value: "kubemooc-postgres-feature.postgres.database.azure.com"
+    - op: replace
+      path: /spec/template/spec/containers/0/env/5/value
+      value: "ex_3_9"
+  target:
+    kind: Deployment
+    name: todo-app-be
+- patch: |-
+    - op: replace
+      path: /spec/parameters/objects
+      value: |
+        array:
+          - |
+            objectName: postgres-feature-user
+            objectType: secret
+          - |
+            objectName: postgres-feature-password
+            objectType: secret
+    - op: replace
+      path: /spec/secretObjects/0/data/0/objectName
+      value: postgres-feature-user
+    - op: replace
+      path: /spec/secretObjects/0/data/1/objectName
+      value: postgres-feature-password
+  target:
+    kind: SecretProviderClass
+    name: postgres-secret-provider
 
 images:
-  - name: kubemooc.azurecr.io/todo-app-be
-    newTag: latest
-  - name: kubemooc.azurecr.io/todo-app-fe
-    newTag: latest
+- name: kubemooc.azurecr.io/todo-app-be
+  newTag: latest
+- name: kubemooc.azurecr.io/todo-app-fe
+  newTag: latest
+- name: kubemooc.azurecr.io/todo-app-cron
+  newTag: latest
+namespace: feature-ex-3-9
