@@ -191,10 +191,8 @@ jobs:
       run: |
         echo "Waiting for deployments to be ready..."
         
-        # Wait for PostgreSQL StatefulSet first (database dependency)
-        echo "Waiting for PostgreSQL StatefulSet..."
-        kubectl rollout status statefulset/postgres-statefulset --timeout=600s
-        echo "✅ PostgreSQL ready"
+        # Note: No PostgreSQL StatefulSet to wait for - using Azure Database for PostgreSQL
+        echo "Using Azure Database for PostgreSQL (no StatefulSet to wait for)"
         
         # Use deployment rollout status instead of individual pod waits
         # This avoids race conditions with terminating pods during rolling updates

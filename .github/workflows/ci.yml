@@ -23,7 +23,10 @@ on:
   # Also run on pushes to main (merges) to build images for production
   push:
     branches: [ main ]
-    # Remove path filters for main pushes - always build images
+    paths-ignore:
+      - '.github/**'
+      - '*.md'
+      - 'docs/**'
 
 permissions:
   id-token: write  # Required for Azure authentication
