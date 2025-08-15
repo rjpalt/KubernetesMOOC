@@ -40,7 +40,7 @@ spec:
         - name: LOG_LEVEL
           value: "INFO"
         - name: API_BASE_PATH
-          value: "/project"
+          value: "/"
         volumeMounts:
           - name: image-cache-volume
             mountPath: /images
