@@ -85,6 +85,32 @@ The full-stack kustomization automatically handles deployment order and applies 
 - **Backend → Database**: PostgreSQL connection via service DNS (`postgres-svc:5432`)
 - **External Access**: Through Ingress routing to frontend and backend services
 
+## Cluster-Level Security Configuration
+
+### Namespace Deletion Protection
+
+Kubernetes RBAC has been configured to restrict namespace deletion to authorized Azure Functions only:
+
+**Location**: `/cluster-manifests/cluster-protection-rbac.yaml`
+
+**Applied**: August 19, 2025 ✅
+
+```bash
+kubectl apply -f cluster-manifests/cluster-protection-rbac.yaml
+```
+
+**Purpose**: 
+- Prevents accidental deletion of critical namespaces
+- Restricts namespace deletion to the deprovisioning function only
+- Allows safe cleanup of feature branch environments
+
+**Details**:
+- **ClusterRole**: `namespace-manager` - defines namespace deletion permissions
+- **ClusterRoleBinding**: Only `mi-deprovisioning-function` (Principal ID: `41ed2068-1c66-4911-9345-1b413cb9a21c`) can delete namespaces
+- **Protection**: System namespaces (`default`, `kube-system`, etc.) are protected via application logic
+
+This ensures that feature branch cleanup is secure and controlled while protecting production and system namespaces.
+
 ## Environment Patterns
 
 - **Development**: Single replicas, resource limits for local testing

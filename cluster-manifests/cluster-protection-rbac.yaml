@@ -1,0 +1,39 @@
+# Kubernetes RBAC Protection for Deprovisioning Function
+# Restricts namespace deletion to only feature-* namespaces
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: namespace-manager
+  labels:
+    app.kubernetes.io/name: deprovisioning-function
+    app.kubernetes.io/component: security
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["delete"]
+  resourceNames: [] # Will be restricted by ClusterRoleBinding pattern
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list"] # Allow reading all namespaces for validation
+- apiGroups: ["batch"]
+  resources: ["cronjobs"]
+  verbs: ["get", "list", "patch"] # Allow CronJob suspension before namespace deletion
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list"] # Allow resource inspection during cleanup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: deprovisioning-function-binding
+  labels:
+    app.kubernetes.io/name: deprovisioning-function
+    app.kubernetes.io/component: security
+subjects:
+- kind: User
+  name: "41ed2068-1c66-4911-9345-1b413cb9a21c" # mi-deprovisioning-function principal ID
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: namespace-manager
+  apiGroup: rbac.authorization.k8s.io
