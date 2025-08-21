@@ -290,6 +290,162 @@ curl -X POST \
   "https://<FUNCTION_APP_NAME>.azurewebsites.net/api/provision?code=<function-key>"
 ```
 
+## Deployment Function Managed Identity Setup (August 15, 2025)
+
+### Azure Function for Feature Branch Deployment
+
+For the **kubemooc-deployment-func** Azure Function, we created a dedicated managed identity `mi-deployment-function` with the following role assignments to support automated feature branch deployment to AKS:
+
+#### Required Resources Created
+
+```bash
+# Function App Details
+DEPLOYMENT_FUNCTION_NAME="kubemooc-deployment-func"
+DEPLOYMENT_STORAGE_ACCOUNT="kubemoocdeploymentst"
+DEPLOYMENT_APP_INSIGHTS="kubemooc-deployment-func"
+DEPLOYMENT_HOSTING_PLAN="ASP-kubemoocautomationrg-80da"
+
+# Managed Identity
+DEPLOYMENT_IDENTITY_NAME="mi-deployment-function"
+AUTOMATION_RESOURCE_GROUP="kubemooc-automation-rg"
+```
+
+#### Step 1: Gather Required Resource Information
+
+```bash
+# Get the deployment function managed identity details
+DEPLOYMENT_IDENTITY_CLIENT_ID=$(az identity show --name ${DEPLOYMENT_IDENTITY_NAME} --resource-group ${AUTOMATION_RESOURCE_GROUP} --query clientId -o tsv)
+DEPLOYMENT_IDENTITY_PRINCIPAL_ID=$(az identity show --name ${DEPLOYMENT_IDENTITY_NAME} --resource-group ${AUTOMATION_RESOURCE_GROUP} --query principalId -o tsv)
+DEPLOYMENT_IDENTITY_RESOURCE_ID=$(az identity show --name ${DEPLOYMENT_IDENTITY_NAME} --resource-group ${AUTOMATION_RESOURCE_GROUP} --query id -o tsv)
+
+echo "Deployment Identity Client ID: ${DEPLOYMENT_IDENTITY_CLIENT_ID}"
+echo "Deployment Identity Principal ID: ${DEPLOYMENT_IDENTITY_PRINCIPAL_ID}"
+echo "Deployment Identity Resource ID: ${DEPLOYMENT_IDENTITY_RESOURCE_ID}"
+
+# Get ACR resource ID for permission assignment
+ACR_RESOURCE_ID=$(az acr show --name kubemooc --resource-group kubernetes-learning --query id -o tsv)
+echo "ACR Resource ID: ${ACR_RESOURCE_ID}"
+
+# Get AKS resource ID for permission assignment  
+AKS_RESOURCE_ID=$(az aks show --name kube-mooc --resource-group kubernetes-learning --query id -o tsv)
+echo "AKS Resource ID: ${AKS_RESOURCE_ID}"
+```
+
+#### Step 2: Assign Required Permissions to mi-deployment-function
+
+```bash
+# ACR Pull Permission (for image verification)
+az role assignment create \
+  --assignee $DEPLOYMENT_IDENTITY_PRINCIPAL_ID \
+  --scope $ACR_RESOURCE_ID \
+  --role "7f951dda-4ed3-4680-a7ca-43fe172d538d"  # AcrPull role ID
+
+echo "✅ Assigned AcrPull permission to ACR"
+
+# AKS Contributor Permission (for cluster operations)
+az role assignment create \
+  --assignee $DEPLOYMENT_IDENTITY_PRINCIPAL_ID \
+  --scope $AKS_RESOURCE_ID \
+  --role "ed7f3fbd-7b88-4dd4-9017-9adb7ce333f8"  # Azure Kubernetes Service Contributor Role ID
+
+echo "✅ Assigned AKS Contributor permission"
+
+# AKS RBAC Writer Permission (for Kubernetes resource management)
+az role assignment create \
+  --assignee $DEPLOYMENT_IDENTITY_PRINCIPAL_ID \
+  --scope $AKS_RESOURCE_ID \
+  --role "a7ffa36f-339b-4b5c-8bdf-e2c188b2c0eb"  # Azure Kubernetes Service RBAC Writer role ID
+
+echo "✅ Assigned AKS RBAC Writer permission"
+```
+
+#### Step 3: Verify Permission Assignments
+
+```bash
+# Verify all role assignments for the deployment function identity
+az role assignment list --assignee $DEPLOYMENT_IDENTITY_PRINCIPAL_ID --output table
+
+# Expected output should show:
+# - AcrPull on kubemooc ACR
+# - Azure Kubernetes Service Contributor Role on kube-mooc AKS cluster  
+# - Azure Kubernetes Service RBAC Writer on kube-mooc AKS cluster
+```
+
+#### Step 4: Assign Managed Identity to Function App
+
+```bash
+# Assign the user-assigned managed identity to the function app
+az functionapp identity assign \
+  --name $DEPLOYMENT_FUNCTION_NAME \
+  --resource-group $AUTOMATION_RESOURCE_GROUP \
+  --identities $DEPLOYMENT_IDENTITY_RESOURCE_ID
+
+echo "✅ Assigned managed identity to function app"
+```
+
+#### Function Environment Variables
+
+The deployment function requires these environment variables to be set in the Azure Function App configuration:
+
+```bash
+# Core Azure Resources
+AZURE_SUBSCRIPTION_ID=ede18d8a-a758-4a40-b15e-6eded5264b93
+ACR_LOGIN_SERVER=kubemooc.azurecr.io
+ACR_NAME=kubemooc
+AKS_CLUSTER_NAME=kube-mooc
+AKS_RESOURCE_GROUP=kubernetes-learning
+
+# Managed Identity Authentication
+DEPLOYMENT_FUNCTION_IDENTITY_NAME=mi-deployment-function
+DEPLOYMENT_FUNCTION_CLIENT_ID=${DEPLOYMENT_IDENTITY_CLIENT_ID}
+
+# GitHub Repository Access (public repository)
+GITHUB_REPOSITORY_URL=https://github.com/rjpalt/KubernetesMOOC.git
+```
+
+#### Function Capabilities
+
+The deployed function will handle feature branch deployment with a single HTTP POST:
+
+1. **Image Verification**: Confirms tested images exist in ACR with correct tags
+2. **Kubernetes Manifests**: Downloads and processes manifests from GitHub repository
+3. **Namespace Deployment**: Deploys to pre-provisioned feature namespaces
+4. **Health Verification**: Validates deployment success and service readiness
+
+**Function URL**: `https://kubemooc-deployment-func-<random>.northeurope-01.azurewebsites.net/api/deploy`
+
+**Usage**:
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{ "branch_name": "feature-xyz", "commit_sha": "abc123" }' \
+  "https://kubemooc-deployment-func-<random>.northeurope-01.azurewebsites.net/api/deploy?code=<function-key>"
+```
+
+**Expected Response**:
+```json
+{
+  "status": "success",
+  "branch_name": "feature-xyz",
+  "namespace": "feature-feature-xyz",
+  "deployment_url": "https://feature-xyz.23.98.101.23.nip.io/",
+  "health_checks": {
+    "backend": "healthy",
+    "frontend": "healthy"
+  },
+  "message": "Feature environment deployed successfully"
+}
+```
+
+#### Security Benefits of Separate Identities
+
+- **Principle of Least Privilege**: Each function has only the permissions it needs
+- **Separation of Concerns**: Provisioning vs Deployment responsibilities clearly defined
+- **Audit Trail**: Clear tracking of which function performed which operations
+- **Blast Radius Limitation**: Compromise of one identity doesn't affect the other
+
+**Note**: All actual values are stored in `.project/context.yaml` and should not be committed to version control.
+
 ## Why Separate Identities for CI and CD?
 
 In production environments, it's crucial to follow the **principle of least privilege** and separate concerns between different pipeline stages, even when they share the same underlying infrastructure.
