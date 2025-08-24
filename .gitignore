@@ -69,4 +69,7 @@ docker-compose.yaml.backup
 REVAMP_ROADMAP.md
 
 # Ignore implementation tracking
-IMPLEMENTATION_TODO.mdtmp/
+IMPLEMENTATION_TODO.md
+
+tmp/
+
