@@ -24,8 +24,8 @@ jobs:
         echo "Triggered by branch deletion: $BRANCH_NAME"
         echo "Deleted ref type: ${{ github.event.ref_type }}"
         
-        # Sanitize branch name for consistency
-        CLEAN_BRANCH=$(echo "$BRANCH_NAME" | sed 's|^feature-||' | sed 's|^ex-||' | tr '/' '-')
+        # Sanitize branch name for consistency (only strip feature- prefix, preserve ex- prefix)
+        CLEAN_BRANCH=$(echo "$BRANCH_NAME" | sed 's|^feature-||' | tr '/' '-')
         
         echo "Original branch: $BRANCH_NAME"
         echo "Sanitized branch: $CLEAN_BRANCH"
