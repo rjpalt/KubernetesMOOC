@@ -1,0 +1,167 @@
+name: Deprovision Feature Environment
+
+on:
+  delete:
+
+permissions:
+  contents: read
+
+jobs:
+  deprovision-feature-environment:
+    name: Deprovision Feature Environment
+    runs-on: ubuntu-latest
+    # Only run for feature branch deletions
+    if: >
+      github.event_name == 'delete' && github.event.ref_type == 'branch' &&
+      (startsWith(github.event.ref, 'feature-') || startsWith(github.event.ref, 'ex-'))
+    
+    steps:
+    - name: Determine branch name and validate
+      id: branch-info
+      run: |
+        # Extract branch name from delete event
+        BRANCH_NAME="${{ github.event.ref }}"
+        echo "Triggered by branch deletion: $BRANCH_NAME"
+        echo "Deleted ref type: ${{ github.event.ref_type }}"
+        
+        # Sanitize branch name for consistency
+        CLEAN_BRANCH=$(echo "$BRANCH_NAME" | sed 's|^feature-||' | sed 's|^ex-||' | tr '/' '-')
+        
+        echo "Original branch: $BRANCH_NAME"
+        echo "Sanitized branch: $CLEAN_BRANCH"
+        
+        # Export variables for subsequent steps
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+        echo "CLEAN_BRANCH=$CLEAN_BRANCH" >> $GITHUB_ENV
+        
+        # Add to step summary
+        echo "## Feature Environment Deprovisioning" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** \`$BRANCH_NAME\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Sanitized Branch:** \`$CLEAN_BRANCH\`" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Call Azure Deprovisioning Function
+      id: deprovision
+      env:
+        FUNCTION_URL: ${{ secrets.AZURE_DEPROVISIONING_FUNCTION_URL }}
+        FUNCTION_KEY: ${{ secrets.AZURE_DEPROVISIONING_FUNCTION_KEY }}
+      run: |
+        if [ -z "$FUNCTION_URL" ] || [ -z "$FUNCTION_KEY" ]; then
+          echo "::error ::Azure Deprovisioning Function URL or Key not set in secrets"
+          echo "Required secrets:"
+          echo "- AZURE_DEPROVISIONING_FUNCTION_URL"
+          echo "- AZURE_DEPROVISIONING_FUNCTION_KEY"
+          exit 1
+        fi
+        
+        echo "🗑️ Calling Azure Deprovisioning Function for branch: $CLEAN_BRANCH"
+        echo "Function URL: $FUNCTION_URL"
+        
+        # Record start time for performance tracking
+        START_TIME=$(date +%s)
+        
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$FUNCTION_URL?code=$FUNCTION_KEY" \
+          -H "Content-Type: application/json" \
+          -d "{\"branch_name\": \"$CLEAN_BRANCH\"}")
+        
+        BODY=$(echo "$RESPONSE" | head -n -1)
+        STATUS=$(echo "$RESPONSE" | tail -n1)
+        END_TIME=$(date +%s)
+        DURATION=$((END_TIME - START_TIME))
+        
+        echo "📡 HTTP Status: $STATUS"
+        echo "⏱️ Duration: ${DURATION}s"
+        echo "📋 Response Body:"
+        echo "$BODY" | jq . 2>/dev/null || echo "$BODY"
+        
+        # Save response for summary step
+        echo "response_body=$BODY" >> $GITHUB_OUTPUT
+        echo "http_status=$STATUS" >> $GITHUB_OUTPUT
+        echo "duration=$DURATION" >> $GITHUB_OUTPUT
+        
+        if [ "$STATUS" -ne 200 ]; then
+          echo "::error ::HTTP request failed with status $STATUS"
+          echo "::error ::Response: $BODY"
+          exit 1
+        fi
+        
+        # Check if the response indicates success
+        DEPROVISION_STATUS=$(echo "$BODY" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
+        if [ "$DEPROVISION_STATUS" = "error" ]; then
+          ERROR_MSG=$(echo "$BODY" | jq -r '.error // "Unknown error"' 2>/dev/null || echo "Unknown error")
+          echo "::error ::Deprovisioning failed: $ERROR_MSG"
+          exit 1
+        elif [ "$DEPROVISION_STATUS" = "success" ]; then
+          echo "✅ Deprovisioning completed successfully"
+        else
+          echo "::warning ::Unknown deprovisioning status: $DEPROVISION_STATUS"
+          # Continue - don't fail for unknown status as long as HTTP was successful
+        fi
+
+    - name: Display Deprovisioning Summary
+      if: always()
+      env:
+        RESPONSE_BODY: ${{ steps.deprovision.outputs.response_body }}
+        HTTP_STATUS: ${{ steps.deprovision.outputs.http_status }}
+        DURATION: ${{ steps.deprovision.outputs.duration }}
+        BRANCH_NAME: ${{ env.BRANCH_NAME }}
+        CLEAN_BRANCH: ${{ env.CLEAN_BRANCH }}
+      run: |
+        echo "## 🗑️ Deprovisioning Summary for Branch: $BRANCH_NAME"
+        
+        if [ -n "$HTTP_STATUS" ]; then
+          echo "### HTTP Response"
+          echo "- Status Code: $HTTP_STATUS"
+          echo "- Duration: ${DURATION}s"
+        fi
+        
+        if [ -n "$RESPONSE_BODY" ]; then
+          echo "### Deprovisioning Details"
+          
+          # Extract key information from response
+          STATUS=$(echo "$RESPONSE_BODY" | jq -r '.status // "unknown"' 2>/dev/null || echo "unknown")
+          CORRELATION_ID=$(echo "$RESPONSE_BODY" | jq -r '.correlation_id // "N/A"' 2>/dev/null || echo "N/A")
+          PROCESSING_TIME=$(echo "$RESPONSE_BODY" | jq -r '.timing.total_duration_seconds // "N/A"' 2>/dev/null || echo "N/A")
+          
+          echo "- Deprovisioning Status: $STATUS"
+          echo "- Correlation ID: $CORRELATION_ID"
+          echo "- Processing Time: ${PROCESSING_TIME}s"
+          
+          if [ "$STATUS" = "success" ]; then
+            echo "### ✅ Successfully Cleaned Up Resources"
+            DATABASE=$(echo "$RESPONSE_BODY" | jq -r '.cleaned_resources.database // "N/A"' 2>/dev/null || echo "N/A")
+            NAMESPACE=$(echo "$RESPONSE_BODY" | jq -r '.cleaned_resources.namespace // "N/A"' 2>/dev/null || echo "N/A")
+            CREDENTIALS=$(echo "$RESPONSE_BODY" | jq -r '.cleaned_resources.federated_credentials // "N/A"' 2>/dev/null || echo "N/A")
+            
+            echo "- Database: $DATABASE"
+            echo "- Kubernetes Namespace: $NAMESPACE"
+            echo "- Federated Credentials: $CREDENTIALS"
+          elif [ "$STATUS" = "error" ]; then
+            echo "### ❌ Deprovisioning Failed"
+            ERROR_MSG=$(echo "$RESPONSE_BODY" | jq -r '.error // "Unknown error"' 2>/dev/null || echo "Unknown error")
+            echo "- Error: $ERROR_MSG"
+          fi
+          
+          echo "### 🔍 Full Response"
+          echo "\`\`\`json"
+          echo "$RESPONSE_BODY" | jq . 2>/dev/null || echo "$RESPONSE_BODY"
+          echo "\`\`\`"
+        else
+          echo "### ❌ No response data available"
+          echo "The deprovisioning function call may have failed completely."
+        fi
+        
+        # Add to GitHub step summary
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Deprovisioning Results" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -n "$HTTP_STATUS" ] && [ "$HTTP_STATUS" = "200" ]; then
+          echo "**Status:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "**Duration:** ${DURATION}s (HTTP) + ${PROCESSING_TIME}s (Processing)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "**Status:** ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          echo "**HTTP Status:** ${HTTP_STATUS:-Unknown}" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ -n "$CORRELATION_ID" ] && [ "$CORRELATION_ID" != "N/A" ]; then
+          echo "**Correlation ID:** \`$CORRELATION_ID\`" >> $GITHUB_STEP_SUMMARY
+        fi
