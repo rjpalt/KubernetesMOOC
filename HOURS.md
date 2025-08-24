@@ -35,6 +35,10 @@
 | 2025-08-13 | 6 | Chapter 4: 3.9 + Refactor Infrastructure and CI/CD| 92.5 |
 | 2025-08-14 | 6.5 | Chapter 4: 3.9 + Azure Environment revamp to serverless DevEx | 99 |
 | 2025-08-15 | 7.5 | Chapter 5: 4.2 | 106.5 |
-| 2025-08-16 | 2 | Chapter 5: 4.3 | 108.5 |
-| 2025-08-17 | 2 | Chapter 5: 4.4 | 110.5 |
-| 2025-08-18 | 2 | Chapter 5: 4.5 | 112.5 |
+| 2025-08-16 | 4.5 | Chapter 5: 4.3 | 111 |
+| 2025-08-17 | 0 | Chapter 5: 4.4 | 111 |
+| 2025-08-18 | 0 | Chapter 5: 4.5 | 111 |
+| 2025-08-19 | 1 | Chapter 5: 4.6 | 112 |
+| 2025-08-20 | 1 | Chapter 5: 4.7 | 113 |
+| 2025-08-21 | 2 | Chapter 5: 4.8 | 115 |
+| 2025-08-22 | 1 | Chapter 5: 4.9 | 116 |
