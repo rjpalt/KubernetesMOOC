@@ -1,4 +1,4 @@
-"""Todo data models."""
+"""Todo data models. A real model indeed!"""
 
 import uuid
 from datetime import datetime
