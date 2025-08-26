@@ -3,7 +3,7 @@
 ## Current Sprint: Monitoring & Scaling (Exercises 3.11 & 3.12)
 
 ### Phase 0: Prerequisite Knowledge (You)
-- [ ] **Action:** Read the course section on scaling and watch the video. This will provide the necessary background for the next steps.
+- [x] **Action:** Read the course section on scaling and watch the video. This will provide the necessary background for the next steps.
 
 ### Phase 1: Observability & Resource Management (Exercise 3.11)
 - [ ] **Goal:** Set resource limits and enable logging.

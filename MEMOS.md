@@ -699,3 +699,82 @@ Check what kustomization would apply:
 ```bash
 kubectl kustomize .
 ```
+
+---
+# Scaling in Kubernetes #
+Example of setting resources in a deployment manifest:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpushredder-dep
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cpushredder
+  template:
+    metadata:
+      labels:
+        app: cpushredder
+    spec:
+      containers:
+        - name: cpushredder
+          image: jakousa/dwk-app7:e11a700350aede132b62d3b5fd63c05d6b976394
+          resources:
+            limits:
+              cpu: "150m"
+              memory: "100Mi"
+```
+
+Note the last three rows: it sets limits to memory and CPU. Cpu is calculated in one thousand of CPU cores. 150m means 150 milli CPU, which is 0.15 CPU cores, which is 15% of a single CPU core.
+
+## Horizontal Pod Autoscaling ##
+Horizontal Pod Autoscaler is a Kubernetes resource that defines autoscaling for a deployment of replica set based on observed CPU utilization or other select metrics.
+
+Example of a HPA manifest:
+```yaml
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cpushredder-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cpushredder-dep
+  minReplicas: 1
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 50
+```
+- `scaleTargetRef` specifies the target deployment to scale. It targets the Deployment kind that has the specified name in this case.
+- `minReplicas` and `maxReplicas` define the minimum and maximum number of pod replicas that the HPA can scale to.
+- `targetCPUUtilizationPercentage` specifies the desired CPU utilization percentage for the pods. The HPA will adjust the number of replicas to maintain this target utilization.
+
+## Scaling Down and Stability in Kubernetes ##
+It is possible to determine what is the scaledown behaviour by definining stabilizationWindowSeconds to less or more than default 300. `stabilizationWindowSeconds` controls the time window for which the HPA will wait before scaling down.
+```yaml
+behavior:
+  scaleDown:
+    stabilizationWindowSeconds: 30
+```
+
+### Scaling Nodes ###
+It is also possible to configure scaling for whole nodes in a Kubernetes cluster. This can be achieved using the Cluster Autoscaler, which automatically adjusts the size of the cluster based on the resource requests of the pods.
+
+This might also move pods between nodes to optimize resource utilization. In this case we want to use the `Pod DisruptionBudget`, which allows us to specify the minimum number of pods that must be available during voluntary disruptions OR maximum for unavailable pods.
+
+```yaml
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: example-app-pdb
+spec:
+  maxUnavailable: 50%
+  selector:
+    matchLabels:
+      app: example-app
+```
+
+## Vertical Pod Autoscaler (VPA) ##
+There's also a possibility of using a vertical pod autoscaler that handles the scaling vertically, juicing your machine up and down as requested.
