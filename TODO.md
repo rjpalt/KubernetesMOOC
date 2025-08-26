@@ -26,7 +26,6 @@
 - [ ] **Review CI/CD Pipeline:** Audit the `main` branch's deployment workflow for optimizations and best practices.
 
 ## Future Enhancements
-- [ ] **E2E Testing:** Add Playwright tests targeting live environments to validate complete workflows.
 - [ ] **Security Hardening:**
     - [ ] Configure Dependabot for automated dependency updates.
     - [ ] Configure CodeQL for static analysis security scanning.
@@ -34,3 +33,7 @@
 - [ ] **GitOps:** Implement a GitOps workflow using a separate configuration repository for tracking deployed state.
 - [ ] **Advanced Preview Environments:** Replace `nip.io` with a proper DNS and certificate solution (ExternalDNS, cert-manager).
 - [ ] **Documentation:** Automate OpenAPI documentation publishing.
+
+## Recently Completed
+- [x] **E2E Testing Foundation:** Implemented a comprehensive Playwright E2E test suite with support for local (Docker Compose) and remote (Kubernetes) execution environments.
+- [x] **E2E Testing CI Integration:** Automated the execution of the Playwright E2E suite in a GitHub Actions workflow that runs after feature branch deployments, providing direct feedback on pull requests.

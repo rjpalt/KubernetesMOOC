@@ -1,0 +1,176 @@
+name: E2E Tests
+
+on:
+  workflow_run:
+    workflows: ["Feature Branch Deployment"]
+    types:
+      - completed
+
+permissions:
+  actions: read         # Required to download artifacts from triggering workflow
+  contents: read        # Required to check out repository
+  pull-requests: write  # Required to comment on PRs
+
+jobs:
+  e2e-tests:
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+    # Only run if the feature deployment workflow completed successfully
+    if: github.event.workflow_run.conclusion == 'success'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # CRITICAL: Checkout the exact same commit that triggered the deployment
+        # This ensures we test the same code that was deployed
+        ref: ${{ github.event.workflow_run.head_sha }}
+    
+    - name: Download deployment info artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: deployment-info
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        run-id: ${{ github.event.workflow_run.id }}
+    
+    - name: Extract deployment URL
+      id: extract_url
+      run: |
+        if [ ! -f deployment_url.txt ]; then
+          echo "::error ::deployment_url.txt not found in artifact"
+          exit 1
+        fi
+        
+        TARGET_URL=$(cat deployment_url.txt)
+        if [ -z "$TARGET_URL" ]; then
+          echo "::error ::Deployment URL is empty"
+          exit 1
+        fi
+        
+        echo "TARGET_URL=$TARGET_URL" >> $GITHUB_ENV
+        echo "target_url=$TARGET_URL" >> $GITHUB_OUTPUT
+        echo "🎯 Target URL for E2E tests: $TARGET_URL"
+        
+        # Add to step summary
+        echo "## E2E Test Configuration 🧪" >> $GITHUB_STEP_SUMMARY
+        echo "**Target URL:** $TARGET_URL" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** ${{ github.event.workflow_run.head_branch }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ github.event.workflow_run.head_sha }}" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: course_project/tests/e2e/package-lock.json
+    
+    - name: Install Playwright dependencies
+      working-directory: course_project/tests/e2e
+      run: |
+        npm ci
+        echo "📦 Installed Playwright dependencies"
+    
+    - name: Install Playwright browsers
+      working-directory: course_project/tests/e2e
+      run: |
+        npx playwright install
+        echo "🌐 Installed Playwright browsers"
+    
+    - name: Run E2E tests
+      working-directory: course_project/tests/e2e
+      env:
+        E2E_BASE_URL: ${{ steps.extract_url.outputs.target_url }}
+      run: |
+        echo "🚀 Running E2E tests against: $E2E_BASE_URL"
+        npx playwright test
+        echo "✅ E2E tests completed"
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()  # Upload results regardless of test outcome
+      with:
+        name: playwright-report
+        path: course_project/tests/e2e/test-results/
+        retention-days: 7
+    
+    - name: Comment on PR with E2E test results
+      if: always()
+      run: |
+        # Get the PR number from the workflow run
+        BRANCH_NAME="${{ github.event.workflow_run.head_branch }}"
+        PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --json number --jq '.[0].number')
+        
+        if [ -n "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+          echo "Found PR #$PR_NUMBER for branch $BRANCH_NAME"
+          
+          # Determine test status
+          TEST_STATUS="${{ job.status }}"
+          TARGET_URL="${{ steps.extract_url.outputs.target_url }}"
+          
+          if [ "$TEST_STATUS" = "success" ]; then
+            STATUS_ICON="✅"
+            STATUS_TEXT="All E2E tests passed"
+            RESULT_TEXT="🎉 **Result:** Your feature environment has been validated and is ready for manual testing!"
+          else
+            STATUS_ICON="❌"
+            STATUS_TEXT="Some E2E tests failed"
+            RESULT_TEXT="🔍 **Action Required:** Please review the test failures and fix any issues before proceeding."
+          fi
+          
+          # Create comment body
+          cat > e2e_comment.md << EOF
+        ## $STATUS_ICON E2E Test Results
+        
+        **Status:** $STATUS_TEXT  
+        **Environment:** $TARGET_URL  
+        **Branch:** \`$BRANCH_NAME\`  
+        **Commit:** \`${{ github.event.workflow_run.head_sha }}\`
+        
+        $RESULT_TEXT
+        
+        ### 📊 Test Details
+        - **Test Suite:** Playwright E2E Tests
+        - **Environment Type:** Live Kubernetes deployment
+        - **Test Coverage:** Full user workflow validation (CRUD operations, UI interactions)
+        - **Browser Testing:** Automated cross-browser compatibility
+        
+        ### 📁 Artifacts
+        - **Playwright Report:** Download the \`playwright-report\` artifact from this workflow run
+        - **Screenshots/Videos:** Included in the report for failed tests
+        
+        ### 🔗 Quick Links
+        - **Feature Environment:** $TARGET_URL
+        - **Backend Health:** $TARGET_URL/be-health
+        - **API Documentation:** $TARGET_URL/docs/
+        
+        ---
+        *E2E tests completed at $(date -u) by GitHub Actions*
+        EOF
+          
+          # Post comment to PR
+          gh pr comment "$PR_NUMBER" --body-file e2e_comment.md
+          echo "✅ Posted E2E test results to PR #$PR_NUMBER"
+        else
+          echo "⚠️ Could not find PR for branch $BRANCH_NAME, skipping comment"
+        fi
+      env:
+        GH_TOKEN: ${{ github.token }}
+    
+    - name: Generate test summary
+      if: always()
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## E2E Test Results 📊" >> $GITHUB_STEP_SUMMARY
+        
+        if [ $? -eq 0 ]; then
+          echo "✅ **Status:** All E2E tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "🎉 **Result:** Feature environment validated successfully" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Status:** Some E2E tests failed" >> $GITHUB_STEP_SUMMARY
+          echo "🔍 **Action Required:** Check the Playwright report artifact for details" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Target Environment:** ${{ steps.extract_url.outputs.target_url }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Test Artifacts:** Download 'playwright-report' for detailed results" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** ${{ github.event.workflow_run.head_branch }}" >> $GITHUB_STEP_SUMMARY

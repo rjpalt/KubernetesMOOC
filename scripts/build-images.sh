@@ -126,6 +126,38 @@ else
     exit 1
 fi
 
+# Build E2E ARM64 image
+echo ""
+echo "Building E2E ARM64 image (todo-app-e2e:$TAG-arm64)..."
+cd ../tests/e2e
+if [ ! -f "Dockerfile" ]; then
+    echo "Error: Dockerfile not found in tests/e2e directory"
+    exit 1
+fi
+
+docker build --platform linux/arm64 -t todo-app-e2e:$TAG-arm64 .
+if [ $? -eq 0 ]; then
+    echo "E2E ARM64 image built successfully: todo-app-e2e:$TAG-arm64"
+else
+    echo "E2E ARM64 image build failed"
+    exit 1
+fi
+cd ../../course_project
+
+# Build E2E AMD64 image
+echo ""
+echo "Building E2E AMD64 image (todo-app-e2e:$TAG-amd64)..."
+cd ../tests/e2e
+
+docker build --platform linux/amd64 -t todo-app-e2e:$TAG-amd64 .
+if [ $? -eq 0 ]; then
+    echo "E2E AMD64 image built successfully: todo-app-e2e:$TAG-amd64"
+else
+    echo "E2E AMD64 image build failed"
+    exit 1
+fi
+cd ../../course_project
+
 # Update docker-compose.yaml with new tag
 echo ""
 echo "Updating docker-compose.yaml with ARM64 images for local development"
@@ -143,6 +175,7 @@ if [ -f "docker-compose.yaml" ]; then
     sed -i.tmp "s/image: todo-app-be:[^[:space:]]*/image: todo-app-be:$TAG-arm64/" docker-compose.yaml
     sed -i.tmp "s/image: todo-app-fe:[^[:space:]]*/image: todo-app-fe:$TAG-arm64/" docker-compose.yaml
     sed -i.tmp "s/image: todo-app-cron:[^[:space:]]*/image: todo-app-cron:$TAG-arm64/" docker-compose.yaml
+    sed -i.tmp "s/image: todo-app-e2e:[^[:space:]]*/image: todo-app-e2e:$TAG-arm64/" docker-compose.yaml
     rm docker-compose.yaml.tmp  # Remove sed backup file
     
     # Validate YAML syntax using docker compose (no Python dependency)
@@ -166,11 +199,13 @@ echo "ARM64 images (for local development):"
 echo "  - todo-app-fe:$TAG-arm64"
 echo "  - todo-app-be:$TAG-arm64"
 echo "  - todo-app-cron:$TAG-arm64"
+echo "  - todo-app-e2e:$TAG-arm64"
 echo ""
 echo "AMD64 images (for AKS deployment):"
 echo "  - todo-app-fe:$TAG-amd64"
 echo "  - todo-app-be:$TAG-amd64"
 echo "  - todo-app-cron:$TAG-amd64"
+echo "  - todo-app-e2e:$TAG-amd64"
 echo ""
 echo "docker-compose.yaml updated to use ARM64 images for local development"
 echo "Use the AMD64 images in your Kubernetes manifests for AKS deployment."

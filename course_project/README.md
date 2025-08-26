@@ -529,7 +529,7 @@ The project uses Azure Workload Identity for passwordless authentication across 
 
 ### Run All Tests
 ```bash
-# All tests with one command
+# All unit and integration tests with one command
 ./test-all.sh
 
 # Individual services
@@ -541,14 +541,33 @@ cd todo-backend && uv run pytest tests/ -v
 cd ../todo-app && uv run pytest tests/ -v
 ```
 
+### End-to-End (E2E) Testing with Playwright
+
+The project includes a full E2E test suite using Playwright that validates complete user flows in a browser.
+
+**Local E2E Testing:**
+This command builds and runs the entire application stack in Docker Compose, executes the E2E tests against it, and automatically cleans up the environment.
+```bash
+# Run local E2E tests
+make test-e2e-local
+```
+
+**Remote E2E Testing:**
+You can run the same E2E test suite against any deployed environment (e.g., a feature branch in Kubernetes).
+```bash
+# Run E2E tests against a remote URL
+TARGET_URL=https://your-feature-branch.example.com make test-e2e-remote
+```
+
 ### Test Coverage
 - **Backend**: 96 tests covering unit tests, integration tests, API validation, security
 - **Frontend**: 49 tests covering contract tests, service integration, UI components, security
+- **E2E**: 7 tests covering full user-facing CRUD (Create, Read, Update, Delete) functionality and architectural validation.
 - **Security**: 26 tests specifically for XSS, SQL injection, and information disclosure prevention
 - **Environment Detection**: 2 tests for DEBUG mode validation (development vs production)
 - **Philosophy**: Each service tested independently for microservice isolation
 
-See `todo-backend/tests/TEST_PLAN.md` for comprehensive testing documentation.
+See `course_project/TESTING_OVERVIEW.md` for a complete testing strategy.
 
 ## Feature Branch Deployment Strategy
 

@@ -10,21 +10,24 @@ Test categories
 - Unit: fast, isolated, no external services
 - Integration: service APIs with real dependencies (e.g., Postgres for backend)
 - Security: targeted checks (e.g., injection, headers) where applicable
-- End-to-End (E2E): user-centric flows across FE+BE (tools TBD)
+- End-to-End (E2E): user-centric flows across FE+BE using Playwright
 
 Environments
 - Local: developer machine, DB via backend compose
 - CI: GitHub Actions; DB and dependencies provisioned per workflow; mirrors local behavior where possible
+- Feature Branch: Live Kubernetes environments for remote E2E testing
 
-End-to-End tests (TBD)
-- Location: course_project/e2e/ (planned)
-- Tools: Playwright/Cypress/pytest+httpx (decision pending)
-- Independence: E2E runs independently of FE/BE unit/integration tests
+End-to-End tests (Implemented)
+- Location: course_project/tests/e2e/
+- Tools: Playwright
+- Independence: E2E runs independently of FE/BE unit/integration tests and can target any environment.
 
 Command references
-- Backend tests: course_project/test-be.sh
-- Frontend tests: course_project/test-fe.sh
-- All tests: course_project/test-all.sh
+- Backend tests: make test-be
+- Frontend tests: make test-fe
+- All unit/integration tests: make test
+- E2E tests (local): make test-e2E-local
+- E2E tests (remote): TARGET_URL=<your-url> make test-e2e-remote
 
 Principles
 - Single canonical doc per service; top-level index links, no duplication
