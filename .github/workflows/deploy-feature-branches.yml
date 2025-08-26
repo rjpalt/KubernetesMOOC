@@ -161,6 +161,23 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
     
+    - name: Create deployment URL artifact
+      run: |
+        # Extract deployment URL for E2E tests
+        DEPLOY_URL="${{ steps.deploy_function.outputs.deployment_url }}"
+        if [ -z "$DEPLOY_URL" ]; then DEPLOY_URL="http://${BRANCH_NAME}.23.98.101.23.nip.io/"; fi
+        
+        # Create artifact file
+        echo "$DEPLOY_URL" > deployment_url.txt
+        echo "Created deployment URL artifact: $DEPLOY_URL"
+    
+    - name: Upload deployment info artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-info
+        path: deployment_url.txt
+        retention-days: 1
+    
     - name: Generate deployment summary
       run: |
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -187,6 +204,6 @@ jobs:
           echo "**Health Checks:** Parsed $HEALTH_COUNT checks from function response" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Next Steps 📝" >> $GITHUB_STEP_SUMMARY
+          echo "- E2E tests will run automatically against this environment" >> $GITHUB_STEP_SUMMARY
           echo "- Test your feature in the isolated environment" >> $GITHUB_STEP_SUMMARY
-          echo "- Run E2E tests against this environment" >> $GITHUB_STEP_SUMMARY
           echo "- Environment will be cleaned up when branch is deleted" >> $GITHUB_STEP_SUMMARY
