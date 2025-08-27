@@ -1,5 +1,5 @@
 """Todo data models. Very helpful."""
-I
+
 import uuid
 from datetime import datetime
 from enum import Enum
