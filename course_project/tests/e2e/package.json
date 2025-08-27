@@ -1,0 +1,15 @@
+{
+  "name": "todo-app-e2e-tests",
+  "version": "1.0.0",
+  "description": "E2E tests for Todo Application",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "keywords": ["e2e", "playwright", "todo-app"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}

@@ -93,6 +93,22 @@ services:
     # Use backup loop mode for local testing
     command: ["/usr/local/bin/backup_database.sh", "loop"]
   
+  playwright:
+    image: todo-app-e2e:3.10-arm64
+    build:
+      context: ./tests/e2e
+      dockerfile: Dockerfile
+    container_name: playwright-e2e
+    environment:
+      - E2E_BASE_URL=http://todo-app-fe:8000
+    volumes:
+      - ./tests/e2e/test-results:/app/test-results
+    networks:
+      - todo-app-network
+    command: npx playwright test
+    depends_on:
+      - todo-app-fe
+
 # Define volumes for image caching
 volumes:
   todo-images:

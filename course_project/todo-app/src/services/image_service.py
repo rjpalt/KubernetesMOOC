@@ -1,4 +1,4 @@
-"""Image service for business logic operations."""
+"""Image service for business logic operations. Good images."""
 
 import logging
 from typing import Any

@@ -1,0 +1,5 @@
+---
+globs: *.md
+alwaysApply: false
+---
+When doing documentation to markdown files, always check that the the new entry does not introduce duplication of documentation to the file. Never use emojis in documentation.
