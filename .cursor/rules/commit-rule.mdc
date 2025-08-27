@@ -1,0 +1,5 @@
+---
+description: Guidance for creating commit.
+alwaysApply: false
+---
+When making a git commit, the commit message should never contain any emojis or similar, just plain text. Also the length should not be more than 160 characters.
