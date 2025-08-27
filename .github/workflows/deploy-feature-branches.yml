@@ -167,6 +167,9 @@ jobs:
         DEPLOY_URL="${{ steps.deploy_function.outputs.deployment_url }}"
         if [ -z "$DEPLOY_URL" ]; then DEPLOY_URL="http://${BRANCH_NAME}.23.98.101.23.nip.io/"; fi
         
+        # Force HTTP protocol for feature environments (they don't have SSL)
+        DEPLOY_URL=$(echo "$DEPLOY_URL" | sed 's/^https:/http:/')
+        
         # Create artifact file
         echo "$DEPLOY_URL" > deployment_url.txt
         echo "Created deployment URL artifact: $DEPLOY_URL"
