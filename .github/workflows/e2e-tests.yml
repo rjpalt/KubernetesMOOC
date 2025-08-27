@@ -61,20 +61,16 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: course_project/tests/e2e/package-lock.json
     
-    - name: Install Playwright dependencies
+    - name: Install dependencies
+      working-directory: course_project/tests/e2e
+      run: npm ci
+    
+    - name: Install Playwright browsers with dependencies
       working-directory: course_project/tests/e2e
       run: |
-        npm ci
-        echo "📦 Installed Playwright dependencies"
-    
-    - name: Install Playwright browsers
-      working-directory: course_project/tests/e2e
-      run: |
-        npx playwright install
-        echo "🌐 Installed Playwright browsers"
+        npx playwright install --with-deps
+        echo "🌐 Installed Playwright browsers and system dependencies"
     
     - name: Run E2E tests
       working-directory: course_project/tests/e2e
