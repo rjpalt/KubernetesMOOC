@@ -905,3 +905,4 @@ The workflow automatically detects ACT execution (`github.actor == 'nektos/act'`
 - **Testing**: Comprehensive test coverage including security testing
 - **Observability**: Request logging with correlation IDs
 - Codecov on project pages for front and backend coverage
+# Trigger CI for E2E testing
