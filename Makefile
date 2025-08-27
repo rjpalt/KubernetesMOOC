@@ -107,11 +107,19 @@ quality:
 ifeq ($(CHECK),1)
 	@./scripts/quality.sh --check
 	@echo "$(GREEN)==> Checking E2E test code quality$(RESET)"
-	@cd course_project/tests/e2e && npm run lint --if-present || echo "No linting configured for E2E tests"
+	@if [ -d "course_project/tests/e2e" ]; then \
+		cd course_project/tests/e2e && npm run lint --if-present || echo "No linting configured for E2E tests"; \
+	else \
+		echo "E2E tests directory not found - skipping E2E quality checks"; \
+	fi
 else
 	@./scripts/quality.sh
 	@echo "$(GREEN)==> Checking E2E test code quality$(RESET)"
-	@cd course_project/tests/e2e && npm run lint:fix --if-present || echo "No linting configured for E2E tests"
+	@if [ -d "course_project/tests/e2e" ]; then \
+		cd course_project/tests/e2e && npm run lint:fix --if-present || echo "No linting configured for E2E tests"; \
+	else \
+		echo "E2E tests directory not found - skipping E2E quality checks"; \
+	fi
 endif
 
 azure-start:
