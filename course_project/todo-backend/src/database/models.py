@@ -1,4 +1,4 @@
-"""SQLAlchemy models for the todo application."""
+"""SQLAlchemy models for the todo application. She is a model, yeah."""
 
 from datetime import datetime
 
