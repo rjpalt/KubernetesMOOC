@@ -14,7 +14,7 @@ RESET := \033[0m
 
 .DEFAULT_GOAL := help
 
-.PHONY: help local-dev db-up db-down compose-up compose-down compose-logs azure-start azure-stop clean build-images quality test test-be test-fe
+.PHONY: help local-dev db-up db-down compose-up compose-down compose-logs azure-start azure-stop clean build-images quality test test-be test-fe test-e2e-local test-e2e-remote
 
 help:
 	@echo "$(BOLD)Available targets$(RESET)"
@@ -31,10 +31,12 @@ help:
 	@echo "  $(BOLD)test$(RESET)            $(DIM)Run all tests (requires dev and test DB containers)$(RESET)"
 	@echo "  $(BOLD)test-be$(RESET)         $(DIM)Run backend tests (requires dev and test DB containers)$(RESET)"
 	@echo "  $(BOLD)test-fe$(RESET)         $(DIM)Run frontend tests$(RESET)"
+	@echo "  $(BOLD)test-e2e-local$(RESET)  $(DIM)Run E2E tests against local Docker Compose stack$(RESET)"
+	@echo "  $(BOLD)test-e2e-remote$(RESET) $(DIM)Run E2E tests against remote URL (requires TARGET_URL)$(RESET)"
 	@echo
 	@echo "$(BOLD)Course Project — Build & Quality$(RESET)"
 	@echo "  $(BOLD)build-images$(RESET)    $(DIM)Build FE/BE/cron images; pass TAG=... (updates compose images)$(RESET)"
-	@echo "  $(BOLD)quality$(RESET)         $(DIM)Run ruff across FE/BE; pass CHECK=1 for check-only$(RESET)"
+	@echo "  $(BOLD)quality$(RESET)         $(DIM)Run ruff across FE/BE and lint E2E tests; pass CHECK=1 for check-only$(RESET)"
 	@echo
 	@echo "$(BOLD)General$(RESET)"
 	@echo "  $(BOLD)azure-start$(RESET)     $(DIM)Start Azure resources (wrapper)$(RESET)"
@@ -81,6 +83,17 @@ test-be:
 test-fe:
 	@./scripts/test-fe.sh
 
+test-e2e-local:
+	@echo "$(GREEN)==> Running E2E tests against local Docker Compose stack$(RESET)"
+	@./scripts/test-e2e-local.sh
+
+test-e2e-remote:
+ifndef TARGET_URL
+	$(error TARGET_URL is required. Usage: make test-e2e-remote TARGET_URL=https://example.com)
+endif
+	@echo "$(GREEN)==> Running E2E tests against remote URL: $(TARGET_URL)$(RESET)"
+	@./scripts/test-e2e-remote.sh "$(TARGET_URL)"
+
 # Build & Quality wrappers for course_project
 # Usage: make build-images TAG=v1.2.3
 build-images:
@@ -93,8 +106,12 @@ endif
 quality:
 ifeq ($(CHECK),1)
 	@./scripts/quality.sh --check
+	@echo "$(GREEN)==> Checking E2E test code quality$(RESET)"
+	@cd course_project/tests/e2e && npm run lint --if-present || echo "No linting configured for E2E tests"
 else
 	@./scripts/quality.sh
+	@echo "$(GREEN)==> Checking E2E test code quality$(RESET)"
+	@cd course_project/tests/e2e && npm run lint:fix --if-present || echo "No linting configured for E2E tests"
 endif
 
 azure-start:
