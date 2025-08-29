@@ -9,6 +9,7 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - resourcequota.yaml
 
 # No patches needed - production uses base configuration as-is
 # Only images will be modified by CI/CD pipeline

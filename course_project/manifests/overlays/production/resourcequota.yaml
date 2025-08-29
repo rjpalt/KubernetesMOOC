@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: production-resource-quota
+  namespace: project
+spec:
+  hard:
+    # CPU quotas
+    requests.cpu: "2000m"
+    limits.cpu: "4000m"
+    # Memory quotas
+    requests.memory: "2048Mi"
+    limits.memory: "4096Mi"
+    # Pod quotas
+    count/pods: "20"
+    # Storage quotas
+    requests.storage: "10Gi"
+    # Additional resource quotas
+    count/persistentvolumeclaims: "5"
+    count/services: "10"
+    count/secrets: "10"
+    count/configmaps: "10"

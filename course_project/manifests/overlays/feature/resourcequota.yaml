@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: feature-resource-quota
+  # Note: namespace will be set by kustomize namespace field
+spec:
+  hard:
+    # CPU quotas (reduced for cost efficiency)
+    requests.cpu: "1000m"
+    limits.cpu: "2000m"
+    # Memory quotas (reduced for cost efficiency)
+    requests.memory: "1024Mi"
+    limits.memory: "2048Mi"
+    # Pod quotas (reduced for temporary environments)
+    count/pods: "10"
+    # Storage quotas (reduced for temporary environments)
+    requests.storage: "5Gi"
+    # Additional resource quotas
+    count/persistentvolumeclaims: "3"
+    count/services: "5"
+    count/secrets: "5"
+    count/configmaps: "5"

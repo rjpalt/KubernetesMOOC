@@ -24,3 +24,10 @@ spec:
                   value: "INFO"
                 - name: WIKIPEDIA_RANDOM_URL
                   value: "https://en.wikipedia.org/wiki/Special:Random"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
