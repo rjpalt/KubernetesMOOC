@@ -20,6 +20,9 @@ resources:
   # Feature-specific SecretProviderClass for Azure Key Vault integration
   - secret-provider-class-feature.yaml
 
+  # Add resourcequota
+  - resourcequota.yaml
+
 # JSON patches for Azure PostgreSQL integration and AGC gateway migration
 patches:
   # Replace the entire HTTPRoute to use AGC gateway with hostname-based routing

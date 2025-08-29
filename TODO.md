@@ -1,20 +1,21 @@
 # TODO - Project Tasks
 
-## Current Sprint: Monitoring & Scaling (Exercises 3.11 & 3.12)
+## Current Sprint: Resource Management & Scaling (Exercises 3.11 & 3.12)
 
 ### Phase 0: Prerequisite Knowledge (You)
 - [x] **Action:** Read the course section on scaling and watch the video. This will provide the necessary background for the next steps.
 
-### Phase 1: Observability & Resource Management (Exercise 3.11)
-- [ ] **Goal:** Set resource limits and enable logging.
-- [ ] **Actions:**
-    - [ ] Establish CPU/memory requests and limits for the project's deployments.
-    - [ ] Enable Azure Monitor for containers on the AKS cluster.
-    - [ ] Validate that logs for creating a new todo are visible in Azure.
+### Phase 1: Resource Governance (Exercise 3.11)
+- [x] **Goal:** Establish resource limits and namespace quotas.
+- [x] **Actions:**
+    - [x] Define CPU/memory requests and limits for all project deployments.
+    - [x] Implement ResourceQuota objects for production and feature namespaces.
 
-### Phase 2: Autoscaling Implementation (Exercise 3.12)
-- [ ] **Goal:** Configure automatic scaling.
+### Phase 2: Monitoring & Autoscaling (Exercise 3.12)
+- [ ] **Goal:** Enable monitoring and configure automatic scaling.
 - [ ] **Actions:**
+    - [ ] Enable Azure Monitor for containers on the AKS cluster.
+    - [ ] Validate the logging pipeline by confirming logs are visible in Azure.
     - [ ] Implement the Horizontal Pod Autoscaler (HPA) for the backend and frontend.
     - [ ] Verify the Cluster Autoscaler is enabled for the AKS node pool.
 

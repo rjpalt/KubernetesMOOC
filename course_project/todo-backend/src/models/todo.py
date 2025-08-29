@@ -1,5 +1,5 @@
-"""Todo data models. Very helpful."""
-I
+"""Todo data models. Very helpful, indeed."""
+
 import uuid
 from datetime import datetime
 from enum import Enum
