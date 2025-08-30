@@ -10,7 +10,7 @@ from src.config.settings import settings
 
 from .models import Base
 
-"""Database connection management with async SQLAlchemy. Handles local and Azure Cloud, yeah."""
+"""Database connection management with async SQLAlchemy. Handles local and Azure Cloud, yeah-yeah.."""
 """
 Database connection management using asynchronous SQLAlchemy.
 
