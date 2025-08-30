@@ -1,14 +1,11 @@
 name: Production Deployment
 
 on:
-  # Trigger on PR merges to main (feature branch merges)
-  push:
-    branches: [ main ]
-    paths:
-      # Only deploy when actual application code changes
-      - 'course_project/todo-backend/**'
-      - 'course_project/todo-app/**'
-      - 'course_project/todo-cron/**'
+  # Trigger after CI production pipeline completes successfully on main branch
+  workflow_run:
+    workflows: ["CI Production - Build and Push Images"]
+    types: [completed]
+    branches: [main]
   
   # Manual trigger for testing
   workflow_dispatch:
@@ -34,22 +31,21 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    # Only run if the CI workflow completed successfully
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-    
-    - name: Wait for CI completion
-      run: |
-        echo "Checking if this commit has completed CI pipeline..."
-        # We'll verify images exist in the next step instead of waiting for workflow
-        echo "Production deployment will verify image availability before proceeding"
+      with:
+        # Get the commit that triggered the CI workflow
+        ref: ${{ github.event.workflow_run.head_sha }}
     
     - name: Set environment variables
       run: |
-        # Use current branch and commit SHA for push events
-        BRANCH_NAME="${{ github.ref_name }}"
-        COMMIT_SHA="${{ github.sha }}"
+        # Use the branch and commit SHA from the workflow_run event
+        BRANCH_NAME="${{ github.event.workflow_run.head_branch }}"
+        COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
         NAMESPACE="project"
         
         echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
@@ -61,7 +57,7 @@ jobs:
         echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Commit:** \`${COMMIT_SHA}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Namespace:** \`${NAMESPACE}\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Trigger:** Successful CI workflow completion" >> $GITHUB_STEP_SUMMARY
     
     - name: Azure Login via Workload Identity
       uses: azure/login@v2

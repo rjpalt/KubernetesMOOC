@@ -11,6 +11,13 @@
     - [x] Define CPU/memory requests and limits for all project deployments.
     - [x] Implement ResourceQuota objects for production and feature namespaces.
 
+### Phase 1.5: Debugging Feature Deployments
+- [ ] **Goal:** Diagnose why `ResourceQuotas` were not enforced in feature branch deployments.
+- [ ] **Actions:**
+    - [ ] Investigate the deployment function's handling of kustomize overlays.
+    - [ ] Verify that `resourcequota.yaml` is correctly included in the kustomize build.
+    - [ ] Confirm the deployment function has sufficient permissions to apply `ResourceQuotas`.
+
 ### Phase 2: Monitoring & Autoscaling (Exercise 3.12)
 - [ ] **Goal:** Enable monitoring and configure automatic scaling.
 - [ ] **Actions:**

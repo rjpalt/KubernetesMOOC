@@ -1,7 +1,8 @@
-name: CI Pipeline - Microservices
+name: CI Production - Build and Push Images
 
 on:
-  pull_request:
+  # Only trigger on pushes to main (merges)
+  push:
     branches: [ main ]
     paths:
       # Only trigger on meaningful code changes that require rebuilds
@@ -130,15 +131,6 @@ jobs:
       run: |
         uv sync --group dev
     
-    - name: Set ACT environment variables
-      if: github.actor == 'nektos/act'
-      run: |
-        echo "postgres_user=${{ secrets.TEST_POSTGRES_USER }}" >> $GITHUB_ENV
-        echo "postgres_password=${{ secrets.TEST_POSTGRES_PASSWORD }}" >> $GITHUB_ENV
-        echo "postgres_host=localhost" >> $GITHUB_ENV
-        echo "postgres_port=5433" >> $GITHUB_ENV
-        echo "postgres_db=test_todoapp" >> $GITHUB_ENV
-    
     - name: Run backend unit tests
       run: |
         uv run pytest tests/unit/ -v --tb=short
@@ -150,13 +142,6 @@ jobs:
     - name: Generate backend coverage
       run: |
         uv run pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
-    
-    - name: Upload backend coverage
-      uses: actions/upload-artifact@v4
-      if: github.actor != 'nektos/act'  # Skip when running with act locally
-      with:
-        name: backend-coverage
-        path: course_project/todo-backend/coverage.xml
 
   test-frontend:
     name: Frontend Tests  
@@ -204,17 +189,6 @@ jobs:
     - name: Run frontend integration tests
       run: |
         uv run pytest tests/integration/ -v --tb=short
-    
-    - name: Generate frontend coverage
-      run: |
-        uv run pytest tests/unit/test_models.py tests/integration/ --cov=src --cov-report=xml --cov-report=term-missing
-    
-    - name: Upload frontend coverage
-      uses: actions/upload-artifact@v4
-      if: github.actor != 'nektos/act'  # Skip when running with act locally
-      with:
-        name: frontend-coverage
-        path: course_project/todo-app/coverage.xml
 
   test-microservice-integration:
     name: Service Integration Tests
@@ -264,7 +238,7 @@ jobs:
         context: course_project/todo-backend
         tags: |
           todo-backend:test
-          ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+          ${{ env.REGISTRY }}/todo-app-be:${{ github.ref_name }}-${{ github.sha }}
         load: true  # Load to local Docker for testing
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -275,7 +249,7 @@ jobs:
         context: course_project/todo-app
         tags: |
           todo-app:test
-          ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+          ${{ env.REGISTRY }}/todo-app-fe:${{ github.ref_name }}-${{ github.sha }}
         load: true  # Load to local Docker for testing
         cache-from: type=gha
         cache-to: type=gha,mode=max
@@ -333,10 +307,9 @@ jobs:
         docker rm backend-test frontend-test
 
   build-and-push-images:
-    name: Push Tested Images to ACR
+    name: Build and Push Production Images
     runs-on: ubuntu-latest
     needs: [code-quality, test-backend, test-frontend, test-microservice-integration]
-    if: github.actor != 'nektos/act'
     
     steps:
     - name: Checkout code
@@ -361,7 +334,7 @@ jobs:
         context: course_project/todo-backend
         platforms: linux/amd64
         push: true
-        tags: ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+        tags: ${{ env.REGISTRY }}/todo-app-be:${{ github.ref_name }}-${{ github.sha }}
         cache-from: type=gha  # Reuse the exact same build from test job
         cache-to: type=gha,mode=max
     
@@ -371,7 +344,7 @@ jobs:
         context: course_project/todo-app
         platforms: linux/amd64
         push: true
-        tags: ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+        tags: ${{ env.REGISTRY }}/todo-app-fe:${{ github.ref_name }}-${{ github.sha }}
         cache-from: type=gha  # Reuse the exact same build from test job
         cache-to: type=gha,mode=max
 
@@ -381,15 +354,15 @@ jobs:
         context: course_project/todo-cron
         platforms: linux/amd64
         push: true
-        tags: ${{ env.REGISTRY }}/todo-app-cron:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+        tags: ${{ env.REGISTRY }}/todo-app-cron:${{ github.ref_name }}-${{ github.sha }}
         cache-from: type=gha  # Reuse the exact same build from test job
         cache-to: type=gha,mode=max
     
     - name: Image build summary
       run: |
-        BRANCH_NAME=${{ github.head_ref || github.ref_name }}
-        HEAD_SHA=${{ github.event.pull_request.head.sha || github.sha }}
-        echo "## Successfully Built and Pushed Images 🐳" >> $GITHUB_STEP_SUMMARY
+        BRANCH_NAME=${{ github.ref_name }}
+        HEAD_SHA=${{ github.sha }}
+        echo "## Successfully Built and Pushed Production Images 🐳" >> $GITHUB_STEP_SUMMARY
         echo "| Service | Image Tag |" >> $GITHUB_STEP_SUMMARY
         echo "|---------|-----------|" >> $GITHUB_STEP_SUMMARY
         echo "| Backend | \`${{ env.REGISTRY }}/todo-app-be:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
@@ -397,5 +370,6 @@ jobs:
         echo "| Cron | \`${{ env.REGISTRY }}/todo-app-cron:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Commit (PR head):** \`${HEAD_SHA}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** \`${HEAD_SHA}\`" >> $GITHUB_STEP_SUMMARY
         echo "**All tests passed before building these images** ✅" >> $GITHUB_STEP_SUMMARY
+        echo "**Ready for production deployment** 🚀" >> $GITHUB_STEP_SUMMARY

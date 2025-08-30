@@ -34,7 +34,7 @@ class Todo(BaseModel):
     text: str = Field(..., min_length=1, max_length=140, description="Todo text content")
     status: TodoStatus = Field(default=TodoStatus.NOT_DONE, description="Todo completion status")
     created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp")
-    updated_at: datetime | None = Field(None, description="Last update timestamp")
+    updated_at: datetime | None = Field(None, description="Last update timestamp")ot
 
     @classmethod
     def create_new(cls, text: str) -> "Todo":

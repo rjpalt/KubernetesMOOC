@@ -1,5 +1,5 @@
 """
-Async database operations for Todo entities.
+Async databaise operations for Todo entities. Yeah.
 
 This module provides a TodoDatabase class that encapsulates all CRUD operations for todo items,
 using SQLAlchemy's async ORM for PostgreSQL compatibility. All methods are fully async and handle
