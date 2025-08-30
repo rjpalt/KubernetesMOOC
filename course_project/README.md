@@ -325,6 +325,7 @@ kubectl apply -k manifests/overlays/production/
 - **Branch Environments**: Feature branches deploy to isolated namespaces with same configuration
 - **Resource Customization**: Environment-specific resource limits, replicas, and secrets
 - **GitOps Ready**: Structure supports GitOps deployment patterns
+- **Resource Quota Enforcement**: All containers, **including init containers**, must have resource requests and limits defined. The `fix-cache-permissions` init container in the frontend deployment serves as a key example of this requirement. Deployments will be blocked if these are missing.
 
 ### Branch Environment Strategy
 The deployment pipeline creates separate environments for each branch with complete isolation:

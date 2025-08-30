@@ -12,11 +12,11 @@
     - [x] Implement ResourceQuota objects for production and feature namespaces.
 
 ### Phase 1.5: Debugging Feature Deployments
-- [ ] **Goal:** Diagnose why `ResourceQuotas` were not enforced in feature branch deployments.
-- [ ] **Actions:**
-    - [ ] Investigate the deployment function's handling of kustomize overlays.
-    - [ ] Verify that `resourcequota.yaml` is correctly included in the kustomize build.
-    - [ ] Confirm the deployment function has sufficient permissions to apply `ResourceQuotas`.
+- [x] **Goal:** Diagnose why `ResourceQuotas` were not enforced in feature branch deployments.
+- [x] **Actions:**
+    - [x] Investigate the deployment function's handling of kustomize overlays.
+    - [x] Verify that `resourcequota.yaml` is correctly included in the kustomize build.
+    - [x] Confirm the deployment function has sufficient permissions to apply `ResourceQuotas`.
 
 ### Phase 2: Monitoring & Autoscaling (Exercise 3.12)
 - [ ] **Goal:** Enable monitoring and configure automatic scaling.
@@ -43,5 +43,6 @@
 - [ ] **Documentation:** Automate OpenAPI documentation publishing.
 
 ## Recently Completed
+- [x] **CI/CD Pipeline Reliability Fix:** Resolved critical GitHub Actions deployment failures by implementing a robust multi-layer health check strategy, replacing unreliable port-forwarding.
 - [x] **E2E Testing Foundation:** Implemented a comprehensive Playwright E2E test suite with support for local (Docker Compose) and remote (Kubernetes) execution environments.
 - [x] **E2E Testing CI Integration:** Automated the execution of the Playwright E2E suite in a GitHub Actions workflow that runs after feature branch deployments, providing direct feedback on pull requests.

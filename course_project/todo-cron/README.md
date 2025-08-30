@@ -1,8 +1,8 @@
 # Todo Cron Service
 
 A multi-purpose CronJob service that provides:
-1. Wikipedia todo creation - creates todo items with random Wikipedia articles
-2. Database backup - backs up the todo database to Azure Blob Storage
+1. Wikipedia todo creation - creates todo items with random Wikipedia articles. This job runs once daily.
+2. Database backup - backs up the todo database to Azure Blob Storage.
 
 ## Scripts
 
