@@ -17,6 +17,13 @@ spec:
         - name: fix-cache-permissions
           image: busybox
           command: ['sh', '-c', 'chmod 777 /images']
+          resources:
+            requests:
+              cpu: "50m"      # 0.05 CPU cores
+              memory: "32Mi"  # 32 MB RAM
+            limits:
+              cpu: "100m"     # 0.1 CPU cores max
+              memory: "64Mi"  # 64 MB RAM max
           volumeMounts:
             - name: image-cache-volume
               mountPath: /images
