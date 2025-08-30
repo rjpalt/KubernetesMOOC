@@ -4,8 +4,7 @@ metadata:
   name: todo-cronjob
   namespace: project
 spec:
-  # Runs every 2 hours
-  schedule: "0 */2 * * *"
+  schedule: "0 0 * * *"
   jobTemplate:
     spec:
       template:

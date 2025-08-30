@@ -160,7 +160,7 @@ jobs:
         # Get service information
         kubectl get services -n ${{ env.NAMESPACE }} -o wide
         
-        # Find a ready backend pod using field selector (avoids terminating pods)
+        # Find ready pods using field selector (avoids terminating pods)
         echo "Finding ready backend pod..."
         BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-be --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
         
@@ -172,36 +172,6 @@ jobs:
         
         echo "Found backend pod: $BACKEND_POD"
         
-        # Test backend health with port-forward to the correct port
-        echo "Testing backend health..."
-        kubectl port-forward -n ${{ env.NAMESPACE }} pod/$BACKEND_POD 8001:8001 &
-        PORT_FORWARD_PID=$!
-        sleep 5
-        
-        if curl -f --max-time 10 http://localhost:8001/be-health; then
-          echo "✅ Backend health check passed"
-        else
-          echo "❌ Backend health check failed, trying alternative port configuration..."
-          kill $PORT_FORWARD_PID 2>/dev/null || true
-          
-          # Try port 2506 (service port) in case container was configured differently
-          echo "Trying port-forward to 8002:2506..."
-          kubectl port-forward -n ${{ env.NAMESPACE }} pod/$BACKEND_POD 8002:2506 &
-          PORT_FORWARD_PID=$!
-          sleep 5
-          
-          if curl -f --max-time 10 http://localhost:8002/be-health; then
-            echo "✅ Backend health check passed on port 2506"
-          else
-            echo "❌ Backend health check failed on both ports"
-            kill $PORT_FORWARD_PID 2>/dev/null || true
-            exit 1
-          fi
-        fi
-        
-        kill $PORT_FORWARD_PID 2>/dev/null || true
-        
-        # Find a ready frontend pod using field selector
         echo "Finding ready frontend pod..."
         FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
         
@@ -213,35 +183,63 @@ jobs:
         
         echo "Found frontend pod: $FRONTEND_POD"
         
-        # Test frontend health with port-forward
-        echo "Testing frontend health..."
-        kubectl port-forward -n ${{ env.NAMESPACE }} pod/$FRONTEND_POD 8000:8000 &
-        PORT_FORWARD_PID=$!
-        sleep 5
-        
-        if curl -f --max-time 10 http://localhost:8000/health; then
-          echo "✅ Frontend health check passed"
+        # Test backend health using kubectl exec (internal container call)
+        echo "Testing backend health internally..."
+        if kubectl exec -n ${{ env.NAMESPACE }} $BACKEND_POD -- curl -f --max-time 10 -s http://localhost:8001/be-health > /dev/null; then
+          echo "✅ Backend internal health check passed"
         else
-          echo "❌ Frontend health check failed, trying alternative port configuration..."
-          kill $PORT_FORWARD_PID 2>/dev/null || true
-          
-          # Try port 2507 (service port) in case container was configured differently
-          echo "Trying port-forward to 8003:2507..."
-          kubectl port-forward -n ${{ env.NAMESPACE }} pod/$FRONTEND_POD 8003:2507 &
-          PORT_FORWARD_PID=$!
-          sleep 5
-          
-          if curl -f --max-time 10 http://localhost:8003/health; then
-            echo "✅ Frontend health check passed on port 2507"
-          else
-            echo "❌ Frontend health check failed on both ports"
-            kill $PORT_FORWARD_PID 2>/dev/null || true
-            exit 1
-          fi
+          echo "❌ Backend internal health check failed"
+          kubectl exec -n ${{ env.NAMESPACE }} $BACKEND_POD -- curl -v --max-time 10 http://localhost:8001/be-health || true
+          exit 1
         fi
         
-        kill $PORT_FORWARD_PID 2>/dev/null || true
-        echo "✅ All health checks passed"
+        # Test frontend health using kubectl exec (internal container call)
+        echo "Testing frontend health internally..."
+        if kubectl exec -n ${{ env.NAMESPACE }} $FRONTEND_POD -- curl -f --max-time 10 -s http://localhost:8000/health > /dev/null; then
+          echo "✅ Frontend internal health check passed"
+        else
+          echo "❌ Frontend internal health check failed"
+          kubectl exec -n ${{ env.NAMESPACE }} $FRONTEND_POD -- curl -v --max-time 10 http://localhost:8000/health || true
+          exit 1
+        fi
+        
+        # Test service connectivity (backend to frontend via service)
+        echo "Testing service connectivity (backend → frontend)..."
+        if kubectl exec -n ${{ env.NAMESPACE }} $BACKEND_POD -- curl -f --max-time 10 -s http://todo-app-fe-svc:2507/health > /dev/null; then
+          echo "✅ Backend → Frontend service connectivity passed"
+        else
+          echo "❌ Backend → Frontend service connectivity failed"
+          exit 1
+        fi
+        
+        # Test service connectivity (frontend to backend via service)
+        echo "Testing service connectivity (frontend → backend)..."
+        if kubectl exec -n ${{ env.NAMESPACE }} $FRONTEND_POD -- curl -f --max-time 10 -s http://todo-app-be-svc:2506/be-health > /dev/null; then
+          echo "✅ Frontend → Backend service connectivity passed"
+        else
+          echo "❌ Frontend → Backend service connectivity failed"
+          exit 1
+        fi
+        
+        # Test external load balancer endpoints (what users actually access)
+        echo "Testing external production endpoints..."
+        if curl -f --max-time 15 -s http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/be-health > /dev/null; then
+          echo "✅ External backend endpoint accessible"
+        else
+          echo "⚠️  External backend endpoint not accessible (may be expected during deployment)"
+        fi
+        
+        if curl -f --max-time 15 -s http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/health > /dev/null; then
+          echo "✅ External frontend endpoint accessible"
+        else
+          echo "⚠️  External frontend endpoint not accessible (may be expected during deployment)"
+        fi
+        
+        # Verify ResourceQuota compliance
+        echo "Verifying ResourceQuota compliance..."
+        kubectl describe resourcequota production-resource-quota -n ${{ env.NAMESPACE }}
+        
+        echo "✅ All internal health checks passed - applications are healthy"
     
     - name: Verify CronJobs deployed
       run: |
@@ -277,9 +275,9 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Production Access 🌐" >> $GITHUB_STEP_SUMMARY
         echo "**Namespace:** \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
-        echo "**Production URL:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/" >> $GITHUB_STEP_SUMMARY
-        echo "**Backend Health:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/be-health" >> $GITHUB_STEP_SUMMARY
-        echo "**API Docs:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/docs/" >> $GITHUB_STEP_SUMMARY
+        echo "**Production URL:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/" >> $GITHUB_STEP_SUMMARY
+        echo "**Backend Health:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/be-health" >> $GITHUB_STEP_SUMMARY
+        echo "**API Docs:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/docs/" >> $GITHUB_STEP_SUMMARY
         echo "**Health Checks:** ✅ All services responding" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Deployed Services 🔧" >> $GITHUB_STEP_SUMMARY
