@@ -103,6 +103,7 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
 - [3.11](https://github.com/rjpalt/KubernetesMOOC/tree/3.11/course_project)
   - Implemented resource limits and resource quotas
   - Later one triggered also a need to define resource quotas for an init-container and the statefulset for PostgreSQL
+- [3.12](https://github.com/rjpalt/KubernetesMOOC/tree/3.12/course_project) - HPA and Monitoring
 
 # Exercise 3.9: DBaaS vs DIY Containerized Docker #
 In this project I decided to change to Azure managed PostgreSQL. The main reasons, on a theoretical side of things, are that running a production and test environment Database yourself gets very thorny quite fast. It's ok, if you have a very simple app that jsut uses a simple PostgreSQL, but if you intend to scale up, it turns into a bottleneck quite fast. I can quickly come up with scenarios where building your own backup system, high availability (HA) solution, redundancy, and maintenance/updates turns into a sysadmin's nightmare. These will require automation and the automation will require upkeep on their behalf and you need to handle it yourself. I would not, personally, want to be responsible of that pile of things if I can avoid it; it is prone to accidents and mistakes and definitely to human errors.
