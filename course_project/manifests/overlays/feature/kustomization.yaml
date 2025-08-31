@@ -115,15 +115,6 @@ patches:
         path: /spec/template/spec/containers/0/env/5/value
         value: "BRANCH_NAME_DB"
 
-  # Fix API_BASE_PATH for hostname-based routing (should be empty, not "/")
-  - target:
-      kind: Deployment
-      name: todo-app-fe
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/env/3/value
-        value: ""
-
 images:
   - name: kubemooc.azurecr.io/todo-app-be
     newTag: latest

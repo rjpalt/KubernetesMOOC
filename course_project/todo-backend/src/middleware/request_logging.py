@@ -1,7 +1,7 @@
 """Request logging middleware for comprehensive request/response monitoring.
 
 Provides structured JSON logging of all HTTP requests and responses
-for Grafana monitoring and debugging.
+for Grafana monitoring and debugging. Yeah.
 """
 
 import json
