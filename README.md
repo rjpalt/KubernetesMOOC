@@ -108,7 +108,6 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - **Autoscaling Strategy**: Production-only HPAs (backend: 1-5 pods, frontend: 1-3 pods) + Cluster Autoscaler (1-5 nodes)
   - **Access**: Azure Portal → Log Analytics Workspace for application logs, Azure Monitor → Metrics for Prometheus data
   - **Implementation**: CPU-based scaling (70% threshold), 60s scale-up/300s scale-down stabilization
-  - **Scope**: All environments get monitoring, only production gets autoscaling per ADR-001 strategy
   - ![Image of logs in Azure Log Analytics Workspace](https://github.com/user-attachments/assets/51d1aa3b-c5bf-4528-834b-5c2bbd951b78)
 
 
