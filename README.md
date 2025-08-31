@@ -104,6 +104,34 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - Implemented resource limits and resource quotas
   - Later one triggered also a need to define resource quotas for an init-container and the statefulset for PostgreSQL
 - [3.12](https://github.com/rjpalt/KubernetesMOOC/tree/3.12/course_project) - HPA and Monitoring
+  - **Monitoring Stack**: Azure Monitor for Containers + Azure Managed Prometheus enabled cluster-wide
+  - **Autoscaling Strategy**: Production-only HPAs (backend: 1-5 pods, frontend: 1-3 pods) + Cluster Autoscaler (1-5 nodes)
+  - **Access**: Azure Portal → Log Analytics Workspace for application logs, Azure Monitor → Metrics for Prometheus data
+  - **Implementation**: CPU-based scaling (70% threshold), 60s scale-up/300s scale-down stabilization
+  - **Scope**: All environments get monitoring, only production gets autoscaling per ADR-001 strategy
+
+## Monitoring & Autoscaling Architecture
+
+The project implements a comprehensive monitoring and autoscaling solution for production-ready operations:
+
+### Azure Monitoring Stack
+- **Azure Monitor for Containers**: Application logs, events, basic metrics (all environments)
+- **Azure Managed Prometheus**: Rich application metrics with PromQL support (cluster-wide)
+- **Log Analytics Workspace**: `DefaultWorkspace-ede18d8a-a758-4a40-b15e-6eded5264b93-NEU`
+- **Azure Monitor Workspace**: `DefaultAzureMonitorWorkspace-northeurope`
+
+### Autoscaling Strategy
+- **Application Layer**: Horizontal Pod Autoscalers (HPAs) scale pods based on CPU utilization
+  - **Production Only**: HPAs deployed exclusively to `project` namespace
+  - **Backend**: 1-5 replicas, 70% CPU threshold
+  - **Frontend**: 1-3 replicas, 70% CPU threshold
+- **Infrastructure Layer**: Cluster Autoscaler scales nodes (1-5) based on pod resource demands
+- **Behavior**: Conservative scaling with stabilization windows (60s up, 300s down)
+
+### Accessing Monitoring Data
+**Application Logs**: Azure Portal → Log Analytics → Query with KQL for todo creation events  
+**Prometheus Metrics**: Azure Portal → Monitor → Metrics → Select AKS cluster for performance data  
+**Real-time Status**: `kubectl get hpa -n project` for current scaling status
 
 # Exercise 3.9: DBaaS vs DIY Containerized Docker #
 In this project I decided to change to Azure managed PostgreSQL. The main reasons, on a theoretical side of things, are that running a production and test environment Database yourself gets very thorny quite fast. It's ok, if you have a very simple app that jsut uses a simple PostgreSQL, but if you intend to scale up, it turns into a bottleneck quite fast. I can quickly come up with scenarios where building your own backup system, high availability (HA) solution, redundancy, and maintenance/updates turns into a sysadmin's nightmare. These will require automation and the automation will require upkeep on their behalf and you need to handle it yourself. I would not, personally, want to be responsible of that pile of things if I can avoid it; it is prone to accidents and mistakes and definitely to human errors.

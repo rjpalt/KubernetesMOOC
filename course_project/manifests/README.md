@@ -29,7 +29,31 @@ manifests/
     ├── development/               # Development environment settings
     ├── staging/                   # Staging environment settings
     └── production/                # Production environment settings
+        ├── hpa-backend.yaml       # Backend autoscaling (1-5 replicas)
+        ├── hpa-frontend.yaml      # Frontend autoscaling (1-3 replicas)
+        ├── resourcequota.yaml     # Resource limits
+        └── kustomization.yaml     # Production-specific configuration
 ```
+
+## Autoscaling Configuration
+
+### Horizontal Pod Autoscalers (Production Only)
+The production overlay includes CPU-based autoscaling for both applications:
+
+**Backend HPA** (`overlays/production/hpa-backend.yaml`):
+- **Replicas**: 1-5 pods
+- **Trigger**: 70% CPU utilization
+- **Behavior**: 60s scale-up, 300s scale-down stabilization
+
+**Frontend HPA** (`overlays/production/hpa-frontend.yaml`):
+- **Replicas**: 1-3 pods  
+- **Trigger**: 70% CPU utilization
+- **Behavior**: 60s scale-up, 300s scale-down stabilization
+
+### Cluster-Level Autoscaling
+- **Node Autoscaler**: 1-5 nodes (configured at AKS cluster level)
+- **Triggers**: Pod resource demands exceeding current node capacity
+- **Scope**: Cluster-wide, supports all environments
 
 ## Deployment Dependencies
 

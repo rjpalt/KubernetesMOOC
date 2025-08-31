@@ -17,6 +17,50 @@ Feature branch automation will create databases on the feature server. See `.pro
 - **todo-app** (Port 8000): FastAPI frontend with HTMX UI, communicates with backend via HTTP
 - **todo-cron**: CronJob service for automated Wikipedia todos and database backups to Azure Blob Storage (`kubemoocbackups/database-backups`)
 
+### Monitoring & Autoscaling
+
+The application features production-ready monitoring and automatic scaling:
+
+#### Azure Monitoring Stack
+- **Azure Monitor for Containers**: Application logs, events, and basic metrics across all environments
+- **Azure Managed Prometheus**: Rich application metrics with PromQL query support
+- **Log Analytics Workspace**: `DefaultWorkspace-ede18d8a-a758-4a40-b15e-6eded5264b93-NEU`
+- **Azure Monitor Workspace**: `DefaultAzureMonitorWorkspace-northeurope`
+
+#### Autoscaling Strategy
+- **Horizontal Pod Autoscalers (HPA)**: Production-only automatic pod scaling
+  - **Backend**: 1-5 replicas, 70% CPU threshold
+  - **Frontend**: 1-3 replicas, 70% CPU threshold  
+  - **Behavior**: 60s scale-up, 300s scale-down stabilization
+- **Cluster Autoscaler**: Automatic node scaling (1-5 nodes) based on pod resource demands
+- **Scope**: All environments get monitoring, only production gets autoscaling
+
+#### Accessing Logs & Metrics
+**Application Logs (Todo Creation Events):**
+1. Azure Portal → Log Analytics Workspaces → `DefaultWorkspace-...-NEU` → Logs
+2. Query with KQL:
+```kusto
+ContainerLogV2
+| where PodNamespace == "project"
+| where ContainerName == "todo-backend"  
+| where LogMessage contains "POST" and LogMessage contains "/todos"
+| project TimeGenerated, LogMessage
+| order by TimeGenerated desc
+```
+
+**Prometheus Metrics:**
+1. Azure Portal → Monitor → Metrics → Select AKS cluster
+2. Browse available metrics or use Azure Monitor Workbooks
+
+**Real-time Monitoring:**
+```bash
+# Check HPA status
+kubectl get hpa -n project
+
+# Monitor scaling behavior  
+kubectl top pods -n project
+```
+
 ### Data Flow
 
 ```mermaid

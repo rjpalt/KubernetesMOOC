@@ -19,17 +19,17 @@
     - [x] Confirm the deployment function has sufficient permissions to apply `ResourceQuotas`.
 
 ### Phase 2: Monitoring & Autoscaling (Exercise 3.12)
-- [ ] **Goal:** Enable monitoring and configure automatic scaling.
-- [ ] **Architectural Plan:**
-    - [ ] **1. Enable Cluster Monitoring:**
-        - [ ] Enable Azure Monitor for containers on the AKS cluster.
-        - [ ] Enable the Azure Managed Prometheus add-on.
-    - [ ] **2. Implement Autoscaling (Production Only):**
-        - [ ] Implement Horizontal Pod Autoscalers (HPA) for frontend and backend.
-        - [ ] Verify the Cluster Autoscaler is enabled on the node pool.
-    - [ ] **3. Validate End-to-End:**
-        - [ ] Confirm logs and metrics are visible in Azure Monitor.
-        - [ ] Perform a load test to trigger and observe HPA and Cluster Autoscaler activity.
+- [x] **Goal:** Enable monitoring and configure automatic scaling.
+- [x] **Architectural Plan:**
+    - [x] **1. Enable Cluster Monitoring:**
+        - [x] Enable Azure Monitor for containers on the AKS cluster.
+        - [x] Enable the Azure Managed Prometheus add-on.
+    - [x] **2. Implement Autoscaling (Production Only):**
+        - [x] Implement Horizontal Pod Autoscalers (HPA) for frontend and backend.
+        - [x] Verify the Cluster Autoscaler is enabled on the node pool.
+    - [x] **3. Validate End-to-End:**
+        - [x] Confirm logs and metrics are visible in Azure Monitor.
+        - [x] Perform a load test to trigger and observe HPA and Cluster Autoscaler activity.
 
 ### Phase 3: Validation & Learning
 - [ ] **Goal:** See the system work.

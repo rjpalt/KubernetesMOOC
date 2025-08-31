@@ -1995,6 +1995,48 @@ az identity federated-credential delete \
 - No impact on other feature environments or production namespace
 - HTTPRoute deletion automatically removes traffic routing for the feature branch
 
+# Accessing Application Logs in Azure Portal #
+
+## Navigation Path
+1. Azure Portal → Kubernetes services → kube-mooc → Monitoring → Logs
+2. Azure Portal → Log Analytics workspaces → DefaultWorkspace-ede18d8a-a758-4a40-b15e-6eded5264b93-NEU → Logs
+
+## Key KQL Queries
+
+### Todo Creation Logs
+```kusto
+ContainerLogV2
+| where PodNamespace == "project"
+| where ContainerName == "todo-backend"
+| where LogMessage contains "POST" and LogMessage contains "/todos"
+| project TimeGenerated, LogMessage
+| order by TimeGenerated desc
+```
+
+### Backend Application Logs (Last Hour)
+```kusto
+ContainerLogV2
+| where TimeGenerated > ago(1h)
+| where PodNamespace == "project"
+| where ContainerName == "todo-backend"
+| project TimeGenerated, LogMessage
+| order by TimeGenerated desc
+```
+
+### All POST Requests with Response Codes
+```kusto
+ContainerLogV2
+| where PodNamespace == "project"
+| where LogMessage contains "POST"
+| project TimeGenerated, LogMessage
+| order by TimeGenerated desc
+```
+
+## Access Methods
+- **Direct**: Log Analytics workspace → Logs tab → Run KQL queries
+- **AKS Integration**: Kubernetes service → Monitoring → Logs → Use same queries
+- **Time Range**: Adjust query time range using `ago()` function (1h, 30m, 24h)
+
 # Azure Blob Storage Creation #
 To create a storage account:
 ```bash
