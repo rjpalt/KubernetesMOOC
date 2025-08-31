@@ -1,54 +1,50 @@
 # TODO - Project Tasks
 
-## Current Sprint: Resource Management & Scaling (Exercises 3.11 & 3.12)
+## Current Sprint: Observability, Advanced Deployments & GitOps (Chapter 4)
 
-### Phase 0: Prerequisite Knowledge (You)
-- [x] **Action:** Read the course section on scaling and watch the video. This will provide the necessary background for the next steps.
+### Phase 1: Application Health & Probes (Exercises 4.1, 4.2)
+- [ ] **Goal:** Implement readiness probes to improve application stability and startup logic.
+- [ ] **Actions:**
+    - [ ] Implement `ReadinessProbe` for Ping-pong and Log output apps (Ex 4.1).
+    - [ ] Implement probes for the main project (Ex 4.2).
+    - [ ] **Technical Debt:** Fix frontend internal API exposure without breaking backend functionality.
+    - [ ] **CI/CD Health:** Investigate and fix the failing documentation deployment workflow.
 
-### Phase 1: Resource Governance (Exercise 3.11)
-- [x] **Goal:** Establish resource limits and namespace quotas.
-- [x] **Actions:**
-    - [x] Define CPU/memory requests and limits for all project deployments.
-    - [x] Implement ResourceQuota objects for production and feature namespaces.
+### Phase 2: Advanced Observability & Deployments (Exercises 4.3, 4.4)
+- [ ] **Goal:** Explore advanced monitoring with Prometheus and implement canary deployments.
+- [ ] **Actions:**
+    - [ ] Complete Prometheus query exercise (Ex 4.3).
+    - [ ] Implement canary `AnalysisTemplate` for the Ping-pong app (Ex 4.4).
 
-### Phase 1.5: Debugging Feature Deployments
-- [x] **Goal:** Diagnose why `ResourceQuotas` were not enforced in feature branch deployments.
-- [x] **Actions:**
-    - [x] Investigate the deployment function's handling of kustomize overlays.
-    - [x] Verify that `resourcequota.yaml` is correctly included in the kustomize build.
-    - [x] Confirm the deployment function has sufficient permissions to apply `ResourceQuotas`.
+### Phase 3: Core Feature Enhancement (Exercises 4.5, 4.6)
+- [ ] **Goal:** Add core features to the todo application and improve testing.
+- [ ] **Actions:**
+    - [ ] Implement "Done" status update feature (PUT endpoint) (Ex 4.5).
+    - [ ] Create "broadcaster" service with NATS integration (Ex 4.6).
+    - [ ] **Testing Improvement:** Enhance E2E tests (map to user stories, implement test data cleanup).
 
-### Phase 2: Monitoring & Autoscaling (Exercise 3.12)
-- [x] **Goal:** Enable monitoring and configure automatic scaling.
-- [x] **Architectural Plan:**
-    - [x] **1. Enable Cluster Monitoring:**
-        - [x] Enable Azure Monitor for containers on the AKS cluster.
-        - [x] Enable the Azure Managed Prometheus add-on.
-    - [x] **2. Implement Autoscaling (Production Only):**
-        - [x] Implement Horizontal Pod Autoscalers (HPA) for frontend and backend.
-        - [x] Verify the Cluster Autoscaler is enabled on the node pool.
-    - [x] **3. Validate End-to-End:**
-        - [x] Confirm logs and metrics are visible in Azure Monitor.
-        - [x] Perform a load test to trigger and observe HPA and Cluster Autoscaler activity.
-
-### Phase 3: Validation & Learning
-- [ ] **Goal:** See the system work.
-- [ ] **Action:** Perform a simple load simulation to trigger and observe both pod and node scaling.
+### Phase 4: GitOps Adoption (Exercises 4.7 - 4.10)
+- [ ] **Goal:** Transition the project to a GitOps-centric deployment model using ArgoCD.
+- [ ] **Actions:**
+    - [ ] Migrate Log output app to GitOps (Ex 4.7).
+    - [ ] Migrate the main project to GitOps for the `main` branch (Ex 4.8).
+    - [ ] Establish `staging` and `production` environments with GitOps promotion (Ex 4.9).
+    - [ ] **Production Readiness:** Migrate production database to DBaaS.
+    - [ ] Separate application code and Kubernetes configuration into dedicated repositories (Ex 4.10).
 
 ## Next Up
 - [ ] **Review CI/CD Pipeline:** Audit the `main` branch's deployment workflow for optimizations and best practices.
 
 ## Future Enhancements
+- [ ] **Federated Authentication:** Implement a federated authentication solution (e.g., OpenID Connect).
 - [ ] **Security Hardening:**
     - [ ] Configure Dependabot for automated dependency updates.
     - [ ] Configure CodeQL for static analysis security scanning.
-    - [ ] Enforce branch protection rules on `main`.
-- [ ] **GitOps:** Implement a GitOps workflow using a separate configuration repository for tracking deployed state.
-    - [ ] Switch production environment from containerized database to DBaaS. Use existing prod PostgreSQL instance.
 - [ ] **Advanced Preview Environments:** Replace `nip.io` with a proper DNS and certificate solution (ExternalDNS, cert-manager).
 - [ ] **Documentation:** Automate OpenAPI documentation publishing.
 
 ## Recently Completed
+- [x] **Resource Management & Scaling (Exercises 3.11 & 3.12):** Established resource quotas, enabled cluster monitoring, and configured autoscaling for production workloads.
 - [x] **CI/CD Pipeline Reliability Fix:** Resolved critical GitHub Actions deployment failures by implementing a robust multi-layer health check strategy, replacing unreliable port-forwarding.
 - [x] **E2E Testing Foundation:** Implemented a comprehensive Playwright E2E test suite with support for local (Docker Compose) and remote (Kubernetes) execution environments.
 - [x] **E2E Testing CI Integration:** Automated the execution of the Playwright E2E suite in a GitHub Actions workflow that runs after feature branch deployments, providing direct feedback on pull requests.
