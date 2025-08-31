@@ -2440,3 +2440,38 @@ az role assignment create \
   --role "Azure Kubernetes Service RBAC Writer" \
   --scope /subscriptions/ede18d8a-a758-4a40-b15e-6eded5264b93/resourceGroups/kubernetes-learning/providers/Microsoft.ContainerService/managedClusters/kube-mooc
 ```
+
+## Enabling Cluster Autoscaler for AKS Node Pool
+
+To enable automatic node scaling for an AKS node pool, use the following Azure CLI command. This configures the autoscaler with minimum and maximum node counts.
+
+```bash
+az aks nodepool update \
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --cluster-name <AKS_CLUSTER_NAME> \
+  --name <NODEPOOL_NAME> \
+  --enable-cluster-autoscaler \
+  --min-count <MIN_NODES> \
+  --max-count <MAX_NODES>
+```
+
+**Purpose:** Enables the cluster autoscaler to automatically add or remove nodes in the specified node pool based on pod scheduling needs.
+
+
+---
+
+## Enabling Azure Managed Prometheus Monitoring (AKS)
+
+To enable Prometheus-based monitoring for an AKS cluster, use the following Azure CLI command. This adds metrics collection and integrates with Azure Monitor. Replace resource group, cluster name, and workspace resource ID with your own values as needed.
+
+```bash
+az aks enable-addons \
+  --resource-group <RESOURCE_GROUP_NAME> \
+  --name <AKS_CLUSTER_NAME> \
+  --addons monitoring \
+  --enable-msi-auth-for-monitoring \
+  --workspace-resource-id <LOG_ANALYTICS_WORKSPACE_RESOURCE_ID>
+```
+
+**Purpose:** Enables Prometheus metrics collection and monitoring integration for AKS clusters.
+

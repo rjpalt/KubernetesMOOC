@@ -10,9 +10,18 @@ kind: Kustomization
 resources:
   - ../../base
   - resourcequota.yaml
+  - hpa-backend.yaml
+  - hpa-frontend.yaml
 
-# No patches needed - production uses base configuration as-is
-# Only images will be modified by CI/CD pipeline
+# Patch API_BASE_PATH for production path-based routing through /project/
+patches:
+  - target:
+      kind: Deployment
+      name: todo-app-fe
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/3/value
+        value: "/project"
 
 images:
   - name: kubemooc.azurecr.io/todo-app-be

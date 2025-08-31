@@ -20,11 +20,16 @@
 
 ### Phase 2: Monitoring & Autoscaling (Exercise 3.12)
 - [ ] **Goal:** Enable monitoring and configure automatic scaling.
-- [ ] **Actions:**
-    - [ ] Enable Azure Monitor for containers on the AKS cluster.
-    - [ ] Validate the logging pipeline by confirming logs are visible in Azure.
-    - [ ] Implement the Horizontal Pod Autoscaler (HPA) for the backend and frontend.
-    - [ ] Verify the Cluster Autoscaler is enabled for the AKS node pool.
+- [ ] **Architectural Plan:**
+    - [ ] **1. Enable Cluster Monitoring:**
+        - [ ] Enable Azure Monitor for containers on the AKS cluster.
+        - [ ] Enable the Azure Managed Prometheus add-on.
+    - [ ] **2. Implement Autoscaling (Production Only):**
+        - [ ] Implement Horizontal Pod Autoscalers (HPA) for frontend and backend.
+        - [ ] Verify the Cluster Autoscaler is enabled on the node pool.
+    - [ ] **3. Validate End-to-End:**
+        - [ ] Confirm logs and metrics are visible in Azure Monitor.
+        - [ ] Perform a load test to trigger and observe HPA and Cluster Autoscaler activity.
 
 ### Phase 3: Validation & Learning
 - [ ] **Goal:** See the system work.
@@ -39,6 +44,7 @@
     - [ ] Configure CodeQL for static analysis security scanning.
     - [ ] Enforce branch protection rules on `main`.
 - [ ] **GitOps:** Implement a GitOps workflow using a separate configuration repository for tracking deployed state.
+    - [ ] Switch production environment from containerized database to DBaaS. Use existing prod PostgreSQL instance.
 - [ ] **Advanced Preview Environments:** Replace `nip.io` with a proper DNS and certificate solution (ExternalDNS, cert-manager).
 - [ ] **Documentation:** Automate OpenAPI documentation publishing.
 
