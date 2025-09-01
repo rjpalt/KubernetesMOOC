@@ -5,7 +5,7 @@
 ### Phase 1: Application Health & Probes (Exercises 4.1, 4.2)
 - [ ] **Goal:** Implement readiness probes to improve application stability and startup logic.
 - [ ] **Actions:**
-    - [ ] Implement `ReadinessProbe` for Ping-pong and Log output apps (Ex 4.1).
+    - [x] Implement `ReadinessProbe` for Ping-pong and Log output apps (Ex 4.1).
     - [ ] Implement probes for the main project (Ex 4.2).
     - [ ] **Technical Debt:** Fix frontend internal API exposure without breaking backend functionality.
     - [ ] **CI/CD Health:** Investigate and fix the failing documentation deployment workflow.

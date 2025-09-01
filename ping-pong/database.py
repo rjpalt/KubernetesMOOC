@@ -72,48 +72,82 @@ class DatabaseManager:
     
     async def get_counter(self) -> int:
         """Get the current counter value"""
+        # Try to reconnect if pool is not available
+        if not self.pool:
+            try:
+                logger.info("Database not initialized, attempting to connect...")
+                await self.initialize()
+            except Exception as e:
+                logger.warning(f"Failed to connect to database: {e}")
+                raise RuntimeError("Database not initialized")
+        
+        # At this point, pool should be initialized
         if not self.pool:
             raise RuntimeError("Database not initialized")
-        
-        async with self.pool.acquire() as conn:
-            result = await conn.fetchval(
-                "SELECT counter_value FROM ping_counter ORDER BY id LIMIT 1"
-            )
-            return result if result is not None else 0
+            
+        try:
+            async with self.pool.acquire() as conn:
+                result = await conn.fetchval(
+                    "SELECT counter_value FROM ping_counter ORDER BY id LIMIT 1"
+                )
+                return result if result is not None else 0
+        except Exception as e:
+            logger.error(f"Database query failed: {e}")
+            # Reset pool to force reconnection on next attempt
+            self.pool = None
+            raise RuntimeError("Database not initialized")
     
     async def increment_counter(self) -> int:
         """Increment the counter and return the new value"""
+        # Try to reconnect if pool is not available
+        if not self.pool:
+            try:
+                logger.info("Database not initialized, attempting to connect...")
+                await self.initialize()
+            except Exception as e:
+                logger.warning(f"Failed to connect to database: {e}")
+                raise RuntimeError("Database not initialized")
+        
+        # At this point, pool should be initialized
         if not self.pool:
             raise RuntimeError("Database not initialized")
-        
-        async with self.pool.acquire() as conn:
-            # Use a transaction to ensure atomicity
-            async with conn.transaction():
-                # Get current value and increment
-                new_value = await conn.fetchval("""
-                    UPDATE ping_counter 
-                    SET counter_value = counter_value + 1, 
-                        updated_at = NOW() 
-                    WHERE id = (SELECT id FROM ping_counter ORDER BY id LIMIT 1)
-                    RETURNING counter_value
-                """)
-                
-                if new_value is None:
-                    # This should not happen if initialization worked correctly
-                    logger.warning("No counter found, creating new one")
-                    await conn.execute(
-                        "INSERT INTO ping_counter (counter_value) VALUES ($1)",
-                        1
-                    )
-                    new_value = 1
-                
-                return new_value
+            
+        try:
+            async with self.pool.acquire() as conn:
+                # Use a transaction to ensure atomicity
+                async with conn.transaction():
+                    # Get current value and increment
+                    new_value = await conn.fetchval("""
+                        UPDATE ping_counter 
+                        SET counter_value = counter_value + 1, 
+                            updated_at = NOW() 
+                        WHERE id = (SELECT id FROM ping_counter ORDER BY id LIMIT 1)
+                        RETURNING counter_value
+                    """)
+                    
+                    if new_value is None:
+                        # This should not happen if initialization worked correctly
+                        logger.warning("No counter found, creating new one")
+                        await conn.execute(
+                            "INSERT INTO ping_counter (counter_value) VALUES ($1)",
+                            1
+                        )
+                        new_value = 1
+                    
+                    return new_value
+        except Exception as e:
+            logger.error(f"Database query failed: {e}")
+            # Reset pool to force reconnection on next attempt
+            self.pool = None
+            raise RuntimeError("Database not initialized")
     
     async def close(self):
         """Close database connection pool"""
         if self.pool:
             await self.pool.close()
             logger.info("Database connection pool closed")
+        else:
+            logger.info("Database connection pool was not initialized, nothing to close")
 
 # Global database manager instance
 db_manager = DatabaseManager()

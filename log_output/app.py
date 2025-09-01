@@ -7,7 +7,7 @@ import asyncio
 import threading
 import httpx
 from datetime import datetime, timezone
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import uvicorn
 from settings import get_settings
 
@@ -145,6 +145,32 @@ async def get_status():
 async def health_check():
     """Health check endpoint"""
     return {"status": "ok"}
+
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Readiness check endpoint - checks connectivity to ping-pong service"""
+    try:
+        # Verify we can reach the ping-pong service
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"http://{settings.ping_pong_service_host}:{settings.ping_pong_service_port}/pings", 
+                timeout=5.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            return {
+                "status": "ready", 
+                "ping_pong_service": "connected",
+                "ping_pong_count": data.get("pings", 0)
+            }
+    except Exception as e:
+        logger.error(f"Readiness check failed - ping-pong service not accessible: {e}")
+        raise HTTPException(
+            status_code=503, 
+            detail=f"Ping-pong service not ready: {str(e)}"
+        )
 
 def main():
     # Start the logging worker in a separate thread

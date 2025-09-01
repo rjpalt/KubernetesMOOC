@@ -6,8 +6,9 @@ Simple HTTP service that responds with "pong N" and increments counter. The coun
 
 - Responds with "pong N" where N is an incrementing counter stored in PostgreSQL
 - Database-backed persistence for reliable counter storage
+- **Smart database reconnection**: Automatically retries database connections when dependencies become available
 - Configurable via environment variables using Pydantic settings
-- Health check and readiness endpoints for monitoring
+- Health check and readiness endpoints for monitoring with dependency cascade
 - Docker Compose setup with PostgreSQL integration
 
 ## Local Development
@@ -72,8 +73,26 @@ The docker-compose setup demonstrates persistent volume sharing between services
 
 ## Usage
 
-- `GET /pingpong` - Returns pong with incrementing counter (persists to shared volume)
-- `GET /health` - Health check endpoint
+- `GET /pingpong` - Returns pong with incrementing counter (persists to database)
+- `GET /health` - Health check endpoint (always returns 200 OK)
+- `GET /health/ready` - Readiness check endpoint (returns 503 if database unavailable)
+
+## Database Resilience Architecture
+
+The service implements smart database reconnection for Kubernetes readiness probes:
+
+### Readiness Probe Behavior
+- **Database unavailable**: Service stays running but reports "not ready" (0/1 Ready)
+- **Database becomes available**: Service automatically reconnects and becomes ready (1/1 Running)
+- **No manual intervention required**: Readiness probes continuously retry every 10 seconds
+
+### Implementation Details
+- Each database query (`get_counter`, `increment_counter`) checks if connection pool exists
+- If pool is uninitialized, attempts reconnection via `await self.initialize()`
+- On connection failures, pool is reset to `None` to force retry on next probe
+- Graceful error handling prevents application crashes during database outages
+
+This design enables proper Kubernetes dependency management where services become ready only when their dependencies are available.
 
 ## Shared Volume Integration
 
@@ -147,9 +166,11 @@ kubectl exec -it <pod-name> -c ping-pong -- cat /shared/ping_pong_counter.txt
 
 ### Architecture Notes
 
-- **Multi-container pod**: Both ping-pong and log-output run in the same pod for shared volume access
-- **initContainer**: Fixes permissions on the shared volume before main containers start
-- **Persistent storage**: Counter persists across pod restarts via PersistentVolume
+- **Database resilience**: Implements smart reconnection for readiness probe dependency management
+- **Readiness cascade**: Database → Ping-pong → Log-output dependency chain with automatic recovery
+- **No crash on startup**: Applications stay running even when dependencies are unavailable
+- **Kubernetes-native**: Proper use of readiness probes for orchestrated service startup
+- **Persistent storage**: Counter persists across pod restarts via PostgreSQL database
 
 Example environment variables for Kubernetes:
 ```yaml

@@ -24,8 +24,28 @@ spec:
               path: information.txt
       containers:
         - name: log-output
-          image: kubemooc.azurecr.io/log-output-app:3.4
+          image: kubemooc.azurecr.io/log-output-app:4.1
           imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
           env:
           - name: LOG_APP_APP_PORT
             value: "8000"
