@@ -32,7 +32,8 @@ async def lifespan(app: FastAPI):
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
-        raise
+        logger.info("Application will continue running - database connectivity will be checked via readiness probe")
+        # Do not raise - let the app start and use readiness probe to indicate DB status
     
     yield
     

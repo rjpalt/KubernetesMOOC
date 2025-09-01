@@ -15,8 +15,28 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: kubemooc.azurecr.io/ping-pong-app:3.4
+          image: kubemooc.azurecr.io/ping-pong-app:4.1
           imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
           env:
             - name: PING_PONG_APP_PORT
               value: "3000"

@@ -114,6 +114,8 @@ class DatabaseManager:
         if self.pool:
             await self.pool.close()
             logger.info("Database connection pool closed")
+        else:
+            logger.info("Database connection pool was not initialized, nothing to close")
 
 # Global database manager instance
 db_manager = DatabaseManager()
