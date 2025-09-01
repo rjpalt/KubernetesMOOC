@@ -112,7 +112,7 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
  
 ### Chapter 5
 
-- [4.1]
+- [4.1](https://github.com/rjpalt/KubernetesMOOC/tree/4.1/ping-pong)
   - ![Starting](https://github.com/user-attachments/assets/25b1046d-0121-4fcf-a409-d11b77957512)
   - ![Waiting for database](https://github.com/user-attachments/assets/ca175f52-34c8-4828-9390-5994929748d7)
   - ![State after database has started](https://github.com/user-attachments/assets/5f582bad-cf8c-4585-960f-826fe4adf547)
