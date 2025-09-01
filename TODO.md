@@ -32,9 +32,6 @@
     - [ ] **Production Readiness:** Migrate production database to DBaaS.
     - [ ] Separate application code and Kubernetes configuration into dedicated repositories (Ex 4.10).
 
-## Next Up
-- [ ] **Review CI/CD Pipeline:** Audit the `main` branch's deployment workflow for optimizations and best practices.
-
 ## Future Enhancements
 - [ ] **Federated Authentication:** Implement a federated authentication solution (e.g., OpenID Connect).
 - [ ] **Security Hardening:**
