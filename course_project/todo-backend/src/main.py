@@ -47,17 +47,23 @@ async def lifespan(app: FastAPI):
         # Initialize database
         await db_manager.initialize()
 
-        # Check database health
-        if not await db_manager.health_check():
-            logger.error("Database health check failed")
-            raise RuntimeError("Database connection failed")
-
-        logger.info("Database initialized and health check passed")
-
-        # Initialize sample data
-        todo_service = get_todo_service()
-        await todo_service.initialize_with_sample_data()
-        logger.info("Sample data initialized")
+        # Check database health with graceful degradation
+        try:
+            is_db_healthy = await db_manager.health_check(max_retries=3)
+            if not is_db_healthy:
+                logger.warning("Database not immediately available - starting in degraded mode")
+                logger.warning("Application will continue startup, database connectivity will be verified by health probes")
+            else:
+                logger.info("Database initialized and health check passed")
+                
+                # Only initialize sample data if database is available
+                todo_service = get_todo_service()
+                await todo_service.initialize_with_sample_data()
+                logger.info("Sample data initialized")
+                
+        except Exception as e:
+            logger.warning(f"Database initialization had issues: {e}")
+            logger.warning("Application starting in degraded mode - health probes will handle database connectivity")
 
     except Exception as e:
         logger.error(f"Startup failed: {e}")
