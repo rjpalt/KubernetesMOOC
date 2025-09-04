@@ -1,4 +1,4 @@
-"""Health check endpoints."""
+"""Health check endpoints. Make them healthy again."""
 
 import logging
 from datetime import UTC, datetime
