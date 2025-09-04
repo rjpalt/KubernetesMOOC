@@ -76,5 +76,5 @@ async def comprehensive_health_check():
 
 @router.get("/healthz")
 async def liveness_check():
-    """Lightweight liveness check endpoint - no dependencies, only for livenessProbe."""
+    """Lightweight liveness check endpoint - no dependencies, only for StartupProbe."""
     return {"status": "ok"}
