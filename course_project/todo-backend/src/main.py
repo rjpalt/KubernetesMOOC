@@ -43,10 +43,13 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting up todo backend...")
 
+    # Attempt to initialize database, but do not crash on failure
     try:
-        # Initialize database
         await db_manager.initialize()
-
+    except Exception as e:
+        logger.warning(f"Database initialization failed: {e}")
+        logger.warning("Application starting in degraded mode - health probes will handle database connectivity")
+    else:
         # Check database health with graceful degradation
         try:
             is_db_healthy = await db_manager.health_check(max_retries=3)
@@ -62,14 +65,9 @@ async def lifespan(app: FastAPI):
                 todo_service = get_todo_service()
                 await todo_service.initialize_with_sample_data()
                 logger.info("Sample data initialized")
-
         except Exception as e:
-            logger.warning(f"Database initialization had issues: {e}")
+            logger.warning(f"Database health check had issues: {e}")
             logger.warning("Application starting in degraded mode - health probes will handle database connectivity")
-
-    except Exception as e:
-        logger.error(f"Startup failed: {e}")
-        raise
 
     yield
 
