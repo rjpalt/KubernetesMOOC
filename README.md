@@ -115,7 +115,14 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
 - [4.1](https://github.com/rjpalt/KubernetesMOOC/tree/4.1/ping-pong)
   - ![Starting](https://github.com/user-attachments/assets/25b1046d-0121-4fcf-a409-d11b77957512)
   - ![Waiting for database](https://github.com/user-attachments/assets/ca175f52-34c8-4828-9390-5994929748d7)
-  - ![State after database has started](https://github.com/user-attachments/assets/5f582bad-cf8c-4585-960f-826fe4adf547)
+  - ![State after database has started](https://github.com/user-attachments/assets/5f582bad-cf8c-4585-960f-826fe4adf547)  
+- [4.2]()
+  - ![State after starting a database with corrupted password]()
+  - First command shows the readiness state (0/1)
+  - Second command outlines health probe endpoints, timeouts and failure threshold for all probe types
+  - Third shows that the pod is not ready even though the pod is running
+  - Fourth command intenrally tests the readiness probe endpoint returning 503
+  - Fifth command tests the liveness probe which DOES give 200 as expected
 
 # Exercise 3.9: DBaaS vs DIY Containerized Docker #
 In this project I decided to change to Azure managed PostgreSQL. The main reasons, on a theoretical side of things, are that running a production and test environment Database yourself gets very thorny quite fast. It's ok, if you have a very simple app that jsut uses a simple PostgreSQL, but if you intend to scale up, it turns into a bottleneck quite fast. I can quickly come up with scenarios where building your own backup system, high availability (HA) solution, redundancy, and maintenance/updates turns into a sysadmin's nightmare. These will require automation and the automation will require upkeep on their behalf and you need to handle it yourself. I would not, personally, want to be responsible of that pile of things if I can avoid it; it is prone to accidents and mistakes and definitely to human errors.
