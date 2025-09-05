@@ -116,7 +116,7 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - ![Starting](https://github.com/user-attachments/assets/25b1046d-0121-4fcf-a409-d11b77957512)
   - ![Waiting for database](https://github.com/user-attachments/assets/ca175f52-34c8-4828-9390-5994929748d7)
   - ![State after database has started](https://github.com/user-attachments/assets/5f582bad-cf8c-4585-960f-826fe4adf547)  
-- [4.2](https://github.com/user-attachments/assets/92d5b9ae-0029-4df5-bda6-694748cc126b)
+- [4.2](https://github.com/rjpalt/KubernetesMOOC/tree/4.2/course_project)
   - ![State after starting a database with corrupted password](https://github.com/user-attachments/assets/92d5b9ae-0029-4df5-bda6-694748cc126b)
   - First command shows the readiness state (0/1)
   - Second command outlines health probe endpoints, timeouts and failure threshold for all probe types
