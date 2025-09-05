@@ -32,6 +32,12 @@ async def health_check(image_service: ImageService = Depends(get_image_service))
     }
 
 
+@router.get("/healthz")
+async def liveness_check():
+    """Lightweight liveness check endpoint - no dependencies."""
+    return {"status": "ok"}
+
+
 @router.post("/shutdown")
 async def shutdown_container():
     """Shutdown endpoint for testing container resilience."""
