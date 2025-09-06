@@ -125,8 +125,8 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - Fifth command tests the liveness probe which DOES give 200 as expected
 - [4.3](https://github.com/rjpalt/KubernetesMOOC/tree/4.3/course_project)
   - **Note**: The project does not implement Prometheus monitoring in the same way as the course: I have enabled Prometheus monitoring as an Azure Managed Prometheus add-on for the AKS cluster. The monitoring is enabled cluster-wide and the metrics are scraped automatically from all pods with the correct annotations. The setup and enablement of the managed Prometheus is described in [Azure Memos](docs/azure/Azure-memos.md#monitoring-with-azure-managed-prometheus-and-azure-monitor-for-containers).
-  - ![Running Prometheus Monitoring on AKS]()
-  - ![Running the stateful set query against namespaces in my Cluster]()
+  - ![Running Prometheus Monitoring on AKS](https://github.com/user-attachments/assets/383c7492-5179-463d-b0f9-1099e5ad52de)
+  - ![Running the statefulset query against namespaces in my Cluster](https://github.com/user-attachments/assets/459438a0-f571-4817-ad6e-653c0d0710c8)
 
 
 # Exercise 3.9: DBaaS vs DIY Containerized Docker #
