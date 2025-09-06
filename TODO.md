@@ -2,13 +2,11 @@
 
 ## Current Sprint: Observability, Advanced Deployments & GitOps (Chapter 4)
 
-### Phase 1: Application Health & Probes (Exercises 4.1, 4.2)
+### Phase 1: Application Health & Probes (Exercises 4.1, 4.2) - ✅ COMPLETE
 - [ ] **Goal:** Implement readiness probes to improve application stability and startup logic.
 - [ ] **Actions:**
     - [x] Implement `ReadinessProbe` for Ping-pong and Log output apps (Ex 4.1).
-    - [ ] Implement probes for the main project (Ex 4.2).
-    - [ ] **Technical Debt:** Fix frontend internal API exposure without breaking backend functionality.
-    - [ ] **CI/CD Health:** Investigate and fix the failing documentation deployment workflow.
+    - [x] Implement probes for the main project (Ex 4.2).
 
 ### Phase 2: Advanced Observability & Deployments (Exercises 4.3, 4.4)
 - [ ] **Goal:** Explore advanced monitoring with Prometheus and implement canary deployments.
@@ -31,6 +29,10 @@
     - [ ] Establish `staging` and `production` environments with GitOps promotion (Ex 4.9).
     - [ ] **Production Readiness:** Migrate production database to DBaaS.
     - [ ] Separate application code and Kubernetes configuration into dedicated repositories (Ex 4.10).
+
+## Technical Debt & Maintenance Backlog
+- [ ] **Frontend Security:** Fix frontend internal API exposure without breaking backend functionality.
+- [ ] **CI/CD Health:** Investigate and fix the failing documentation deployment workflow.
 
 ## Future Enhancements
 - [ ] **Federated Authentication:** Implement a federated authentication solution (e.g., OpenID Connect).

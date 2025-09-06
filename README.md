@@ -123,6 +123,10 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - Third shows that the pod is not ready even though the pod is running
   - Fourth command intenrally tests the readiness probe endpoint returning 503
   - Fifth command tests the liveness probe which DOES give 200 as expected
+- [4.3](https://github.com/rjpalt/KubernetesMOOC/tree/4.3/course_project)
+  - **Note**: The project does not implement Prometheus monitoring in the same way as the course: I have enabled Prometheus monitoring as an Azure Managed Prometheus add-on for the AKS cluster. The monitoring is enabled cluster-wide and the metrics are scraped automatically from all pods with the correct annotations. The setup and enablement of the managed Prometheus is described in [Azure Memos](docs/azure/Azure-memos.md#monitoring-with-azure-managed-prometheus-and-azure-monitor-for-containers).
+  - ![Running Prometheus Monitoring on AKS](https://github.com/user-attachments/assets/383c7492-5179-463d-b0f9-1099e5ad52de)
+  - ![Running the statefulset query against namespaces in my Cluster](https://github.com/user-attachments/assets/459438a0-f571-4817-ad6e-653c0d0710c8)
 
 # Exercise 3.9: DBaaS vs DIY Containerized Docker #
 In this project I decided to change to Azure managed PostgreSQL. The main reasons, on a theoretical side of things, are that running a production and test environment Database yourself gets very thorny quite fast. It's ok, if you have a very simple app that jsut uses a simple PostgreSQL, but if you intend to scale up, it turns into a bottleneck quite fast. I can quickly come up with scenarios where building your own backup system, high availability (HA) solution, redundancy, and maintenance/updates turns into a sysadmin's nightmare. These will require automation and the automation will require upkeep on their behalf and you need to handle it yourself. I would not, personally, want to be responsible of that pile of things if I can avoid it; it is prone to accidents and mistakes and definitely to human errors.

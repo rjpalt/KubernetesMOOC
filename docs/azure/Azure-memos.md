@@ -77,6 +77,49 @@ Creating an AKS cluster:
 az aks create --resource-group <RESOURCE_GROUP_NAME> --name <AKS_CLUSTER_NAME> --node-count 1 --enable-addons monitoring --generate-ssh-keys
 ```
 
+## Azure Managed Prometheus Setup (Exercise 4.3 Support)
+
+### Enabling Azure Monitor for AKS
+The `--enable-addons monitoring` flag in AKS creation automatically provisions:
+- **Azure Monitor Workspace:** `DefaultAzureMonitorWorkspace-<region>`
+- **Container Insights:** Full observability with logs and metrics
+- **Managed Prometheus:** Automatic metrics collection from AKS cluster
+
+### Verifying Prometheus Integration
+Check that Azure Monitor metrics are enabled:
+```bash
+az aks show --resource-group <RESOURCE_GROUP_NAME> --name <AKS_CLUSTER_NAME> --query "azureMonitorProfile" --output json
+```
+
+Expected output should show:
+```json
+{
+  "metrics": {
+    "enabled": true,
+    "kubeStateMetrics": {
+      "metricAnnotationsAllowList": "",
+      "metricLabelsAllowlist": ""
+    }
+  }
+}
+```
+
+### Accessing Prometheus Queries
+1. Navigate to Azure Portal → Azure Monitor Workspaces
+2. Select `DefaultAzureMonitorWorkspace-<region>`
+3. Go to **Managed Prometheus** → **Prometheus explorer**
+4. Execute PromQL queries like: `kube_pod_info{created_by_kind="StatefulSet"}`
+
+### Available Metrics
+Azure Managed Prometheus automatically collects:
+- `kube_pod_info` - Pod metadata and labels
+- `kube_pod_status_*` - Pod status and phases  
+- `kube_statefulset_*` - StatefulSet metrics
+- `container_*` - Container resource metrics
+- `node_*` - Node-level metrics
+
+**Note**: No additional configuration needed - metrics collection starts automatically when AKS monitoring addon is enabled.
+
 ## #Connecting Kubectl to AKS ###
 ```bash
 az aks get-credentials --resource-group <RESOURCE_GROUP_NAME> --name <AKS_CLUSTER_NAME>
