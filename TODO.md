@@ -11,7 +11,7 @@
 ### Phase 2: Advanced Observability & Deployments (Exercises 4.3, 4.4)
 - [ ] **Goal:** Explore advanced monitoring with Prometheus and implement canary deployments.
 - [ ] **Actions:**
-    - [ ] Complete Prometheus query exercise (Ex 4.3).
+    - [x] Complete Prometheus query exercise (Ex 4.3).
     - [ ] Implement canary `AnalysisTemplate` for the Ping-pong app (Ex 4.4).
 
 ### Phase 3: Core Feature Enhancement (Exercises 4.5, 4.6)
