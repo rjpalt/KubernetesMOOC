@@ -85,6 +85,10 @@ spec:
                   key: DB_PASSWORD
         - name: prometheus-auth-sidecar
           image: kubemooc.azurecr.io/auth-proxy-sidecar:latest
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 8080
               name: auth-proxy
