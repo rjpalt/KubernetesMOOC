@@ -14,12 +14,12 @@ RUN apt-get update && \
 WORKDIR /app
 RUN chown appuser:appuser /app
 
+# Copy requirements and install dependencies with pip
+COPY --chown=appuser:appuser requirements-simple.txt .
+RUN pip install --no-cache-dir -r requirements-simple.txt
+
 # Switch to non-root user
 USER appuser
-
-# Copy requirements and install dependencies
-COPY --chown=appuser:appuser requirements-simple.txt .
-RUN python -m pip install --no-cache-dir -r requirements-simple.txt
 
 # Copy application
 COPY --chown=appuser:appuser app.py .

@@ -92,6 +92,19 @@ uv run pytest --cov=app
 docker run -p 8080:8080 auth-proxy-sidecar:latest-arm64
 ```
 
+**Dependency Management:**
+- Dependencies are managed with `uv` in `pyproject.toml` for development
+- Build scripts automatically export clean `requirements-simple.txt` for Docker builds
+- Docker uses standard `pip` installation (no uv in container)
+- Auto-generated `requirements-simple.txt` is gitignored (build-time only)
+- No manual sync required between dependency files
+
+**Build Process:**
+1. `./build.sh` runs `uv export --no-hashes --no-header --no-annotate --no-emit-project`
+2. Clean requirements file generated automatically
+3. Docker builds use standard `pip install -r requirements-simple.txt`
+4. Multi-architecture images built for local dev (ARM64) and AKS (AMD64)
+
 #### Production Deployment to AKS
 ```bash
 # Build and push to Azure Container Registry
@@ -110,9 +123,11 @@ docker build --platform linux/amd64 -t auth-proxy-sidecar:amd64 .
 - Docker buildx for multi-architecture builds
 
 **Architecture Notes:**
+- Development uses `uv` for fast dependency management in `pyproject.toml`
+- Docker builds use exported `requirements-simple.txt` with standard pip
 - Local development on Apple Silicon requires ARM64 images
 - AKS clusters use AMD64 architecture
-- The build scripts handle both architectures automatically
+- Build scripts handle both architectures and dependency export automatically
 
 ## Deployment
 

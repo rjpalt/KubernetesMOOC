@@ -8,8 +8,8 @@ REGISTRY=${REGISTRY:-"kubemooc.azurecr.io"}
 IMAGE_NAME=${IMAGE_NAME:-"auth-proxy-sidecar"}
 TAG=${TAG:-"latest"}
 
-echo "🔄 Exporting dependencies to requirements.txt..."
-uv export --format requirements.txt --no-dev --output-file requirements.txt
+echo "🔄 Exporting dependencies to requirements-simple.txt..."
+uv export --format requirements.txt --no-dev --no-hashes --no-header --no-annotate --no-emit-project --output-file requirements-simple.txt
 
 echo "🔐 Logging into Azure Container Registry..."
 if ! az acr login --name kubemooc; then

@@ -5,8 +5,8 @@
 
 set -e
 
-echo "🔄 Exporting dependencies to requirements.txt..."
-uv export --format requirements.txt --no-dev --output-file requirements.txt
+echo "🔄 Exporting dependencies to requirements-simple.txt..."
+uv export --format requirements.txt --no-dev --no-hashes --no-header --no-annotate --no-emit-project --output-file requirements-simple.txt
 
 echo "🏗️  Building Docker images for multiple architectures..."
 
