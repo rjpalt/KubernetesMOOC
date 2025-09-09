@@ -4,12 +4,11 @@ FROM python:3.11-slim
 RUN groupadd --gid 1000 appuser && \
     useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
 
-# Install system dependencies and uv
+# Install system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    pip install --no-cache-dir uv
+    rm -rf /var/lib/apt/lists/*
 
 # Set up application directory with proper ownership
 WORKDIR /app
@@ -19,12 +18,8 @@ RUN chown appuser:appuser /app
 USER appuser
 
 # Copy requirements and install dependencies
-COPY --chown=appuser:appuser requirements.txt .
-RUN uv venv /home/appuser/.venv && \
-    /home/appuser/.venv/bin/pip install --no-cache-dir -r requirements.txt
-
-# Add venv to PATH
-ENV PATH="/home/appuser/.venv/bin:${PATH}"
+COPY --chown=appuser:appuser requirements-simple.txt .
+RUN python -m pip install --no-cache-dir -r requirements-simple.txt
 
 # Copy application
 COPY --chown=appuser:appuser app.py .

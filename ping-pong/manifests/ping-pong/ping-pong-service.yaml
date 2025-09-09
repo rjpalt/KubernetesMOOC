@@ -8,6 +8,11 @@ spec:
   selector:
     app: ping-pong    # This is the app as declared in the deployment.
   ports:
-    - port: 2507        # This is the port that the service will expose.
+    - name: app
+      port: 2507        # This is the port that the service will expose.
       protocol: TCP
       targetPort: 3000  # This is the target port
+    - name: auth-proxy
+      port: 8080        # This exposes the sidecar port
+      protocol: TCP
+      targetPort: 8080  # This is the sidecar auth proxy port

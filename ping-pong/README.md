@@ -1,6 +1,6 @@
 # Ping-Pong Service
 
-Simple HTTP service that responds with "pong N" and increments counter. The counter is now persisted to a PostgreSQL database for reliable storage and communication with other services.
+Simple HTTP service that responds with "pong N" and increments counter. The counter is persisted to a PostgreSQL database for reliable storage. **Features canary deployment with Azure Prometheus monitoring via sidecar authentication proxy.**
 
 ## Features
 
@@ -9,7 +9,57 @@ Simple HTTP service that responds with "pong N" and increments counter. The coun
 - **Smart database reconnection**: Automatically retries database connections when dependencies become available
 - Configurable via environment variables using Pydantic settings
 - Health check and readiness endpoints for monitoring with dependency cascade
-- Docker Compose setup with PostgreSQL integration
+- **Sidecar Authentication Proxy**: Azure Prometheus integration for automated canary analysis
+
+## Kubernetes Deployment
+
+### SOPS Secret Management
+
+Secrets are encrypted with SOPS and stored in Git. Apply them using:
+
+```bash
+# Apply SOPS-encrypted secrets
+sops --decrypt manifests/ping-pong/azure-workload-identity-secret.enc.yaml | kubectl apply -f -
+sops --decrypt manifests/ping-pong/ping-pong-secret.enc.yaml | kubectl apply -f -
+sops --decrypt manifests/ping-pong/postgres-secret.enc.yaml | kubectl apply -f -
+```
+
+### Canary Deployment
+
+Deploy using Argo Rollouts with automated Azure Prometheus analysis:
+
+```bash
+# Apply manifests
+kubectl apply -f manifests/ping-pong/prometheus-auth-serviceaccount.yaml
+kubectl apply -f manifests/ping-pong/ping-pong-service.yaml
+kubectl apply -f manifests/ping-pong/ping-pong-analysis-template-sidecar.yaml
+kubectl apply -f manifests/ping-pong/ping-pong-rollout.yaml
+
+# Trigger deployment
+kubectl argo rollouts set image ping-pong-app ping-pong=kubemooc.azurecr.io/ping-pong-app:4.4.3 -n exercises
+kubectl argo rollouts get rollout ping-pong-app -n exercises --watch
+```
+
+**Canary Flow**: 25% → Analysis → 50% → Analysis → 75% → Analysis → 100%
+**Automated Rollback**: If CPU metrics exceed thresholds
+
+### Container Architecture
+
+**Multi-container pod** with main application and authentication sidecar:
+- **ping-pong** (port 3000): Core service with database integration  
+- **prometheus-auth-sidecar** (port 8080): Azure authentication proxy for analysis queries
+- **Secrets**: Database credentials via SOPS-encrypted `ping-pong-app-secret`
+
+### Sidecar Container: Prometheus Authentication Proxy  
+- **Image**: `kubemooc.azurecr.io/auth-proxy-sidecar:latest`
+- **Port**: 8080 (authentication proxy)
+- **Responsibilities**: Azure authentication, Prometheus API proxy
+- **Secrets**: Azure credentials via SOPS-encrypted `azure-workload-identity-secret`
+
+### Network Communication
+- **Internal**: Containers communicate via localhost within pod
+- **External**: AnalysisRun controllers access sidecar via `ping-pong-svc:8080`
+- **Service Discovery**: Kubernetes service exposes both app (2507) and auth-proxy (8080) ports
 
 ## Local Development
 
