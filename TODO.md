@@ -8,11 +8,11 @@
     - [x] Implement `ReadinessProbe` for Ping-pong and Log output apps (Ex 4.1).
     - [x] Implement probes for the main project (Ex 4.2).
 
-### Phase 2: Advanced Observability & Deployments (Exercises 4.3, 4.4)
-- [ ] **Goal:** Explore advanced monitoring with Prometheus and implement canary deployments.
-- [ ] **Actions:**
+### Phase 2: Advanced Observability & Deployments (Exercises 4.3, 4.4) - ✅ COMPLETE
+- [x] **Goal:** Explore advanced monitoring with Prometheus and implement canary deployments.
+- [x] **Actions:**
     - [x] Complete Prometheus query exercise (Ex 4.3).
-    - [ ] Implement canary `AnalysisTemplate` for the Ping-pong app (Ex 4.4).
+    - [x] Implement canary `AnalysisTemplate` for the Ping-pong app (Ex 4.4).
 
 ### Phase 3: Core Feature Enhancement (Exercises 4.5, 4.6)
 - [ ] **Goal:** Add core features to the todo application and improve testing.
@@ -43,6 +43,7 @@
 - [ ] **Documentation:** Automate OpenAPI documentation publishing.
 
 ## Recently Completed
+- [x] **Argo Rollouts with Azure Prometheus Integration (Exercise 4.4):** Implemented enterprise-grade sidecar authentication proxy pattern for automated CPU-based analysis and rollback. Established organizational standard for Azure service authentication with SOPS encryption and Workload Identity federation.
 - [x] **Resource Management & Scaling (Exercises 3.11 & 3.12):** Established resource quotas, enabled cluster monitoring, and configured autoscaling for production workloads.
 - [x] **CI/CD Pipeline Reliability Fix:** Resolved critical GitHub Actions deployment failures by implementing a robust multi-layer health check strategy, replacing unreliable port-forwarding.
 - [x] **E2E Testing Foundation:** Implemented a comprehensive Playwright E2E test suite with support for local (Docker Compose) and remote (Kubernetes) execution environments.

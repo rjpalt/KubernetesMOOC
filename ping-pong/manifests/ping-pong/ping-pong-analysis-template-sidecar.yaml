@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: ping-pong-cpu-analysis-sidecar
+  namespace: exercises
+spec:
+  metrics:
+  - name: cpu-usage-rate
+    provider:
+      web:
+        url: http://ping-pong-svc.exercises.svc.cluster.local:8080/api/v1/query
+        method: POST
+        timeoutSeconds: 30
+        headers:
+          - key: Content-Type
+            value: "application/x-www-form-urlencoded"
+        body: "query=avg(rate(container_cpu_usage_seconds_total{namespace=\"exercises\",pod=~\"ping-pong-app-.*\"}[5m]))"
+        jsonPath: "{$.data.result[0].value[1]}"
+    successCondition: "asFloat(result) < 0.5"
+    failureCondition: "asFloat(result) >= 0.5"
+    interval: 30s
+    count: 5
+    failureLimit: 2
