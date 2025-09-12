@@ -1,4 +1,4 @@
-"""API dependencies for dependency injection. Yeah!"""
+"""API dependencies for dependency injection. Yeah! Very dependable！"""
 
 from ..services.todo_service import TodoService
 
