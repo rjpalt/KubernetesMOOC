@@ -8,6 +8,8 @@ Key security principles:
 2. Detailed logging for internal debugging
 3. Consistent error response format
 4. No sensitive information in client responses
+
+Not that we do errors, right?
 """
 
 import logging

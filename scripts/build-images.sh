@@ -142,12 +142,12 @@ else
     echo "E2E ARM64 image build failed"
     exit 1
 fi
-cd ../../course_project
+cd ../..
 
 # Build E2E AMD64 image
 echo ""
 echo "Building E2E AMD64 image (todo-app-e2e:$TAG-amd64)..."
-cd ../tests/e2e
+cd tests/e2e
 
 docker build --platform linux/amd64 -t todo-app-e2e:$TAG-amd64 .
 if [ $? -eq 0 ]; then
@@ -156,7 +156,7 @@ else
     echo "E2E AMD64 image build failed"
     exit 1
 fi
-cd ../../course_project
+cd ../..
 
 # Update docker-compose.yaml with new tag
 echo ""

@@ -1,6 +1,6 @@
 services:
   todo-app-be:
-    image: todo-app-be:3.10-arm64
+    image: todo-app-be:4.5-arm64
     build:
       context: ./todo-backend
       dockerfile: Dockerfile
@@ -25,7 +25,7 @@ services:
       - postgres_prod
 
   todo-app-fe:
-    image: todo-app-fe:3.10-arm64
+    image: todo-app-fe:4.5-arm64
     build:
       context: ./todo-app
       dockerfile: Dockerfile
@@ -69,7 +69,7 @@ services:
       - todo-app-network
 
   todo-cron:
-    image: todo-app-cron:3.10-arm64
+    image: todo-app-cron:4.5-arm64
     build:
       context: ./todo-cron
       dockerfile: Dockerfile
@@ -94,7 +94,7 @@ services:
     command: ["/usr/local/bin/backup_database.sh", "loop"]
   
   playwright:
-    image: todo-app-e2e:3.10-arm64
+    image: todo-app-e2e:4.5-arm64
     build:
       context: ./tests/e2e
       dockerfile: Dockerfile

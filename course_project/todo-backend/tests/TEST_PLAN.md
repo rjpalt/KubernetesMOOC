@@ -7,7 +7,18 @@ Testing strategy for the todo-backend microservice with async database integrati
 ```
 tests/
 ├── unit/                     # Fas#### Integration Tests (61 tests)
-**test_todo_api_structure.py** - API Infrastructure (7 tests)
+**test_todo_api_s**test_information_disclosure.py** - Information Disclosure Prevention (11 tests) ✅ NEW
+- Generic error message enforcement across all endpoints
+- Validation error sanitization preventing internal detail exposure
+- Server error handling with sanitized responses
+- Consistent error response format validation
+- Error logging vs client response separation testing
+- System information leakage prevention
+- Production error handling mode validation
+- Database connection error sanitization
+- Error message consistency across HTTP methods
+- **Environment-aware debug information (2 tests)** ✅ NEW
+- **Development mode detection and conditional debug responses** ✅ NEWy** - API Infrastructure (7 tests)
 - Health endpoint structure and availability
 - API documentation endpoints (/docs, /openapi.json)
 - Basic routing and CORS configuration
@@ -67,7 +78,7 @@ tests/
 └── conftest.py              # Test configuration with async support
 ```
 
-**Status**: 96/96 tests passing
+**Status**: 98/98 tests passing
 
 ## Running Tests
 
@@ -175,7 +186,7 @@ async def test_client(test_db_manager):
 
 ## Test Coverage Analysis
 
-### Test Inventory (96 Tests Total)
+### Test Inventory (98 Tests Total)
 
 #### Unit Tests (35 tests)
 **test_models.py** - Data Model Validation (18 tests)
@@ -190,7 +201,7 @@ async def test_client(test_db_manager):
 - Edge cases (3 tests)
 - Data integrity (4 tests)
 
-#### Integration Tests (59 tests)
+#### Integration Tests (61 tests)
 **test_todo_api_structure.py** - API Infrastructure (7 tests)
 - Health endpoint structure and availability
 - API documentation endpoints (/docs, /openapi.json)
@@ -230,7 +241,7 @@ async def test_client(test_db_manager):
 - Unicode and encoded payload handling
 - Security headers on all endpoints verification
 
-**test_information_disclosure.py** - Information Disclosure Prevention (9 tests) ✅ NEW
+**test_information_disclosure.py** - Information Disclosure Prevention (11 tests) ✅ NEW
 - Generic error message enforcement across all endpoints
 - Validation error sanitization preventing internal detail exposure
 - Server error handling with sanitized responses
@@ -240,6 +251,8 @@ async def test_client(test_db_manager):
 - Production error handling mode validation
 - Database connection error sanitization
 - Error message consistency across HTTP methods
+- **Environment-aware debug information (2 tests)** ✅ NEW
+- **Development mode detection and conditional debug responses** ✅ NEW
 
 ### Test Category Validation
 
