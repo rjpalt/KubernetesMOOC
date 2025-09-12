@@ -73,3 +73,16 @@ IMPLEMENTATION_TODO.md
 
 # tmp Folder for Agentic stuff
 tmp/
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+**/playwright-report/
+**/test-results/
