@@ -26,7 +26,7 @@ Command references
 - Backend tests: make test-be
 - Frontend tests: make test-fe
 - All unit/integration tests: make test
-- E2E tests (local): make test-e2E-local
+- E2E tests (local): make test-e2e-local
 - E2E tests (remote): TARGET_URL=<your-url> make test-e2e-remote
 
 Principles
