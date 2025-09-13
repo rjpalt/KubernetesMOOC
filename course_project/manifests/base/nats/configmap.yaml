@@ -3,10 +3,21 @@ kind: ConfigMap
 metadata:
   name: nats-config
   labels:
+    app.kubernetes.io/instance: nats
+    app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/name: nats
-    app.kubernetes.io/component: messaging
-    app.kubernetes.io/part-of: todo-app
+    app.kubernetes.io/version: 2.11.8
+    helm.sh/chart: nats-9.0.28
 data:
-  nats.conf: |
-    # Example NATS config
-    # Add custom configuration here if needed
+  nats-server.conf: |
+    server_name: $NATS_SERVER_NAME
+    listen: 0.0.0.0:4222
+    http: 0.0.0.0:8222
+    # Authorization for client connections
+    # Logging options
+    debug: false
+    trace: false
+    logtime: false
+    # Pid file
+    pid_file: "/tmp/nats-server.pid"
+    # System overrides

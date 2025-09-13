@@ -2,9 +2,14 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - statefulset.yaml
+  - application.yaml
   - service.yaml
+  - headless-svc.yaml
+  - metrics-svc.yaml
   - configmap.yaml
+  - serviceaccount.yaml
+  - networkpolicy.yaml
+  - poddisruptionbudget.yaml
 
 commonLabels:
   app.kubernetes.io/name: nats
@@ -12,4 +17,4 @@ commonLabels:
   app.kubernetes.io/part-of: todo-app
 
 commonAnnotations:
-  app.kubernetes.io/version: "2.10.x"
+  app.kubernetes.io/version: "2.11.8"

@@ -5,11 +5,6 @@ metadata:
 spec:
   replicas: 1
   template:
-    metadata:
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "7777"
-        prometheus.io/path: "/metrics"
     spec:
       containers:
       - name: nats
@@ -23,3 +18,11 @@ spec:
         env:
         - name: NATS_CLUSTER_NAME
           value: "feature-cluster"
+      - name: metrics
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi

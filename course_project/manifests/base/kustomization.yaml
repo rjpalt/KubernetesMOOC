@@ -19,3 +19,6 @@ resources:
   
   # Cron job service (depends on backend API)
   - todo-cron/
+  
+  # Message bus (NATS) for async communication
+  - nats/
