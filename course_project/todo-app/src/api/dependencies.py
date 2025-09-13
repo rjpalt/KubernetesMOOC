@@ -1,4 +1,4 @@
-"""FastAPI dependencies for dependency injection."""
+"""FastAPI dependencies for dependency injection. Spruit."""
 
 from fastapi.templating import Jinja2Templates
 

@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+spec:
+  replicas: 3
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "7777"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: nats
+        args:
+          - "--cluster_name=prod-nats-cluster"
+          - "--cluster=nats://0.0.0.0:6222"
+          - "--http_port=8222"
+          - "--port=4222"
+          - "--routes=nats://nats-0.nats:6222,nats://nats-1.nats:6222,nats://nats-2.nats:6222"
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        env:
+        - name: NATS_CLUSTER_NAME
+          value: "prod-cluster"
+  volumeClaimTemplates:
+  - metadata:
+      name: nats-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi

@@ -1,4 +1,4 @@
-"""Image cache management with atomic operations and metadata tracking."""
+"""Image cache management with atomic operations and metadata tracking. Ca-cthing!"""
 
 import logging
 import uuid

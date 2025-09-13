@@ -1,0 +1,16 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nats
+  labels:
+    app.kubernetes.io/instance: nats
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/version: 2.11.8
+    helm.sh/chart: nats-9.0.28
+spec:
+  selector:     
+    matchLabels:
+      app.kubernetes.io/instance: nats
+      app.kubernetes.io/name: nats
+  maxUnavailable: 1
