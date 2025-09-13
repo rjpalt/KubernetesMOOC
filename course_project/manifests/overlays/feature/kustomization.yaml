@@ -20,6 +20,8 @@ resources:
 - ../../base/todo-be/
 - ../../base/todo-fe/
 - ../../base/todo-cron/
+- ../../base/nats/
+- nats-feature-patch.yaml
 - secret-provider-class-feature.yaml
 - resourcequota.yaml
 
