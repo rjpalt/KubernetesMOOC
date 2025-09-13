@@ -18,16 +18,15 @@ spec:
         app.kubernetes.io/name: nats
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port: "7777"
+        prometheus.io/port: "8222"
         prometheus.io/path: "/metrics"
-    spec:
       containers:
         - name: nats
           image: docker.io/bitnami/nats:2.10.7
           ports:
-            - containerPort: 4222
-            - containerPort: 7777
-          resources:
+            ports:
+              - containerPort: 4222
+              - containerPort: 8222
             limits:
               cpu: 500m
               memory: 512Mi
