@@ -15,15 +15,12 @@ spec:
     - name: tcp-client
       port: 4222
       targetPort: client
-      nodePort: null
     - name: tcp-cluster
       port: 6222
       targetPort: cluster
-      nodePort: null
     - name: tcp-monitoring
       port: 8222
       targetPort: monitoring
-      nodePort: null
   selector:
     app.kubernetes.io/instance: nats
     app.kubernetes.io/name: nats

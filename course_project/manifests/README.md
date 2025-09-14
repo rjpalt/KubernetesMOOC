@@ -15,6 +15,12 @@ manifests/
 │   │   ├── service.yaml
 │   │   ├── secrets.yaml
 │   │   └── secrets.enc.yaml
+│   ├── nats/                      # NATS message bus infrastructure
+│   │   ├── statefulset.yaml      # 2-container pod (nats + metrics-exporter)
+│   │   ├── service.yaml          # Main NATS service (port 4222)
+│   │   ├── metrics-service.yaml  # Prometheus metrics service (port 7777)
+│   │   ├── configmap.yaml        # NATS server configuration
+│   │   └── kustomization.yaml    # Base resource list
 │   ├── todo-be/                   # Backend API service
 │   │   ├── deployment.yaml
 │   │   └── service.yaml
@@ -27,13 +33,148 @@ manifests/
 │       └── cronjob.yaml
 └── overlays/                      # Environment-specific overrides
     ├── development/               # Development environment settings
+    │   └── nats/                  # NATS development overlay
+    │       ├── nats-dev-patch.yaml
+    │       └── kustomization.yaml
     ├── staging/                   # Staging environment settings
     └── production/                # Production environment settings
+        ├── nats/                  # NATS production overlay
+        │   ├── nats-prod-patch.yaml
+        │   └── kustomization.yaml
         ├── hpa-backend.yaml       # Backend autoscaling (1-5 replicas)
         ├── hpa-frontend.yaml      # Frontend autoscaling (1-3 replicas)
         ├── resourcequota.yaml     # Resource limits
         └── kustomization.yaml     # Production-specific configuration
 ```
+
+## NATS Message Bus Infrastructure
+
+### Architecture Overview
+
+The NATS message bus provides the core messaging infrastructure for the todo application, enabling asynchronous communication between services. The implementation follows GitOps principles with static manifests generated from proven Helm charts.
+
+### How NATS Integration Works
+
+**Core Message Bus**: NATS serves as the central nervous system for the todo application:
+- **Publisher**: Todo-backend publishes todo creation/update events
+- **Subscriber**: Broadcaster service consumes events and triggers notifications
+- **Protocol**: Native NATS messaging protocol for high-performance pub/sub
+
+**Service Discovery Pattern**:
+```yaml
+NATS Connection String: nats://nats:4222
+Namespace: feature-ex-c4-e6 (development) | project (production)
+Protocol: NATS native messaging
+```
+
+### Multi-Container Pod Architecture
+
+The NATS pod runs two containers for separation of concerns:
+
+**Primary Container** (`nats`):
+- **Image**: `docker.io/bitnami/nats:2.11.8-debian-12-r0`
+- **Purpose**: Core NATS message broker
+- **Ports**: 4222 (client), 6222 (cluster), 8222 (monitoring)
+- **Health**: HTTP probes on monitoring port
+
+**Metrics Sidecar** (`nats-exporter`):
+- **Image**: `docker.io/bitnami/nats-exporter:0.17.3-debian-12-r8`
+- **Purpose**: Prometheus metrics collection
+- **Port**: 7777 (metrics endpoint)
+- **Integration**: Scrapes NATS monitoring API (localhost:8222)
+
+### Why This Architecture Works
+
+1. **Separation of Concerns**: Messaging and monitoring are isolated
+2. **Azure Integration**: Prometheus annotations enable auto-discovery
+3. **Health Monitoring**: Independent health checks for each function
+4. **Resource Efficiency**: Shared pod networking with minimal overhead
+
+### GitOps Implementation Strategy
+
+**Helm Template Generation Approach**:
+```bash
+# One-time manifest generation from proven chart
+helm template nats bitnami/nats -f values.yaml > base/nats/manifests.yaml
+
+# Split into individual resource files
+# Commit to Git as single source of truth
+# Use Kustomize overlays for environment differences
+```
+
+**Why Helm Template vs Direct Helm Install**:
+- ✅ **GitOps Compliance**: Declarative manifests in version control
+- ✅ **Single Source of Truth**: Base manifests are authoritative
+- ✅ **Multi-Environment**: Kustomize overlays for feature vs production
+- ✅ **CI/CD Integration**: kubectl apply -k deployment pattern
+- ✅ **Proven Configuration**: Leverages Bitnami chart expertise
+
+⚠️ **Trade-off: Manual Update Responsibility**: We accept responsibility for updating images and configurations manually rather than automatic Helm chart updates.
+
+### NATS Services Architecture
+
+**Main Service** (`nats`):
+- **Purpose**: Client connections and inter-service communication
+- **Port**: 4222 (NATS protocol)
+- **Usage**: `nats://nats:4222` from application services
+
+**Headless Service** (`nats-headless`):
+- **Purpose**: StatefulSet pod discovery and clustering
+- **Ports**: 4222, 6222, 8222
+- **Usage**: Internal NATS cluster formation
+
+**Metrics Service** (`nats-metrics`):
+- **Purpose**: Prometheus metrics collection
+- **Port**: 7777 (HTTP metrics endpoint)
+- **Annotations**: Azure Managed Prometheus auto-discovery
+- **Usage**: `http://nats-metrics:7777/metrics`
+
+### Environment Configuration Strategy
+
+**Development Overlay** (Feature Branches):
+```yaml
+Replicas: 1 (single instance)
+Resources: Minimal (50m CPU, 128Mi memory)
+Persistence: None (ephemeral storage)
+Clustering: Disabled
+```
+
+**Production Overlay** (Project Namespace):
+```yaml
+Replicas: 3 (high availability cluster)
+Resources: Production (500m CPU, 512Mi memory)
+Persistence: 10Gi storage per node
+Clustering: Enabled with inter-node routing
+```
+
+### Metrics and Monitoring Integration
+
+**Azure Managed Prometheus Integration**:
+- **Discovery**: Annotation-based service discovery
+- **Metrics Port**: 7777 (standard across all services)
+- **Scrape Path**: /metrics (Prometheus format)
+- **Auto-Discovery**: `prometheus.io/scrape: "true"`
+
+**Available Metrics**:
+- Connection metrics (`gnatsd_connz_*`)
+- Route metrics (`gnatsd_routez_*`) 
+- Subscription metrics (`gnatsd_subsz_*`)
+- Server metrics (`gnatsd_varz_*`)
+- Go runtime metrics (`go_*`)
+- Process metrics (`process_*`)
+
+### Security and Network Policy
+
+**Container Security**:
+- Non-root user execution (UID 1001)
+- Read-only root filesystem
+- Minimal capabilities (drop ALL)
+- Security context enforcement
+
+**Network Policy**:
+- Ingress: Ports 4222, 6222, 7777, 8222
+- Egress: Unrestricted (for external integrations)
+- Namespace isolation maintained
 
 ## Autoscaling Configuration
 
@@ -105,9 +246,76 @@ The full-stack kustomization automatically handles deployment order and applies 
 ## Service Communication
 
 - **Frontend → Backend**: HTTP API calls via service DNS (`todo-app-be-svc:2506`)
+- **Backend → NATS**: Publishes todo events via NATS protocol (`nats://nats:4222`)
+- **NATS → Broadcaster**: Message bus delivers events to subscriber services
 - **Cron → Backend**: HTTP API calls via service DNS (`todo-app-be-svc:2506`)
 - **Backend → Database**: PostgreSQL connection via service DNS (`postgres-svc:5432`)
+- **Monitoring → NATS**: Prometheus scrapes metrics via HTTP (`http://nats-metrics:7777/metrics`)
 - **External Access**: Through Ingress routing to frontend and backend services
+
+## Manifest Management Strategy
+
+### GitOps with Helm Template Generation
+
+This project uses a **hybrid approach** combining the expertise of Helm charts with GitOps principles:
+
+**Generation Process**:
+1. **Helm Template**: Generate static manifests from proven Bitnami charts
+2. **Git Commit**: Base manifests become single source of truth in version control
+3. **Kustomize Overlays**: Environment-specific patches for development/production
+4. **kubectl apply**: Declarative deployment via Kustomize
+
+**Benefits of This Approach**:
+- ✅ **GitOps Compliance**: All resources declaratively defined in Git
+- ✅ **Proven Configurations**: Leverage Bitnami chart best practices
+- ✅ **Multi-Environment**: Kustomize overlays handle environment differences
+- ✅ **CI/CD Friendly**: Standard kubectl apply -k deployment pattern
+- ✅ **Version Control**: Full history of infrastructure changes
+
+### Manual Update Responsibility
+
+⚠️ **Important Trade-off**: By using `helm template` instead of `helm install`, we accept responsibility for manual updates:
+
+**What We Must Monitor and Update**:
+- **Container Images**: NATS and nats-exporter image versions
+- **Security Patches**: CVE fixes in base images
+- **Chart Updates**: New features or bug fixes from Bitnami
+- **Configuration Changes**: Updated best practices or defaults
+
+**Update Process When Required**:
+```bash
+# 1. Check for chart updates
+helm repo update bitnami
+
+# 2. Review changelog
+helm show chart bitnami/nats
+helm show readme bitnami/nats
+
+# 3. Generate new manifests
+helm template nats bitnami/nats -f updated-values.yaml > new-manifests.yaml
+
+# 4. Review differences
+diff course_project/manifests/base/nats/ new-manifests.yaml
+
+# 5. Update base manifests
+# 6. Test in development overlay
+# 7. Commit to Git
+# 8. Deploy and verify
+```
+
+**Monitoring Strategy**:
+- **Dependabot**: GitHub alerts for base image vulnerabilities
+- **Security Scanning**: Container image scanning in CI/CD
+- **Chart Monitoring**: Periodic review of Bitnami NATS chart releases
+- **Health Monitoring**: Azure Monitor alerts for pod health and metrics
+
+**Alternative Approaches Considered**:
+- **Pure Helm**: Would provide auto-updates but breaks GitOps principles
+- **Native Manifests**: Would require rebuilding proven chart configurations
+- **Flux/ArgoCD**: Would add complexity but provide automated chart updates
+
+**Decision Rationale**: 
+We prioritize GitOps compliance and declarative infrastructure over automatic updates, accepting the operational overhead of manual monitoring and updates in exchange for better observability, rollback capabilities, and environment consistency.
 
 ## Cluster-Level Security Configuration
 
