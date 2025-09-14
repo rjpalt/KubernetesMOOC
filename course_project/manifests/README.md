@@ -29,8 +29,14 @@ manifests/
 │   │   ├── service.yaml
 │   │   ├── persistentvolume.yaml
 │   │   └── persistentvolumeclaim.yaml
-│   └── todo-cron/                 # Scheduled Wikipedia todo generation
-│       └── cronjob.yaml
+│   ├── todo-cron/                 # Scheduled Wikipedia todo generation
+│   │   └── cronjob.yaml
+│   └── broadcaster/               # NATS to HTTP webhook broadcaster service
+│       ├── deployment.yaml       # FastAPI service with NATS consumer
+│       ├── service.yaml          # Main HTTP service (port 8002)
+│       ├── metrics-service.yaml  # Prometheus metrics service (port 7777)
+│       ├── secret-template.yaml  # Webhook URL configuration
+│       └── kustomization.yaml    # Base resource list
 └── overlays/                      # Environment-specific overrides
     ├── development/               # Development environment settings
     │   └── nats/                  # NATS development overlay
@@ -43,6 +49,7 @@ manifests/
         │   └── kustomization.yaml
         ├── hpa-backend.yaml       # Backend autoscaling (1-5 replicas)
         ├── hpa-frontend.yaml      # Frontend autoscaling (1-3 replicas)
+        ├── hpa-broadcaster.yaml   # Broadcaster autoscaling (1-5 replicas)
         ├── resourcequota.yaml     # Resource limits
         └── kustomization.yaml     # Production-specific configuration
 ```
@@ -176,10 +183,108 @@ Clustering: Enabled with inter-node routing
 - Egress: Unrestricted (for external integrations)
 - Namespace isolation maintained
 
+## Broadcaster Service Infrastructure
+
+### Architecture Overview
+
+The Broadcaster service bridges NATS messaging with external HTTP webhooks, enabling the todo application to notify external systems of todo events asynchronously.
+
+### How Broadcaster Integration Works
+
+**Core Message Consumer**: Broadcaster subscribes to NATS messages and forwards them as HTTP webhooks:
+- **Subscriber**: Consumes messages from NATS topic `todos.events` 
+- **Queue Group**: Uses `broadcaster-workers` queue group for load balancing across replicas
+- **Webhook Client**: Forwards messages to external HTTP endpoints
+- **Protocol**: NATS native subscription + HTTP POST for webhooks
+
+**Service Discovery Pattern**:
+```yaml
+NATS Connection: nats://nats:4222
+HTTP Service: broadcaster-svc:8002
+Metrics Endpoint: broadcaster-metrics:7777
+Webhook URL: Configured via broadcaster-secret (WEBHOOK_URL)
+```
+
+### Multi-Port Service Architecture
+
+The Broadcaster deployment exposes two ports for separation of concerns:
+
+**Main Service Port** (`8002`):
+- **Purpose**: HTTP API for health checks and service management
+- **Health Endpoints**: `/health` (readiness), `/healthz` (liveness)
+- **Service**: `broadcaster-svc:8002`
+
+**Metrics Port** (`7777`):
+- **Purpose**: Prometheus metrics collection
+- **Endpoint**: `/metrics` (Prometheus format)
+- **Service**: `broadcaster-metrics:7777`
+- **Integration**: Azure Managed Prometheus auto-discovery via annotations
+
+### Why This Architecture Works
+
+1. **Queue Groups**: Load balancing ensures only one replica processes each message
+2. **Resilient Design**: Service continues running even if NATS or webhook endpoints are unavailable
+3. **Azure Integration**: Prometheus annotations enable automatic metrics collection
+4. **Security**: Non-root containers with read-only filesystem and minimal capabilities
+5. **Scalability**: HPA enables automatic scaling based on CPU utilization
+
+### Environment Configuration Strategy
+
+**Development Overlay** (Feature Branches):
+```yaml
+Replicas: 1 (single instance for testing)
+Resources: Minimal (50m CPU, 64Mi memory)
+Webhook URL: https://httpbin.org/post (test endpoint)
+Log Level: DEBUG (verbose logging)
+```
+
+**Production Overlay** (Project Namespace):
+```yaml
+Replicas: 2-5 (HPA-managed with queue group load balancing)
+Resources: Production (100m CPU, 128Mi memory)
+Webhook URL: Production webhook endpoint
+Log Level: INFO (production logging)
+```
+
+### Metrics and Monitoring Integration
+
+**Azure Managed Prometheus Integration**:
+- **Discovery**: Annotation-based service discovery on `broadcaster-metrics`
+- **Metrics Port**: 7777 (consistent with NATS pattern)
+- **Scrape Path**: /metrics (Prometheus format)
+- **Auto-Discovery**: `prometheus.io/scrape: "true"`
+
+**Available Metrics**:
+- Message processing (`broadcaster_messages_processed_total`)
+- Webhook requests (`broadcaster_webhook_requests_total`)
+- NATS connection status (`broadcaster_nats_connected`)
+- HTTP request duration (`broadcaster_request_duration_seconds`)
+- Go runtime metrics (`go_*`)
+- Process metrics (`process_*`)
+
+### Security and Configuration
+
+**Container Security**:
+- Non-root user execution (UID 1001)
+- Read-only root filesystem with writable `/tmp` volumes
+- Minimal capabilities (drop ALL)
+- Security context enforcement
+
+**Secret Management**:
+- **webhook URL**: Stored in `broadcaster-secret` Kubernetes secret
+- **Environment Variables**: Structured configuration via Pydantic settings
+- **Development**: Test webhook URL (`https://httpbin.org/post`)
+- **Production**: Real webhook endpoint (configured externally)
+
+**Resource Management**:
+- **Requests**: Conservative CPU/memory allocation
+- **Limits**: Prevent resource exhaustion
+- **HPA**: Automatic scaling based on CPU utilization (70% threshold)
+
 ## Autoscaling Configuration
 
 ### Horizontal Pod Autoscalers (Production Only)
-The production overlay includes CPU-based autoscaling for both applications:
+The production overlay includes CPU-based autoscaling for all applications:
 
 **Backend HPA** (`overlays/production/hpa-backend.yaml`):
 - **Replicas**: 1-5 pods
@@ -190,6 +295,12 @@ The production overlay includes CPU-based autoscaling for both applications:
 - **Replicas**: 1-3 pods  
 - **Trigger**: 70% CPU utilization
 - **Behavior**: 60s scale-up, 300s scale-down stabilization
+
+**Broadcaster HPA** (`overlays/production/hpa-broadcaster.yaml`):
+- **Replicas**: 1-5 pods
+- **Trigger**: 70% CPU utilization
+- **Behavior**: 60s scale-up, 300s scale-down stabilization
+- **Queue Groups**: NATS queue groups ensure load balancing across replicas
 
 ### Cluster-Level Autoscaling
 - **Node Autoscaler**: 1-5 nodes (configured at AKS cluster level)
@@ -202,9 +313,11 @@ Services must be deployed in the following order due to dependencies:
 
 1. **shared/** - Creates namespace and ingress configuration
 2. **postgres/** - Database must be ready before backend
-3. **todo-be/** - Backend API must be ready before frontend and cron
-4. **todo-fe/** - Frontend service (depends on backend)
-5. **todo-cron/** - Scheduled tasks (depends on backend API)
+3. **nats/** - Message bus must be ready before broadcaster
+4. **todo-be/** - Backend API must be ready before frontend and cron
+5. **broadcaster/** - Message consumer (depends on NATS)
+6. **todo-fe/** - Frontend service (depends on backend)
+7. **todo-cron/** - Scheduled tasks (depends on backend API)
 
 ## Kustomization Files
 
@@ -220,11 +333,17 @@ kubectl apply -k manifests/base/shared/
 # Deploy database
 kubectl apply -k manifests/base/postgres/
 
+# Deploy message bus
+kubectl apply -k manifests/base/nats/
+
 # Deploy backend
 kubectl apply -k manifests/base/todo-be/
 
 # Deploy frontend  
 kubectl apply -k manifests/base/todo-fe/
+
+# Deploy broadcaster service
+kubectl apply -k manifests/base/broadcaster/
 
 # Deploy cron job
 kubectl apply -k manifests/base/todo-cron/
@@ -247,10 +366,12 @@ The full-stack kustomization automatically handles deployment order and applies 
 
 - **Frontend → Backend**: HTTP API calls via service DNS (`todo-app-be-svc:2506`)
 - **Backend → NATS**: Publishes todo events via NATS protocol (`nats://nats:4222`)
-- **NATS → Broadcaster**: Message bus delivers events to subscriber services
+- **NATS → Broadcaster**: Message bus delivers events to subscriber services (`nats://nats:4222`)
+- **Broadcaster → External**: HTTP webhooks to external services via configured URL
 - **Cron → Backend**: HTTP API calls via service DNS (`todo-app-be-svc:2506`)
 - **Backend → Database**: PostgreSQL connection via service DNS (`postgres-svc:5432`)
 - **Monitoring → NATS**: Prometheus scrapes metrics via HTTP (`http://nats-metrics:7777/metrics`)
+- **Monitoring → Broadcaster**: Prometheus scrapes metrics via HTTP (`http://broadcaster-metrics:7777/metrics`)
 - **External Access**: Through Ingress routing to frontend and backend services
 
 ## Manifest Management Strategy

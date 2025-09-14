@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/broadcaster/
+
+# Override default webhook URL for development testing
+patches:
+  - target:
+      kind: Secret
+      name: broadcaster-secret
+    patch: |-
+      - op: replace
+        path: /stringData/WEBHOOK_URL
+        value: "https://httpbin.org/post"
+  - target:
+      kind: Deployment
+      name: broadcaster
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/template/spec/containers/0/env/1/value
+        value: "DEBUG"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/5/value
+        value: "development"
+
+# Override image tag for development (manual build/push workflow)
+# TODO: Remove when integrated into CI/CD pipeline
+images:
+  - name: kubemooc.azurecr.io/broadcaster
+    newTag: latest

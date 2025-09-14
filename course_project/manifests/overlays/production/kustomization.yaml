@@ -8,25 +8,28 @@ kind: Kustomization
 #   kustomize build . | kubectl apply -f -
 
 resources:
-  - ../../base
-  - resourcequota.yaml
-  - hpa-backend.yaml
-  - hpa-frontend.yaml
+- ../../base
+- resourcequota.yaml
+- hpa-backend.yaml
+- hpa-frontend.yaml
+- hpa-broadcaster.yaml
 
 # Patch API_BASE_PATH for production path-based routing through /project/
 patches:
-  - target:
-      kind: Deployment
-      name: todo-app-fe
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/env/3/value
-        value: "/project"
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/env/3/value
+      value: "/project"
+  target:
+    kind: Deployment
+    name: todo-app-fe
 
 images:
-  - name: kubemooc.azurecr.io/todo-app-be
-    newTag: latest
-  - name: kubemooc.azurecr.io/todo-app-fe
-    newTag: latest
-  - name: kubemooc.azurecr.io/todo-app-cron
-    newTag: latest
+- name: kubemooc.azurecr.io/todo-app-be
+  newTag: latest
+- name: kubemooc.azurecr.io/todo-app-fe
+  newTag: latest
+- name: kubemooc.azurecr.io/todo-app-cron
+  newTag: latest
+- name: kubemooc.azurecr.io/broadcaster
+  newTag: latest
