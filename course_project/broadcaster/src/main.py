@@ -14,6 +14,7 @@ from prometheus_client import start_http_server
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.api.routes import health
+from src.api.routes import metrics as metrics_router
 from src.config.settings import settings
 from src.services.broadcaster_service import BroadcasterService
 
@@ -82,6 +83,7 @@ def create_app() -> FastAPI:
 
     # Include health check routes
     app.include_router(health.router)
+    app.include_router(metrics_router.router)
 
     return app
 

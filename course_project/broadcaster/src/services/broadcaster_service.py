@@ -69,28 +69,35 @@ class BroadcasterService:
 
     async def _connect_to_nats(self) -> bool:
         """Establish connection to NATS server with retry logic."""
-        try:
-            # Use environment-aware NATS URL
-            nats_url = self.settings.effective_nats_url
-            logger.info(f"Connecting to NATS at {nats_url} (environment: {self.settings.deployment_environment})")
+        # Use environment-aware NATS URL
+        nats_url = self.settings.effective_nats_url
+        logger.info(f"Connecting to NATS at {nats_url} (environment: {self.settings.deployment_environment})")
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self.nc = await nats.connect(
+                    servers=[nats_url],
+                    connect_timeout=self.settings.nats_connect_timeout,
+                    max_reconnect_attempts=self.settings.nats_max_reconnect_attempts,
+                    error_cb=self._error_callback,
+                    disconnected_cb=self._disconnected_callback,
+                    reconnected_cb=self._reconnected_callback,
+                )
 
-            self.nc = await nats.connect(
-                servers=[nats_url],
-                connect_timeout=self.settings.nats_connect_timeout,
-                max_reconnect_attempts=self.settings.nats_max_reconnect_attempts,
-                error_cb=self._error_callback,
-                disconnected_cb=self._disconnected_callback,
-                reconnected_cb=self._reconnected_callback,
-            )
+                logger.info("Successfully connected to NATS")
+                nats_connection_status.set(1)
+                return True
 
-            logger.info("Successfully connected to NATS")
-            nats_connection_status.set(1)
-            return True
+            except Exception as e:
+                logger.error(f"Failed to connect to NATS (attempt {attempt}/{max_attempts}): {e}")
+                nats_connection_status.set(0)
 
-        except Exception as e:
-            logger.error(f"Failed to connect to NATS: {e}")
-            nats_connection_status.set(0)
-            return False
+                if attempt < max_attempts:
+                    await asyncio.sleep(0.1)
+                    continue
+
+        # All attempts failed
+        return False
 
     async def _subscribe_to_topic(self) -> None:
         """Subscribe to NATS topic with queue group for load balancing."""

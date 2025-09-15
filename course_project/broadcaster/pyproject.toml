@@ -26,6 +26,9 @@ dev = [
     "httpx>=0.25.0",
     "ruff>=0.1.0",
     "pytest-cov>=4.1.0",
+    "docker>=6.1.0",
+    "requests>=2.31.0",
+    "testcontainers>=3.7.0",
 ]
 
 [tool.hatch.build.targets.wheel]
