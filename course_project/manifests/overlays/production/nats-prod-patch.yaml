@@ -3,6 +3,11 @@ kind: StatefulSet
 metadata:
   name: nats
 spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nats
+      app.kubernetes.io/name: nats
+  serviceName: nats-headless
   replicas: 3
   template:
     metadata:
@@ -36,4 +41,4 @@ spec:
       accessModes: ["ReadWriteOnce"]
       resources:
         requests:
-          storage: 10Gi
+          storage: 1Gi  # Changed from 10Gi

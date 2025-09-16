@@ -14,15 +14,17 @@ resources:
 - hpa-frontend.yaml
 - hpa-broadcaster.yaml
 
-# Patch API_BASE_PATH for production path-based routing through /project/
+
+# Patch API_BASE_PATH for production path-based routing through /project/ and add NATS production patch for HA and storage optimization
 patches:
-- patch: |-
-    - op: replace
-      path: /spec/template/spec/containers/0/env/3/value
-      value: "/project"
-  target:
-    kind: Deployment
-    name: todo-app-fe
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/3/value
+        value: "/project"
+    target:
+      kind: Deployment
+      name: todo-app-fe
+  - path: nats-prod-patch.yaml
 
 images:
 - name: kubemooc.azurecr.io/todo-app-be
@@ -33,3 +35,4 @@ images:
   newTag: latest
 - name: kubemooc.azurecr.io/broadcaster
   newTag: latest
+
