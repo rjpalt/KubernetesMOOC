@@ -43,6 +43,14 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting up todo backend...")
 
+    # Initialize dependencies (including NATS client)
+    try:
+        await initialize_dependencies()
+        logger.info("Dependencies initialized successfully")
+    except Exception as e:
+        logger.warning(f"Some dependencies failed to initialize: {e}")
+        logger.warning("Application continuing startup - NATS functionality may be degraded")
+
     # Attempt to initialize database, but do not crash on failure
     try:
         await db_manager.initialize()
@@ -73,16 +81,23 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down todo backend...")
+    
+    # Cleanup NATS client
+    try:
+        from src.services.nats_client import get_nats_client
+        nats_client = get_nats_client()
+        await nats_client.disconnect()
+        logger.info("NATS client disconnected")
+    except Exception as e:
+        logger.warning(f"Error disconnecting NATS client: {e}")
+    
     await db_manager.close()
     logger.info("Database connections closed")
 
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
-    # Initialize dependencies
-    initialize_dependencies()
-
-    # Create FastAPI app with lifespan
+    # Create FastAPI app with lifespan (dependencies initialized in lifespan)
     app = FastAPI(
         title=settings.api_title,
         description=settings.api_description,

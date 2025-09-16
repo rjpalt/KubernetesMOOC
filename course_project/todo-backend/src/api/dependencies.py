@@ -1,5 +1,6 @@
 """API dependencies for dependency injection. Yeah! Very dependable！"""
 
+from ..services.nats_client import get_nats_client
 from ..services.todo_service import TodoService
 
 # Global service instances
@@ -14,7 +15,8 @@ def get_todo_service() -> TodoService:
     return _todo_service_instance
 
 
-def initialize_dependencies():
+async def initialize_dependencies():
     """Initialize all dependencies."""
-    # Initialize any startup dependencies here
-    pass
+    # Initialize NATS client connection
+    nats_client = get_nats_client()
+    await nats_client.connect()
