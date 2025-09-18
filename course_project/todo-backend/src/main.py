@@ -26,6 +26,7 @@ from src.config.settings import settings
 from src.database.connection import db_manager
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.security import SecurityHeadersMiddleware, XSSProtectionMiddleware
+from src.services.nats_service import NATSService
 
 # Configure logging
 logging.basicConfig(
@@ -35,6 +36,9 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Global NATS service instance
+nats_service_instance = None
 
 
 @asynccontextmanager
@@ -69,10 +73,32 @@ async def lifespan(app: FastAPI):
             logger.warning(f"Database health check had issues: {e}")
             logger.warning("Application starting in degraded mode - health probes will handle database connectivity")
 
+    # Initialize NATS service (optional - app should work without it)
+    global nats_service_instance
+    try:
+        nats_service_instance = NATSService()
+        nats_connected = await nats_service_instance.connect()
+        if nats_connected:
+            logger.info("NATS service connected successfully")
+        else:
+            logger.warning("NATS service connection failed - continuing without event publishing")
+    except Exception as e:
+        logger.warning(f"NATS service initialization failed: {e} - continuing without event publishing")
+        nats_service_instance = None
+
     yield
 
     # Shutdown
     logger.info("Shutting down todo backend...")
+    
+    # Shutdown NATS service
+    if nats_service_instance:
+        try:
+            await nats_service_instance.disconnect()
+            logger.info("NATS service disconnected")
+        except Exception as e:
+            logger.warning(f"NATS service disconnect error: {e}")
+    
     await db_manager.close()
     logger.info("Database connections closed")
 

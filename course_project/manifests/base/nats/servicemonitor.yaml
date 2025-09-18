@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nats-metrics
+  labels:
+    app.kubernetes.io/instance: nats
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/version: 2.11.8
+    helm.sh/chart: nats-9.0.28
+    app.kubernetes.io/component: metrics
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nats
+      app.kubernetes.io/name: nats
+      app.kubernetes.io/component: metrics
+  endpoints:
+  - port: tcp-metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+  namespaceSelector:
+    any: true

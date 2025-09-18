@@ -2,14 +2,15 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-- application.yaml
-- service.yaml
-- headless-svc.yaml
-- metrics-svc.yaml
-- configmap.yaml
-- serviceaccount.yaml
-- networkpolicy.yaml
-- poddisruptionbudget.yaml
+  - application.yaml
+  - configmap.yaml
+  - headless-svc.yaml
+  - metrics-svc.yaml
+  - networkpolicy.yaml
+  - poddisruptionbudget.yaml
+  - service.yaml
+  - serviceaccount.yaml
+  - servicemonitor.yaml
 
 
 commonAnnotations:
