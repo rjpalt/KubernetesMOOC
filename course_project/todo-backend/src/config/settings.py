@@ -111,7 +111,7 @@ class Settings(BaseSettings):
         """Get environment-appropriate NATS URL."""
         if self.nats_url:
             return self.nats_url
-        
+
         # Auto-detect environment - use broadcaster service pattern
         if os.path.exists("/var/run/secrets/kubernetes.io/serviceaccount"):
             return "nats://nats:4222"  # Kubernetes environment

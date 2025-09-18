@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down todo backend...")
-    
+
     # Shutdown NATS service
     if nats_service_instance:
         try:
@@ -98,7 +98,7 @@ async def lifespan(app: FastAPI):
             logger.info("NATS service disconnected")
         except Exception as e:
             logger.warning(f"NATS service disconnect error: {e}")
-    
+
     await db_manager.close()
     logger.info("Database connections closed")
 

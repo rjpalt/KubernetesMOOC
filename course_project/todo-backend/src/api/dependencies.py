@@ -21,6 +21,7 @@ def get_nats_service() -> NATSService | None:
     """Dependency to get NATS service instance."""
     # Import here to avoid circular dependency
     from ..main import nats_service_instance
+
     return nats_service_instance
 
 

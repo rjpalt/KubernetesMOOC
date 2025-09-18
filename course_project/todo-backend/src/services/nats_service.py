@@ -2,10 +2,9 @@
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 import nats
-from nats.aio.client import Client as NATS
 
 from ..config.settings import settings
 
@@ -14,12 +13,12 @@ logger = logging.getLogger(__name__)
 
 class NATSService:
     """Service for publishing messages to NATS."""
-    
+
     def __init__(self):
         """Initialize NATS service."""
-        self.nc: Optional[NATS] = None
+        self.nc: nats.aio.client.Client | None = None
         self.is_connected = False
-    
+
     async def connect(self) -> bool:
         """Connect to NATS server."""
         try:
@@ -35,7 +34,7 @@ class NATSService:
             logger.warning(f"Failed to connect to NATS: {e}")
             self.is_connected = False
             return False
-        
+
     async def disconnect(self) -> None:
         """Disconnect from NATS server."""
         try:
@@ -47,23 +46,23 @@ class NATSService:
         finally:
             self.nc = None
             self.is_connected = False
-        
-    async def publish_todo_event(self, todo_data: Dict[str, Any], action: str) -> bool:
+
+    async def publish_todo_event(self, todo_data: dict[str, Any], action: str) -> bool:
         """Publish a todo event to NATS."""
         if not self.is_connected or not self.nc:
             logger.warning("NATS not connected, skipping message publish")
             return False
-            
+
         try:
             # Create message payload
             message = {**todo_data, "action": action}
             message_bytes = json.dumps(message).encode()
-            
+
             # Publish to NATS topic
             await self.nc.publish(settings.nats_topic, message_bytes)
             logger.info(f"Published {action} event for todo {todo_data.get('id')}")
             return True
-            
+
         except Exception as e:
             logger.warning(f"Failed to publish NATS message: {e}")
             return False

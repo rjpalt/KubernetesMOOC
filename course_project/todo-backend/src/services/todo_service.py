@@ -24,7 +24,7 @@ class TodoService:
         """Create a new todo."""
         # Create todo in database first
         todo = await self._db.create_todo(todo_data.text)
-        
+
         # Publish NATS event after successful database operation
         if self.nats_service:
             await self.nats_service.publish_todo_event(
@@ -35,16 +35,16 @@ class TodoService:
                     "created_at": todo.created_at.isoformat(),
                     "updated_at": todo.updated_at.isoformat() if todo.updated_at else todo.created_at.isoformat(),
                 },
-                action="created"
+                action="created",
             )
-        
+
         return todo
 
     async def update_todo(self, todo_id: str, text: str | None = None, status: TodoStatus | None = None) -> Todo | None:
         """Update an existing todo."""
         # Update todo in database first
         todo = await self._db.update_todo(todo_id, text, status)
-        
+
         # Publish NATS event after successful database operation
         if todo and self.nats_service:
             await self.nats_service.publish_todo_event(
@@ -55,9 +55,9 @@ class TodoService:
                     "created_at": todo.created_at.isoformat(),
                     "updated_at": todo.updated_at.isoformat() if todo.updated_at else todo.created_at.isoformat(),
                 },
-                action="updated"
+                action="updated",
             )
-        
+
         return todo
 
     async def delete_todo(self, todo_id: str) -> bool:
