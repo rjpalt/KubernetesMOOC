@@ -10,7 +10,6 @@ resources:
   - poddisruptionbudget.yaml
   - service.yaml
   - serviceaccount.yaml
-  - servicemonitor.yaml
 
 
 commonAnnotations:
