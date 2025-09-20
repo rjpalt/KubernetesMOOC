@@ -20,6 +20,10 @@ on:
       - 'course_project/todo-cron/Dockerfile'
       - 'course_project/todo-cron/create_wikipedia_todo.sh'
       - 'course_project/todo-cron/backup_database.sh'
+      - 'course_project/broadcaster/src/**'
+      - 'course_project/broadcaster/Dockerfile'
+      - 'course_project/broadcaster/pyproject.toml'
+      - 'course_project/broadcaster/uv.lock'
 
 permissions:
   id-token: write  # Required for Azure authentication
@@ -35,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [todo-backend, todo-app]
+        service: [todo-backend, todo-app, broadcaster]
       fail-fast: true  # Stop all jobs if one quality check fails
     defaults:
       run:
@@ -357,6 +361,16 @@ jobs:
         tags: ${{ env.REGISTRY }}/todo-app-cron:${{ github.ref_name }}-${{ github.sha }}
         cache-from: type=gha  # Reuse the exact same build from test job
         cache-to: type=gha,mode=max
+
+    - name: Push broadcaster image to ACR
+      uses: docker/build-push-action@v5
+      with:
+        context: course_project/broadcaster
+        platforms: linux/amd64
+        push: true
+        tags: ${{ env.REGISTRY }}/broadcaster:${{ github.ref_name }}-${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
     
     - name: Image build summary
       run: |
@@ -368,6 +382,7 @@ jobs:
         echo "| Backend | \`${{ env.REGISTRY }}/todo-app-be:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
         echo "| Frontend | \`${{ env.REGISTRY }}/todo-app-fe:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
         echo "| Cron | \`${{ env.REGISTRY }}/todo-app-cron:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Broadcaster | \`${{ env.REGISTRY }}/broadcaster:${BRANCH_NAME}-${HEAD_SHA}\` |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Commit:** \`${HEAD_SHA}\`" >> $GITHUB_STEP_SUMMARY
