@@ -41,6 +41,7 @@ class TodoService:
             except Exception as e:
                 # Log the error but don't fail the todo creation
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to publish NATS event for todo creation: {e}")
 
@@ -67,6 +68,7 @@ class TodoService:
             except Exception as e:
                 # Log the error but don't fail the todo update
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(f"Failed to publish NATS event for todo update: {e}")
 
