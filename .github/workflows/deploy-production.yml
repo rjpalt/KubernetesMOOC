@@ -134,6 +134,12 @@ jobs:
         
         echo "✅ Production deployment applied to project namespace"
     
+    - name: Deploy Azure monitoring configuration
+      run: |
+        cd course_project/manifests/overlays/azure-production
+        kubectl apply -k .
+        echo "✅ Azure monitoring configuration deployed to production"
+    
     - name: Wait for deployments
       run: |
         echo "Waiting for deployments to be ready..."

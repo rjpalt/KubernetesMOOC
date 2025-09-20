@@ -39,6 +39,11 @@ manifests/
 │       └── kustomization.yaml    # Base resource list
 └── overlays/                      # Environment-specific overrides
     ├── development/               # Development environment settings
+    ├── feature/                   # Feature branch application manifests
+    ├── production/                # Production application manifests  
+    ├── staging/                   # Staging environment settings
+    ├── azure-feature/             # Azure monitoring for feature branches
+    └── azure-production/          # Azure monitoring for production
     │   └── nats/                  # NATS development overlay
     │       ├── nats-dev-patch.yaml
     │       └── kustomization.yaml
@@ -281,6 +286,136 @@ Log Level: INFO (production logging)
 - **Limits**: Prevent resource exhaustion
 - **HPA**: Automatic scaling based on CPU utilization (70% threshold)
 
+## Azure Monitoring Overlays
+
+### Architecture Overview
+
+The Azure monitoring overlays provide environment-specific Azure Managed Prometheus configurations that integrate with the main application overlays to enable comprehensive monitoring across all deployment environments.
+
+### How Azure Monitoring Integration Works
+
+**Dual-Overlay Deployment Pattern**: Each environment deploys two separate but coordinated overlays:
+- **Application Overlay**: Main application services (feature/, production/)
+- **Azure Monitoring Overlay**: Azure Managed Prometheus configuration (azure-feature/, azure-production/)
+
+**Environment Separation Strategy**:
+```yaml
+Feature Branches: 
+  - Application: overlays/feature/ (dynamic namespace via BRANCH_NAME)
+  - Monitoring: overlays/azure-feature/ (dynamic namespace via BRANCH_NAME)
+
+Production:
+  - Application: overlays/production/ (static 'project' namespace)  
+  - Monitoring: overlays/azure-production/ (static 'project' namespace)
+```
+
+### Azure Feature Overlay (`azure-feature/`)
+
+**Purpose**: Dynamic Azure monitoring configuration for feature branch deployments
+
+**Namespace Pattern**: Uses `feature-BRANCH_NAME` placeholder for dynamic replacement
+- **Replacement Logic**: Azure Function replaces `BRANCH_NAME` with actual branch name
+- **Example**: `feature-ex-c4-e6`, `feature-new-login`, etc.
+
+**Configuration Files**:
+```yaml
+# ama-metrics-settings.yaml
+metadata:
+  name: ama-metrics-settings
+  namespace: feature-BRANCH_NAME  # Replaced by Azure Function
+
+# ama-metrics-prometheus-config.yaml  
+data:
+  prometheus-config: |
+    scrape_configs:
+    - job_name: 'kubernetes-pods'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: ["feature-BRANCH_NAME"]  # Replaced by Azure Function
+```
+
+### Azure Production Overlay (`azure-production/`)
+
+**Purpose**: Static Azure monitoring configuration for production environment
+
+**Namespace Pattern**: Hardcoded `project` namespace for production stability
+
+**Configuration Files**:
+```yaml
+# ama-metrics-settings.yaml
+metadata:
+  name: ama-metrics-settings
+  namespace: project  # Static production namespace
+
+# ama-metrics-prometheus-config.yaml
+data:
+  prometheus-config: |
+    scrape_configs:
+    - job_name: 'kubernetes-pods'
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: ["project"]  # Static production namespace
+```
+
+### Deployment Integration
+
+**Feature Branch Deployment** (via Azure Function):
+```bash
+# 1. Deploy application manifests
+kubectl apply -k overlays/feature/
+
+# 2. Deploy monitoring configuration  
+kubectl apply -k overlays/azure-feature/
+```
+
+**Production Deployment** (via GitHub Actions):
+```bash
+# 1. Deploy application manifests
+kubectl apply -k overlays/production/
+
+# 2. Deploy monitoring configuration
+kubectl apply -k overlays/azure-production/
+```
+
+### Why This Architecture Works
+
+**Critical Issue Resolution**:
+- ❌ **Before**: Hardcoded `feature-ex-c4-e6` namespace broke monitoring for new branches
+- ✅ **After**: Dynamic `BRANCH_NAME` replacement works for any feature branch
+- ✅ **Production**: Dedicated static configuration ensures production monitoring stability
+
+**Environment Isolation**:
+- **Feature branches**: Complete monitoring isolation per branch
+- **Production**: Dedicated monitoring configuration independent of feature branches
+- **Grafana Integration**: Each environment shows only its own metrics
+
+**Deployment Reliability**:
+- **Atomic Operations**: Application and monitoring deployed separately but consistently
+- **Rollback Safety**: Monitoring configuration changes don't affect application deployments
+- **CI/CD Integration**: Automated deployment of both overlays ensures consistency
+
+### Azure Managed Prometheus Integration
+
+**Service Discovery Pattern**:
+```yaml
+# Both overlays use identical service discovery with namespace isolation
+scrape_configs:
+- job_name: 'kubernetes-pods'
+  kubernetes_sd_configs:
+  - role: pod
+    namespaces:
+      names: ["<environment-specific-namespace>"]
+```
+
+**Available Metrics Across All Services**:
+- **Application Metrics**: Custom business logic metrics from each service
+- **System Metrics**: CPU, memory, network from all pods
+- **NATS Metrics**: Message bus performance and health
+- **Broadcaster Metrics**: Event processing and webhook delivery
+- **Infrastructure Metrics**: Kubernetes cluster and node metrics
+
 ## Autoscaling Configuration
 
 ### Horizontal Pod Autoscalers (Production Only)
@@ -351,9 +486,29 @@ kubectl apply -k manifests/base/todo-cron/
 
 ### Full Stack Deployment
 
-Deploy the entire application with a single command:
+Deploy the entire application with monitoring:
+
+**Feature Environment**:
 ```bash
-# Deploy all services at once (recommended)
+# Deploy application services  
+kubectl apply -k manifests/overlays/feature/
+
+# Deploy Azure monitoring configuration
+kubectl apply -k manifests/overlays/azure-feature/
+```
+
+**Production Environment**:
+```bash
+# Deploy application services
+kubectl apply -k manifests/overlays/production/
+
+# Deploy Azure monitoring configuration  
+kubectl apply -k manifests/overlays/azure-production/
+```
+
+**Development Environment**:
+```bash
+# Deploy all services at once (no Azure monitoring needed)
 kubectl apply -k manifests/base/
 
 # Or using explicit path
@@ -372,6 +527,7 @@ The full-stack kustomization automatically handles deployment order and applies 
 - **Backend → Database**: PostgreSQL connection via service DNS (`postgres-svc:5432`)
 - **Monitoring → NATS**: Prometheus scrapes metrics via HTTP (`http://nats-metrics:7777/metrics`)
 - **Monitoring → Broadcaster**: Prometheus scrapes metrics via HTTP (`http://broadcaster-metrics:7777/metrics`)
+- **Azure Monitoring → All Services**: Prometheus scrapes all services with annotation-based discovery
 - **External Access**: Through Ingress routing to frontend and backend services
 
 ## Manifest Management Strategy
