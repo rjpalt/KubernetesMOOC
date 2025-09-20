@@ -25,6 +25,13 @@ patches:
       kind: Deployment
       name: todo-app-fe
   - path: nats-prod-patch.yaml
+  - patch: |-
+      - op: replace
+        path: /spec/ingress/1/from/0/namespaceSelector/matchLabels/kubernetes.io~1metadata.name
+        value: project
+    target:
+      kind: NetworkPolicy
+      name: nats
 
 images:
 - name: kubemooc.azurecr.io/todo-app-be

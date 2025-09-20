@@ -120,6 +120,13 @@ patches:
     kind: Deployment
     name: todo-app-be
 - path: nats-feature-patch.yaml
+- patch: |-
+    - op: replace
+      path: /spec/ingress/1/from/0/namespaceSelector/matchLabels/kubernetes.io~1metadata.name
+      value: feature-BRANCH_NAME
+  target:
+    kind: NetworkPolicy
+    name: nats
 
 images:
 - name: kubemooc.azurecr.io/todo-app-be
