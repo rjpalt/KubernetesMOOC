@@ -12,6 +12,19 @@ class TodoService:
         self._db = TodoDatabase()
         self.nats_service = nats_service
 
+    def _get_current_nats_service(self):
+        """Get the current NATS service instance - support dynamic resolution."""
+        if self.nats_service:
+            return self.nats_service
+
+        # Try to get current NATS service instance from dependencies
+        try:
+            from ..api.dependencies import get_nats_service
+
+            return get_nats_service()
+        except ImportError:
+            return None
+
     async def get_all_todos(self) -> list[Todo]:
         """Get all todos."""
         return await self._db.get_all_todos()
@@ -22,13 +35,19 @@ class TodoService:
 
     async def create_todo(self, todo_data: TodoCreate) -> Todo:
         """Create a new todo."""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         # Create todo in database first
         todo = await self._db.create_todo(todo_data.text)
+        logger.info(f"Created todo with ID: {todo.id}")
 
-        # Publish NATS event after successful database operation
-        if self.nats_service:
+        # Attempt NATS publishing with dynamic service resolution
+        current_nats = self._get_current_nats_service()
+        if current_nats:
             try:
-                await self.nats_service.publish_todo_event(
+                await current_nats.publish_todo_event(
                     todo_data={
                         "id": todo.id,
                         "text": todo.text,
@@ -38,39 +57,49 @@ class TodoService:
                     },
                     action="created",
                 )
+                logger.info(f"Successfully published NATS event for todo creation: {todo.id}")
             except Exception as e:
                 # Log the error but don't fail the todo creation
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to publish NATS event for todo creation: {e}")
+                logger.warning(f"Failed to publish NATS event for todo creation {todo.id}: {e}")
+        else:
+            logger.debug("NATS service not available, skipping event publishing")
 
         return todo
 
     async def update_todo(self, todo_id: str, text: str | None = None, status: TodoStatus | None = None) -> Todo | None:
         """Update an existing todo."""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         # Update todo in database first
         todo = await self._db.update_todo(todo_id, text, status)
 
-        # Publish NATS event after successful database operation
-        if todo and self.nats_service:
-            try:
-                await self.nats_service.publish_todo_event(
-                    todo_data={
-                        "id": todo.id,
-                        "text": todo.text,
-                        "status": todo.status,
-                        "created_at": todo.created_at.isoformat(),
-                        "updated_at": todo.updated_at.isoformat() if todo.updated_at else todo.created_at.isoformat(),
-                    },
-                    action="updated",
-                )
-            except Exception as e:
-                # Log the error but don't fail the todo update
-                import logging
+        if todo:
+            logger.info(f"Updated todo with ID: {todo.id}")
 
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to publish NATS event for todo update: {e}")
+            # Attempt NATS publishing with dynamic service resolution
+            current_nats = self._get_current_nats_service()
+            if current_nats:
+                try:
+                    await current_nats.publish_todo_event(
+                        todo_data={
+                            "id": todo.id,
+                            "text": todo.text,
+                            "status": todo.status,
+                            "created_at": todo.created_at.isoformat(),
+                            "updated_at": todo.updated_at.isoformat()
+                            if todo.updated_at
+                            else todo.created_at.isoformat(),
+                        },
+                        action="updated",
+                    )
+                    logger.info(f"Successfully published NATS event for todo update: {todo.id}")
+                except Exception as e:
+                    # Log the error but don't fail the todo update
+                    logger.warning(f"Failed to publish NATS event for todo update {todo.id}: {e}")
+            else:
+                logger.debug("NATS service not available, skipping event publishing")
 
         return todo
 

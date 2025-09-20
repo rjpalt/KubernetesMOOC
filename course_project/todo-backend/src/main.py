@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.api.dependencies import get_todo_service, initialize_dependencies
+from src.api.dependencies import get_todo_service
 from src.api.error_handlers import (
     custom_404_handler,
     custom_http_exception_handler,
@@ -105,8 +105,8 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
-    # Initialize dependencies
-    initialize_dependencies()
+    # Dependencies will be resolved lazily when needed
+    # This prevents the race condition where NATS service is None during initialization
 
     # Create FastAPI app with lifespan
     app = FastAPI(
