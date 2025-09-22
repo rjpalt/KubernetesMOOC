@@ -25,6 +25,7 @@ NC='\033[0m' # No Color
 # Track results
 BACKEND_ISSUES=()
 FRONTEND_ISSUES=()
+BROADCASTER_ISSUES=()
 ALL_PASSED=true
 
 if [ "$FIX_MODE" = true ]; then
@@ -92,6 +93,9 @@ run_quality_checks "todo-backend" "todo-backend" "BACKEND_ISSUES"
 # Run checks for frontend  
 run_quality_checks "todo-app" "todo-app" "FRONTEND_ISSUES"
 
+# Run checks for broadcaster
+run_quality_checks "broadcaster" "broadcaster" "BROADCASTER_ISSUES"
+
 # Summary
 echo "========================================="
 if [ "$FIX_MODE" = true ]; then
@@ -107,6 +111,7 @@ if [ "$FIX_MODE" = true ]; then
         echo ""
         echo "todo-backend: All ruff checks passed"
         echo "todo-app: All ruff checks passed"
+        echo "broadcaster: All ruff checks passed"
         echo ""
         echo -e "${YELLOW}Run in check mode to verify:${NC}"
         echo "   make quality CHECK=1"
@@ -129,6 +134,14 @@ if [ "$FIX_MODE" = true ]; then
             done
             echo ""
         fi
+        
+        if [ ${#BROADCASTER_ISSUES[@]} -gt 0 ]; then
+            echo -e "${YELLOW}broadcaster issues:${NC}"
+            for issue in "${BROADCASTER_ISSUES[@]}"; do
+                echo "  - $issue"
+            done
+            echo ""
+        fi
         echo -e "${YELLOW}These issues may need manual fixes${NC}"
         exit 1
     fi
@@ -137,6 +150,7 @@ elif [ "$ALL_PASSED" = true ]; then
     echo ""
     echo "todo-backend: All checks passed"
     echo "todo-app: All checks passed"
+    echo "broadcaster: All checks passed"
 else
     echo -e "${RED}Quality issues found:${NC}"
     echo ""
@@ -157,12 +171,21 @@ else
         echo ""
     fi
     
+    if [ ${#BROADCASTER_ISSUES[@]} -gt 0 ]; then
+        echo -e "${YELLOW}broadcaster issues:${NC}"
+        for issue in "${BROADCASTER_ISSUES[@]}"; do
+            echo "  - $issue"
+        done
+        echo ""
+    fi
+    
     echo -e "${YELLOW}To fix formatting and linting issues automatically:${NC}"
     echo "   make quality"
     echo ""
     echo -e "${YELLOW}Or fix manually:${NC}"
     echo "   cd course_project/todo-backend && uv run ruff check --fix . && uv run ruff format ."
     echo "   cd course_project/todo-app && uv run ruff check --fix . && uv run ruff format ."
+    echo "   cd course_project/broadcaster && uv run ruff check --fix . && uv run ruff format ."
     echo ""
     
     exit 1

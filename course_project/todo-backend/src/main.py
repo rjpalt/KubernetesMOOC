@@ -37,9 +37,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-# Global NATS service instance
-nats_service_instance = None
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -73,28 +70,30 @@ async def lifespan(app: FastAPI):
             logger.warning(f"Database health check had issues: {e}")
             logger.warning("Application starting in degraded mode - health probes will handle database connectivity")
 
-    # Initialize NATS service (optional - app should work without it)
-    global nats_service_instance
+    # Initialize NATS service in app.state
     try:
-        nats_service_instance = NATSService()
-        nats_connected = await nats_service_instance.connect()
+        nats_service = NATSService()
+        nats_connected = await nats_service.connect()
         if nats_connected:
-            logger.info("NATS service connected successfully")
+            app.state.nats_service = nats_service
+            logger.info("✅ NATS service connected and stored in app.state")
         else:
-            logger.warning("NATS service connection failed - continuing without event publishing")
+            app.state.nats_service = None
+            logger.warning("❌ NATS connection failed - stored None in app.state")
     except Exception as e:
-        logger.warning(f"NATS service initialization failed: {e} - continuing without event publishing")
-        nats_service_instance = None
+        logger.warning(f"❌ NATS service initialization failed: {e}")
+        app.state.nats_service = None
 
     yield
 
     # Shutdown
     logger.info("Shutting down todo backend...")
 
-    # Shutdown NATS service
-    if nats_service_instance:
+    # Shutdown NATS service from app.state
+    nats_service = getattr(app.state, "nats_service", None)
+    if nats_service:
         try:
-            await nats_service_instance.disconnect()
+            await nats_service.disconnect()
             logger.info("NATS service disconnected")
         except Exception as e:
             logger.warning(f"NATS service disconnect error: {e}")

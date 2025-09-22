@@ -4,8 +4,9 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ...api.dependencies import get_todo_service
+from ...api.dependencies import get_nats_service, get_todo_service
 from ...models.todo import Todo, TodoCreate, TodoUpdate
+from ...services.nats_service import NATSService
 from ...services.todo_service import TodoService
 
 logger = logging.getLogger(__name__)
@@ -22,12 +23,18 @@ async def get_todos(todo_service: TodoService = Depends(get_todo_service)):
 
 
 @router.post("/todos", response_model=Todo, status_code=status.HTTP_201_CREATED)
-async def create_todo(todo_data: TodoCreate, todo_service: TodoService = Depends(get_todo_service)):
+async def create_todo(
+    todo_data: TodoCreate,
+    todo_service: TodoService = Depends(get_todo_service),
+    nats_service: NATSService | None = Depends(get_nats_service),
+):
     """Create a new todo."""
-    logger.info(f"Creating new todo: {todo_data.text}")
-    new_todo = await todo_service.create_todo(todo_data)
-    logger.info(f"Created todo with ID: {new_todo.id}")
-    return new_todo
+    logger.info(f"Creating todo with NATS service: {type(nats_service) if nats_service else 'None'}")
+
+    # Pass NATS service to the creation method
+    todo = await todo_service.create_todo(todo_data, nats_service=nats_service)
+    logger.info(f"Created todo with ID: {todo.id}")
+    return todo
 
 
 @router.get("/todos/{todo_id}", response_model=Todo)
@@ -42,10 +49,19 @@ async def get_todo(todo_id: str, todo_service: TodoService = Depends(get_todo_se
 
 
 @router.put("/todos/{todo_id}", response_model=Todo)
-async def update_todo(todo_id: str, todo_update: TodoUpdate, todo_service: TodoService = Depends(get_todo_service)):
+async def update_todo(
+    todo_id: str,
+    todo_update: TodoUpdate,
+    todo_service: TodoService = Depends(get_todo_service),
+    nats_service: NATSService | None = Depends(get_nats_service),
+):
     """Update an existing todo."""
-    logger.info("Updating todo - ID redacted for security")
-    updated_todo = await todo_service.update_todo(todo_id, text=todo_update.text, status=todo_update.status)
+    logger.info(f"Updating todo {todo_id} with NATS service: {type(nats_service) if nats_service else 'None'}")
+
+    # Pass NATS service to the update method
+    updated_todo = await todo_service.update_todo(
+        todo_id, text=todo_update.text, status=todo_update.status, nats_service=nats_service
+    )
     if not updated_todo:
         logger.warning("Todo not found for update - ID redacted for security")
         raise HTTPException(status_code=404, detail="Todo not found")

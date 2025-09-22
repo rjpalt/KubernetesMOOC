@@ -83,6 +83,23 @@ else
     exit 1
 fi
 
+# Build broadcaster ARM64 image
+echo ""
+echo "Building broadcaster ARM64 image (broadcaster:$TAG-arm64)..."
+cd ../broadcaster
+if [ ! -f "Dockerfile" ]; then
+    echo "Error: Dockerfile not found in broadcaster directory"
+    exit 1
+fi
+
+docker build --platform linux/arm64 -t broadcaster:$TAG-arm64 .
+if [ $? -eq 0 ]; then
+    echo "Broadcaster ARM64 image built successfully: broadcaster:$TAG-arm64"
+else
+    echo "Broadcaster ARM64 image build failed"
+    exit 1
+fi
+
 # Build AMD64 images (for AKS deployment)
 echo ""
 echo "Building AMD64 images for AKS deployment..."
@@ -126,6 +143,19 @@ else
     exit 1
 fi
 
+# Build broadcaster AMD64 image
+echo ""
+echo "Building broadcaster AMD64 image (broadcaster:$TAG-amd64)..."
+cd ../broadcaster
+
+docker build --platform linux/amd64 -t broadcaster:$TAG-amd64 .
+if [ $? -eq 0 ]; then
+    echo "Broadcaster AMD64 image built successfully: broadcaster:$TAG-amd64"
+else
+    echo "Broadcaster AMD64 image build failed"
+    exit 1
+fi
+
 # Build E2E ARM64 image
 echo ""
 echo "Building E2E ARM64 image (todo-app-e2e:$TAG-arm64)..."
@@ -163,8 +193,8 @@ echo ""
 echo "Updating docker-compose.yaml with ARM64 images for local development"
 echo "=================================================================="
 
-# Go back to project root
-cd ..
+# Go back to course_project directory where docker-compose.yaml is located
+# (we're currently in /course_project after the cd ../.. from tests/e2e)
 
 # Create backup
 if [ -f "docker-compose.yaml" ]; then
@@ -175,6 +205,7 @@ if [ -f "docker-compose.yaml" ]; then
     sed -i.tmp "s/image: todo-app-be:[^[:space:]]*/image: todo-app-be:$TAG-arm64/" docker-compose.yaml
     sed -i.tmp "s/image: todo-app-fe:[^[:space:]]*/image: todo-app-fe:$TAG-arm64/" docker-compose.yaml
     sed -i.tmp "s/image: todo-app-cron:[^[:space:]]*/image: todo-app-cron:$TAG-arm64/" docker-compose.yaml
+    sed -i.tmp "s/image: broadcaster:[^[:space:]]*/image: broadcaster:$TAG-arm64/" docker-compose.yaml
     sed -i.tmp "s/image: todo-app-e2e:[^[:space:]]*/image: todo-app-e2e:$TAG-arm64/" docker-compose.yaml
     rm docker-compose.yaml.tmp  # Remove sed backup file
     
@@ -199,12 +230,14 @@ echo "ARM64 images (for local development):"
 echo "  - todo-app-fe:$TAG-arm64"
 echo "  - todo-app-be:$TAG-arm64"
 echo "  - todo-app-cron:$TAG-arm64"
+echo "  - broadcaster:$TAG-arm64"
 echo "  - todo-app-e2e:$TAG-arm64"
 echo ""
 echo "AMD64 images (for AKS deployment):"
 echo "  - todo-app-fe:$TAG-amd64"
 echo "  - todo-app-be:$TAG-amd64"
 echo "  - todo-app-cron:$TAG-amd64"
+echo "  - broadcaster:$TAG-amd64"
 echo "  - todo-app-e2e:$TAG-amd64"
 echo ""
 echo "docker-compose.yaml updated to use ARM64 images for local development"
