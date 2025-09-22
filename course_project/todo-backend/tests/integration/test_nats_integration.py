@@ -14,30 +14,31 @@ class TestNATSIntegration:
         mock_nats_service = AsyncMock()
         mock_nats_service.is_connected = True
 
-        # Patch the dependency to return our mock
-        with patch("src.api.dependencies.get_nats_service", return_value=mock_nats_service):
-            # Reset the todo service singleton to pick up our mocked NATS service
-            with patch("src.api.dependencies._todo_service_instance", None):
-                # Create todo via API
-                response = await test_client.post("/todos", json={"text": "Test NATS integration"})
-                assert response.status_code == 201
+        # Replace the app state NATS service with our mock
+        test_client._test_app.state.nats_service = mock_nats_service
 
-                todo_data = response.json()
+        # Reset the todo service singleton to pick up fresh dependencies
+        with patch("src.api.dependencies._todo_service_instance", None):
+            # Create todo via API
+            response = await test_client.post("/todos", json={"text": "Test NATS integration"})
+            assert response.status_code == 201
 
-                # Verify NATS publish was called with correct payload
-                mock_nats_service.publish_todo_event.assert_called_once()
-                call_args = mock_nats_service.publish_todo_event.call_args
+            todo_data = response.json()
 
-                # Check the payload structure
-                todo_data_arg = call_args[1]["todo_data"]
-                action_arg = call_args[1]["action"]
+            # Verify NATS publish was called with correct payload
+            mock_nats_service.publish_todo_event.assert_called_once()
+            call_args = mock_nats_service.publish_todo_event.call_args
 
-                assert action_arg == "created"
-                assert todo_data_arg["id"] == todo_data["id"]
-                assert todo_data_arg["text"] == "Test NATS integration"
-                assert todo_data_arg["status"] == "not-done"
-                assert "created_at" in todo_data_arg
-                assert "updated_at" in todo_data_arg
+            # Check the payload structure
+            todo_data_arg = call_args[1]["todo_data"]
+            action_arg = call_args[1]["action"]
+
+            assert action_arg == "created"
+            assert todo_data_arg["id"] == todo_data["id"]
+            assert todo_data_arg["text"] == "Test NATS integration"
+            assert todo_data_arg["status"] == "not-done"
+            assert "created_at" in todo_data_arg
+            assert "updated_at" in todo_data_arg
 
     async def test_update_todo_publishes_nats_message(self, test_client: AsyncClient):
         """Test that updating a todo publishes a NATS message."""
@@ -45,34 +46,35 @@ class TestNATSIntegration:
         mock_nats_service = AsyncMock()
         mock_nats_service.is_connected = True
 
-        # Patch the dependency to return our mock
-        with patch("src.api.dependencies.get_nats_service", return_value=mock_nats_service):
-            # Reset the todo service singleton to pick up our mocked NATS service
-            with patch("src.api.dependencies._todo_service_instance", None):
-                # Create todo first
-                create_response = await test_client.post("/todos", json={"text": "Test update"})
-                todo_id = create_response.json()["id"]
+        # Replace the app state NATS service with our mock
+        test_client._test_app.state.nats_service = mock_nats_service
 
-                # Reset mock to track update call
-                mock_nats_service.publish_todo_event.reset_mock()
+        # Reset the todo service singleton to pick up fresh dependencies
+        with patch("src.api.dependencies._todo_service_instance", None):
+            # Create todo first
+            create_response = await test_client.post("/todos", json={"text": "Test update"})
+            todo_id = create_response.json()["id"]
 
-                # Update todo
-                update_response = await test_client.put(
-                    f"/todos/{todo_id}", json={"text": "Updated text", "status": "done"}
-                )
-                assert update_response.status_code == 200
+            # Reset mock to track update call
+            mock_nats_service.publish_todo_event.reset_mock()
 
-                # Verify update message was published
-                mock_nats_service.publish_todo_event.assert_called_once()
-                call_args = mock_nats_service.publish_todo_event.call_args
+            # Update todo
+            update_response = await test_client.put(
+                f"/todos/{todo_id}", json={"text": "Updated text", "status": "done"}
+            )
+            assert update_response.status_code == 200
 
-                # Check the payload structure
-                todo_data_arg = call_args[1]["todo_data"]
-                action_arg = call_args[1]["action"]
+            # Verify update message was published
+            mock_nats_service.publish_todo_event.assert_called_once()
+            call_args = mock_nats_service.publish_todo_event.call_args
 
-                assert action_arg == "updated"
-                assert todo_data_arg["text"] == "Updated text"
-                assert todo_data_arg["status"] == "done"
+            # Check the payload structure
+            todo_data_arg = call_args[1]["todo_data"]
+            action_arg = call_args[1]["action"]
+
+            assert action_arg == "updated"
+            assert todo_data_arg["text"] == "Updated text"
+            assert todo_data_arg["status"] == "done"
 
     async def test_nats_failure_does_not_break_todo_operations(self, test_client: AsyncClient):
         """Test that NATS publishing failures don't affect todo operations."""
@@ -81,19 +83,20 @@ class TestNATSIntegration:
         mock_nats_service.is_connected = True
         mock_nats_service.publish_todo_event.side_effect = Exception("NATS connection failed")
 
-        # Patch the dependency to return our mock
-        with patch("src.api.dependencies.get_nats_service", return_value=mock_nats_service):
-            # Reset the todo service singleton to pick up our mocked NATS service
-            with patch("src.api.dependencies._todo_service_instance", None):
-                # Create todo (should succeed despite NATS failure)
-                response = await test_client.post("/todos", json={"text": "Test error handling"})
-                assert response.status_code == 201
+        # Replace the app state NATS service with our mock
+        test_client._test_app.state.nats_service = mock_nats_service
 
-                todo_data = response.json()
-                assert todo_data["text"] == "Test error handling"
+        # Reset the todo service singleton to pick up fresh dependencies
+        with patch("src.api.dependencies._todo_service_instance", None):
+            # Create todo (should succeed despite NATS failure)
+            response = await test_client.post("/todos", json={"text": "Test error handling"})
+            assert response.status_code == 201
 
-                # Verify NATS publish was attempted but failed gracefully
-                mock_nats_service.publish_todo_event.assert_called_once()
+            todo_data = response.json()
+            assert todo_data["text"] == "Test error handling"
+
+            # Verify NATS publish was attempted but failed gracefully
+            mock_nats_service.publish_todo_event.assert_called_once()
 
     @patch("src.services.nats_service.nats.connect")
     async def test_nats_not_connected_skips_publishing(self, mock_connect, test_client: AsyncClient):
@@ -114,35 +117,36 @@ class TestNATSIntegration:
         mock_nats_service = AsyncMock()
         mock_nats_service.is_connected = True
 
-        # Patch the dependency to return our mock
-        with patch("src.api.dependencies.get_nats_service", return_value=mock_nats_service):
-            # Reset the todo service singleton to pick up our mocked NATS service
-            with patch("src.api.dependencies._todo_service_instance", None):
-                # Create todo
-                response = await test_client.post("/todos", json={"text": "Format test"})
-                assert response.status_code == 201
+        # Replace the app state NATS service with our mock
+        test_client._test_app.state.nats_service = mock_nats_service
 
-                # Extract published message
-                mock_nats_service.publish_todo_event.assert_called_once()
-                call_args = mock_nats_service.publish_todo_event.call_args
+        # Reset the todo service singleton to pick up fresh dependencies
+        with patch("src.api.dependencies._todo_service_instance", None):
+            # Create todo
+            response = await test_client.post("/todos", json={"text": "Format test"})
+            assert response.status_code == 201
 
-                # Check the payload structure
-                todo_data_arg = call_args[1]["todo_data"]
-                action_arg = call_args[1]["action"]
+            # Extract published message
+            mock_nats_service.publish_todo_event.assert_called_once()
+            call_args = mock_nats_service.publish_todo_event.call_args
 
-                # Validate exact message structure
-                required_fields = ["id", "text", "status", "created_at", "updated_at"]
-                for field in required_fields:
-                    assert field in todo_data_arg, f"Missing required field: {field}"
+            # Check the payload structure
+            todo_data_arg = call_args[1]["todo_data"]
+            action_arg = call_args[1]["action"]
 
-                # Validate field types and values
-                assert isinstance(todo_data_arg["id"], str)
-                assert isinstance(todo_data_arg["text"], str)
-                assert todo_data_arg["status"] in ["not-done", "done"]
-                assert action_arg in ["created", "updated"]
+            # Validate exact message structure
+            required_fields = ["id", "text", "status", "created_at", "updated_at"]
+            for field in required_fields:
+                assert field in todo_data_arg, f"Missing required field: {field}"
 
-                # Validate ISO timestamp format
-                from datetime import datetime
+            # Validate field types and values
+            assert isinstance(todo_data_arg["id"], str)
+            assert isinstance(todo_data_arg["text"], str)
+            assert todo_data_arg["status"] in ["not-done", "done"]
+            assert action_arg in ["created", "updated"]
 
-                datetime.fromisoformat(todo_data_arg["created_at"])
-                datetime.fromisoformat(todo_data_arg["updated_at"])
+            # Validate ISO timestamp format
+            from datetime import datetime
+
+            datetime.fromisoformat(todo_data_arg["created_at"])
+            datetime.fromisoformat(todo_data_arg["updated_at"])

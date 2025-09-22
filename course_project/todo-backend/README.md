@@ -5,12 +5,14 @@ Backend service for the todo application. Provides REST API endpoints for managi
 ## Features
 
 - **PostgreSQL Database**: Async SQLAlchemy with connection pooling
+- **NATS Event Publishing**: Publishes todo creation/update events to message broker
 - **Pydantic Settings**: Environment-based configuration with validation
-- **Code Quality**: Black formatting and Flake8 linting
+- **Code Quality**: Ruff formatting and linting for Python 3.13+
 - **REST API**: FastAPI with automatic OpenAPI documentation
 - **CORS Support**: Configurable cross-origin resource sharing
 - **Health Checks**: Built-in health endpoint for monitoring
 - **Database Migration**: Automatic table creation and sample data
+- **Graceful Degradation**: Operates normally even if NATS is unavailable
 
 ## Endpoints
 
@@ -98,6 +100,23 @@ Environment variables (all optional with defaults):
 - `API_TITLE`: API title (default: Todo Backend API)
 - `API_DESCRIPTION`: API description
 - `API_VERSION`: API version (default: 1.0.0)
+
+### NATS Configuration
+
+Event publishing to NATS message broker (optional - service degrades gracefully if unavailable):
+
+- `NATS_URL`: NATS server URL (default: auto-detected based on environment)
+  - **Kubernetes**: `nats://nats:4222` (service discovery)
+  - **Local/Docker**: `nats://localhost:4222`
+- `NATS_TOPIC`: Topic for todo events (default: `todos.events`)
+- `NATS_CONNECT_TIMEOUT`: Connection timeout in seconds (default: 10)
+- `NATS_MAX_RECONNECT_ATTEMPTS`: Reconnection attempts (default: 5)
+
+**Event Publishing Behavior**:
+- Creates events on todo creation and updates
+- Non-blocking: NATS failures don't affect todo operations
+- JSON message format with action type (`created`, `updated`)
+- Automatic service discovery in Kubernetes environments
 
 ## Development
 

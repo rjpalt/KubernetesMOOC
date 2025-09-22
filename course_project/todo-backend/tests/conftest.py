@@ -219,10 +219,20 @@ async def test_client(test_db_manager):
     database operations.
     """
     from httpx import ASGITransport
+    from unittest.mock import AsyncMock
 
     app = create_app()
+    
+    # Set up a default mock NATS service in app state for tests
+    # This ensures get_nats_service() has something to return
+    mock_nats_service = AsyncMock()
+    mock_nats_service.is_connected = True
+    app.state.nats_service = mock_nats_service
+    
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Store reference to the app for tests that need to modify app state
+        client._test_app = app
         yield client
 
 
