@@ -9,13 +9,13 @@ metadata:
     app.kubernetes.io/component: metrics
   annotations:
     prometheus.io/path: /metrics
-    prometheus.io/port: "7777"
+    prometheus.io/port: "8002"
     prometheus.io/scrape: "true"
 spec:
   type: ClusterIP
   ports:
     - name: tcp-metrics
-      port: 7777
-      targetPort: metrics
+      port: 8002
+      targetPort: 8002
   selector:
     app: broadcaster

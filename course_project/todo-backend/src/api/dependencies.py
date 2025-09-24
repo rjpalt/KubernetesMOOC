@@ -1,4 +1,4 @@
-"""API dependencies for dependency injection."""
+"""API dependencies for dependency injection. Squirts."""
 
 from fastapi import Request
 
