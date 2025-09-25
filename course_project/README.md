@@ -13,8 +13,10 @@ Feature branch automation will create databases on the feature server. See `.pro
 
 ## Architecture
 
-- **todo-backend** (Port 8001): FastAPI REST API for todo CRUD operations
+- **todo-backend** (Port 8001): FastAPI REST API for todo CRUD operations with NATS event publishing
 - **todo-app** (Port 8000): FastAPI frontend with HTMX UI, communicates with backend via HTTP
+- **broadcaster** (Port 8002): NATS message consumer for todo events, publishes webhooks to external systems
+- **NATS** (Port 4222): Message broker for event-driven communication between services
 - **todo-cron**: CronJob service for automated Wikipedia todos and database backups to Azure Blob Storage (`kubemoocbackups/database-backups`)
 
 ### Monitoring & Autoscaling
@@ -68,6 +70,10 @@ graph TD
     UserBrowser -->|HTMX POST /project/todos| Gateway
     Gateway -->|/todos to Frontend| Frontend
     Frontend -->|JSON API Call| Backend
+    Backend -->|SQL INSERT| PostgreSQL
+    Backend -->|NATS Publish| NATS[NATS Message Broker]
+    NATS -->|Subscribe todos.events| Broadcaster
+    Broadcaster -->|HTTP POST| ExternalWebhook[External Webhook]
     Backend -->|JSON Response| Frontend
     Frontend -->|HTML Fragment| UserBrowser
 

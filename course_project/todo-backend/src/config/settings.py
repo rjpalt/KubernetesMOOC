@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     api_description: str = Field(default="Backend service for managing todos", description="API description")
     api_version: str = Field(default="1.0.0", description="API version")
 
+    # NATS Configuration
+    nats_url: str = Field(default="", description="NATS server URL")
+    nats_topic: str = Field(default="todos.events", description="NATS topic for todo events")
+    nats_connect_timeout: int = Field(default=10, description="NATS connection timeout")
+    nats_max_reconnect_attempts: int = Field(default=5, description="Max NATS reconnection attempts")
+
     @computed_field
     @property
     def is_production(self) -> bool:
@@ -98,6 +104,19 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         """Construct database URL from individual components."""
         return f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+
+    @computed_field
+    @property
+    def effective_nats_url(self) -> str:
+        """Get environment-appropriate NATS URL."""
+        if self.nats_url:
+            return self.nats_url
+
+        # Auto-detect environment - use broadcaster service pattern
+        if os.path.exists("/var/run/secrets/kubernetes.io/serviceaccount"):
+            return "nats://nats:4222"  # Kubernetes environment
+        else:
+            return "nats://localhost:4222"  # Local development
 
 
 # Global settings instance

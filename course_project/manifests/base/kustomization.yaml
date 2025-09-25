@@ -4,18 +4,24 @@ kind: Kustomization
 # Full stack kustomization - deploys all services together
 # Usage: kubectl apply -k course_project/manifests/base/
 
-resources:
   # Shared resources (namespace, secrets, routing, health checks)
-  - shared/
   
   # Database service (must be deployed first for backend dependency)
-  - postgres/
   
   # Backend service (depends on postgres)
-  - todo-be/
   
   # Frontend service (depends on backend)
-  - todo-fe/
   
   # Cron job service (depends on backend API)
-  - todo-cron/
+  
+  # Message bus (NATS) for async communication
+  
+  # Broadcaster service (depends on NATS for messaging)
+resources:
+- shared/
+- postgres/
+- todo-be/
+- todo-fe/
+- todo-cron/
+- nats/
+- broadcaster/

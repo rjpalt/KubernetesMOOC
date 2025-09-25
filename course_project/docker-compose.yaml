@@ -1,6 +1,6 @@
 services:
   todo-app-be:
-    image: todo-app-be:4.5-arm64
+    image: todo-app-be:4.6-arm64
     build:
       context: ./todo-backend
       dockerfile: Dockerfile
@@ -11,6 +11,7 @@ services:
       - PORT=8001
       - POSTGRES_HOST=postgres_prod
       - POSTGRES_PORT=5432
+      - NATS_URL=nats://nats:4222
     ports:
       - "8001:8001"
     healthcheck:
@@ -23,9 +24,10 @@ services:
       - todo-app-network
     depends_on:
       - postgres_prod
+      - nats
 
   todo-app-fe:
-    image: todo-app-fe:4.5-arm64
+    image: todo-app-fe:4.6-arm64
     build:
       context: ./todo-app
       dockerfile: Dockerfile
@@ -69,7 +71,7 @@ services:
       - todo-app-network
 
   todo-cron:
-    image: todo-app-cron:4.5-arm64
+    image: todo-app-cron:4.6-arm64
     build:
       context: ./todo-cron
       dockerfile: Dockerfile
@@ -92,22 +94,67 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     # Use backup loop mode for local testing
     command: ["/usr/local/bin/backup_database.sh", "loop"]
-  
-  playwright:
-    image: todo-app-e2e:4.5-arm64
-    build:
-      context: ./tests/e2e
-      dockerfile: Dockerfile
-    container_name: playwright-e2e
-    environment:
-      - E2E_BASE_URL=http://todo-app-fe:8000
-    volumes:
-      - ./tests/e2e/test-results:/app/test-results
+
+  # NATS server for message broker
+  nats:
+    image: nats:2.10-alpine
+    container_name: nats
+    ports:
+      - "4222:4222"  # NATS client port
+      - "8222:8222"  # HTTP monitoring port
+      - "6222:6222"  # Cluster port
     networks:
       - todo-app-network
-    command: npx playwright test
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # Broadcaster service for NATS events
+  broadcaster:
+    image: broadcaster:4.6-arm64
+    build:
+      context: ./broadcaster
+      dockerfile: Dockerfile
+    container_name: broadcaster
+    env_file:
+      - docker-compose.env
+    environment:
+      - PORT=8002
+      - NATS_URL=nats://nats:4222
+      - WEBHOOK_URL=https://httpbin.org/post
+      - ENVIRONMENT=local
+    ports:
+      - "8002:8002"  # Service port
+      - "7777:7777"  # Metrics port
     depends_on:
-      - todo-app-fe
+      - nats
+    networks:
+      - todo-app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+  
+ # playwright:
+ #   image: todo-app-e2e:4.6-arm64
+ #   build:
+ #     context: ./tests/e2e
+ #     dockerfile: Dockerfile
+ #   container_name: playwright-e2e
+ #   environment:
+ #     - E2E_BASE_URL=http://todo-app-fe:8000
+ #   volumes:
+ #     - ./tests/e2e/test-results:/app/test-results
+ #   networks:
+ #     - todo-app-network
+ #   command: npx playwright test
+ #   depends_on:
+ #     - todo-app-fe
 
 # Define volumes for image caching
 volumes:

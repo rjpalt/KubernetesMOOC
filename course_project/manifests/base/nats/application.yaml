@@ -1,0 +1,173 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+  labels:
+    app.kubernetes.io/instance: nats
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/version: 2.11.8
+    helm.sh/chart: nats-9.0.28
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nats
+      app.kubernetes.io/name: nats
+  podManagementPolicy: OrderedReady
+  serviceName: nats-headless
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: nats
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: nats
+        app.kubernetes.io/version: 2.11.8
+        helm.sh/chart: nats-9.0.28
+      annotations:
+        checksum/secret: b6101d10b71329bc7f055f7ae91e69f34e457c47a908b9c1bccd515f049c9b30
+    spec:
+      
+      serviceAccountName: nats
+      automountServiceAccountToken: false
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: nats
+                    app.kubernetes.io/name: nats
+                topologyKey: kubernetes.io/hostname
+              weight: 1
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+        supplementalGroups: []
+        sysctls: []
+      containers:
+        - name: nats
+          image: docker.io/bitnami/nats:2.11.8-debian-12-r0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - nats-server
+          args:
+            - -c
+            - /etc/nats-server.conf
+          env:
+            - name: NATS_SERVER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          ports:
+            - name: client
+              containerPort: 4222
+            - name: cluster
+              containerPort: 6222
+            - name: monitoring
+              containerPort: 8222
+          livenessProbe:
+            failureThreshold: 6
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+            httpGet:
+              path: /healthz
+              port: monitoring
+          readinessProbe:
+            failureThreshold: 6
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+            httpGet:
+              path: /
+              port: monitoring
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /tmp
+              subPath: tmp-dir
+            - name: config
+              mountPath: /etc/nats-server.conf
+              subPath: nats-server.conf
+        - name: metrics
+          image: docker.io/bitnami/nats-exporter:0.17.3-debian-12-r8
+          imagePullPolicy: "IfNotPresent"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+            seccompProfile:
+              type: RuntimeDefault
+          args:
+            - -connz
+            - -routez
+            - -subz
+            - -varz
+            - "http://localhost:8222"
+          ports:
+            - name: metrics
+              containerPort: 7777
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+            httpGet:
+              path: /metrics
+              port: metrics
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+            httpGet:
+              path: /metrics
+              port: metrics
+          resources:
+            limits:
+              cpu: 150m
+              ephemeral-storage: 2Gi
+              memory: 192Mi
+            requests:
+              cpu: 100m
+              ephemeral-storage: 50Mi
+              memory: 128Mi
+      volumes:
+        - name: empty-dir
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: nats-config

@@ -1,0 +1,61 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nats
+  labels:
+    app.kubernetes.io/component: messaging
+    app.kubernetes.io/instance: nats
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/part-of: todo-app
+    app.kubernetes.io/version: 2.11.8
+    helm.sh/chart: nats-9.0.28
+  annotations:
+    app.kubernetes.io/version: 2.11.8
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: messaging
+      app.kubernetes.io/instance: nats
+      app.kubernetes.io/name: nats
+      app.kubernetes.io/part-of: todo-app
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  - {}
+  ingress:
+  # Allow traffic from ama-metrics pods in kube-system namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          rsName: ama-metrics
+    ports:
+    - port: 7777
+      protocol: TCP
+  # Allow traffic from same namespace (for internal communication)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: NAMESPACE_PLACEHOLDER
+    ports:
+    - port: 4222
+      protocol: TCP
+    - port: 6222
+      protocol: TCP
+    - port: 8222
+      protocol: TCP
+    - port: 7777
+      protocol: TCP
+  # Allow traffic from pods in same namespace with no selector (existing pattern)
+  - from: []
+    ports:
+    - port: 4222
+      protocol: TCP
+    - port: 6222
+      protocol: TCP
+    - port: 8222
+      protocol: TCP

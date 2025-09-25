@@ -76,7 +76,8 @@ graph TD
 - **Process**:
     1. Uses the images built by `ci.yml`.
     2. Deploys the application to the pre-provisioned namespace for that branch.
-    3. Posts a comment on the corresponding Pull Request with the URL and access details for the feature environment.
+    3. **NEW**: Deploys Azure monitoring configuration using `azure-feature` overlay with dynamic namespace replacement.
+    4. Posts a comment on the corresponding Pull Request with the URL and access details for the feature environment.
 - **Dependencies**: `ci.yml`. Triggers `e2e-tests.yml` on successful completion.
 
 #### 5. `e2e-tests.yml`
@@ -106,7 +107,8 @@ graph TD
 - **Process**:
     1. Verifies that the images tagged `main-{commit-sha}` exist in ACR.
     2. Applies the Kubernetes manifests to the production namespace, updating the running application to the new version.
-    3. Performs health checks to ensure the deployment was successful.
+    3. **NEW**: Deploys Azure monitoring configuration using `azure-production` overlay.
+    4. Performs health checks to ensure the deployment was successful.
 - **Dependencies**: `ci-production.yml`.
 
 ### Documentation

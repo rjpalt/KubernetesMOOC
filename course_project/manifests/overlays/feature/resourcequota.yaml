@@ -17,6 +17,6 @@ spec:
     requests.storage: "5Gi"
     # Additional resource quotas
     count/persistentvolumeclaims: "3"
-    count/services: "5"
+    count/services: "8"
     count/secrets: "5"
     count/configmaps: "5"

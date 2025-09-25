@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: nats
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 128Mi
+        env:
+        - name: NATS_CLUSTER_NAME
+          value: "feature-cluster"
+      - name: metrics
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
