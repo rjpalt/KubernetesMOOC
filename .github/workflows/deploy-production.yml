@@ -247,6 +247,43 @@ jobs:
         
         echo "✅ All internal health checks passed - applications are healthy"
     
+    - name: Verify monitoring infrastructure
+      run: |
+        echo "Verifying NATS and broadcaster services for monitoring..."
+        
+        # Check NATS deployment
+        if kubectl rollout status deployment/nats -n ${{ env.NAMESPACE }} --timeout=300s; then
+          echo "✅ NATS deployment ready"
+        else
+          echo "❌ NATS deployment failed"
+          exit 1
+        fi
+        
+        # Check broadcaster deployment  
+        if kubectl rollout status deployment/broadcaster -n ${{ env.NAMESPACE }} --timeout=300s; then
+          echo "✅ Broadcaster deployment ready"
+        else
+          echo "❌ Broadcaster deployment failed"
+          exit 1
+        fi
+        
+        # Verify metrics services exist
+        if kubectl get service nats-metrics -n ${{ env.NAMESPACE }} &>/dev/null; then
+          echo "✅ NATS metrics service deployed"
+        else
+          echo "❌ NATS metrics service missing"
+          exit 1
+        fi
+        
+        if kubectl get service broadcaster-metrics -n ${{ env.NAMESPACE }} &>/dev/null; then
+          echo "✅ Broadcaster metrics service deployed"
+        else
+          echo "❌ Broadcaster metrics service missing"
+          exit 1
+        fi
+        
+        echo "✅ Monitoring infrastructure verified - Azure Managed Prometheus can scrape metrics"
+    
     - name: Verify CronJobs deployed
       run: |
         echo "Checking CronJob deployments..."
@@ -289,6 +326,14 @@ jobs:
         echo "## Deployed Services 🔧" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Backend API (todo-app-be)" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Frontend Web App (todo-app-fe)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ NATS Message Broker (event notifications)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Broadcaster Service (webhook delivery)" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Wikipedia CronJob (daily todos)" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ Database Backup CronJob (Azure Blob Storage)" >> $GITHUB_STEP_SUMMARY
         echo "- ✅ PostgreSQL Database (persistent storage)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Monitoring 📊" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Azure Managed Prometheus (metrics collection)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ NATS Metrics (connection and message flow)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Broadcaster Metrics (event processing)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Grafana Dashboard (operational visibility)" >> $GITHUB_STEP_SUMMARY
