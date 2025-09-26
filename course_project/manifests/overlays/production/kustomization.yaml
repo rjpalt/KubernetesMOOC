@@ -7,6 +7,8 @@ kind: Kustomization
 #   kustomize edit set image [images...]
 #   kustomize build . | kubectl apply -f -
 
+namespace: project
+
 resources:
 - ../../base
 - resourcequota.yaml
