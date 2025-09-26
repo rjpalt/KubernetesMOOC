@@ -252,7 +252,7 @@ jobs:
         echo "Verifying NATS and broadcaster services for monitoring..."
         
         # Check NATS deployment
-        if kubectl rollout status deployment/nats -n ${{ env.NAMESPACE }} --timeout=300s; then
+        if kubectl rollout status statefulset/nats -n ${{ env.NAMESPACE }} --timeout=300s; then
           echo "✅ NATS deployment ready"
         else
           echo "❌ NATS deployment failed"
