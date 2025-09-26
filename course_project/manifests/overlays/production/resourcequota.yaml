@@ -5,9 +5,9 @@ metadata:
   namespace: project
 spec:
   hard:
-    # CPU quotas
-    requests.cpu: "2000m"
-    limits.cpu: "4000m"
+    # CPU quotas - increased to support 3 NATS replicas
+    requests.cpu: "3000m"
+    limits.cpu: "6000m"
     # Memory quotas - increased to support 3 NATS replicas
     requests.memory: "3072Mi"
     limits.memory: "6144Mi"
