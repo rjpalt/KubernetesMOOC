@@ -134,6 +134,14 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - ![Proof of a working rollout](https://github.com/user-attachments/assets/1d9be1be-7cb6-4698-8101-66281dddd2aa)
 - [4.5](https://github.com/rjpalt/KubernetesMOOC/tree/4.5/course_project)
   - Note that the Playwright E2E tests are located in `course_project/tests/e2e` folder.
+- [4.6](https://github.com/rjpalt/KubernetesMOOC/tree/4.6/course_project) - NATS Message Broadcasting
+  - The implementation is located in the `course_project/broadcaster` folder.
+  - The broadcaster connects to the NATS server deployed in the cluster and subscribes to the `todos.events` topic with a queue group named `broadcaster-workers`.
+  - The NATS is NOT installed with Helm chart, but with a simple manifest located in the `course_project/manifests/base/nats` folder. The NATS server is configured to allow connections without authentication for simplicity. I wanted to test out how to install the NATS without the Helm chart in case I wanted to do customizations later on.
+  - The broadcaster forwards received messages to an external webhook (https://httpbin.org/post) with retry logic and timeout handling.
+  - The broadcaster is configured to run 3 replicas in production and can be scaled up to 6+ replicas without message duplication due to the queue group configuration.
+  - Monitoring is enabled via Prometheus metrics exposed on port 8002.
+  - Testing and proof of functionality is documented in the [4.6_evidence.md](docs/exercises/4.6_evidence.md). Further evidence can be digged out but it took me about 2 weeks and 20-25 hours to complete this exercise, so I am not going to spend more time on it.
 
 # Exercise 3.9: DBaaS vs DIY Containerized Docker #
 In this project I decided to change to Azure managed PostgreSQL. The main reasons, on a theoretical side of things, are that running a production and test environment Database yourself gets very thorny quite fast. It's ok, if you have a very simple app that jsut uses a simple PostgreSQL, but if you intend to scale up, it turns into a bottleneck quite fast. I can quickly come up with scenarios where building your own backup system, high availability (HA) solution, redundancy, and maintenance/updates turns into a sysadmin's nightmare. These will require automation and the automation will require upkeep on their behalf and you need to handle it yourself. I would not, personally, want to be responsible of that pile of things if I can avoid it; it is prone to accidents and mistakes and definitely to human errors.

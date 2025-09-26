@@ -14,11 +14,11 @@
     - [x] Complete Prometheus query exercise (Ex 4.3).
     - [x] Implement canary `AnalysisTemplate` for the Ping-pong app (Ex 4.4).
 
-### Phase 3: Core Feature Enhancement (Exercises 4.5, 4.6)
-- [ ] **Goal:** Add core features to the todo application and improve testing.
-- [ ] **Actions:**
+### Phase 3: Core Feature Enhancement (Exercises 4.5, 4.6) - ✅ COMPLETE
+- [x] **Goal:** Add core features to the todo application and improve testing.
+- [x] **Actions:**
     - [x] Implement "Done" status update feature (PUT endpoint) (Ex 4.5).
-    - [ ] Create "broadcaster" service with NATS integration (Ex 4.6).
+    - [x] Create "broadcaster" service with NATS integration (Ex 4.6).
     - [x] **Testing Improvement:** Enhance E2E tests (map to user stories, implement test data cleanup).
 
 ### Phase 4: GitOps Adoption & Production Readiness (Exercises 4.7 - 4.10)
@@ -74,6 +74,7 @@
 - [ ] **Documentation:** Automate OpenAPI documentation publishing.
 
 ## Recently Completed
+- [x] **Broadcaster Service with NATS Integration (Exercise 4.6):** Implemented comprehensive event-driven architecture with NATS message broker integration. Created broadcaster service that consumes todo events and publishes webhooks to external systems. Established Azure Managed Prometheus monitoring with custom metrics (broadcaster_messages_processed_total, broadcaster_webhook_errors_total). Deployed production-ready monitoring dashboard in Azure Managed Grafana with real-time visualization of message flow from backend → NATS → broadcaster → webhook delivery. Fixed configuration alignment for consistent port usage (8002) across all service components.
 - [x] **E2E Test Enhancement for "Done" Feature:** Implemented comprehensive E2E test suite enhancement with 4 new test cases covering complete user journeys for marking todos as "Done". Established production-grade data cleanup infrastructure with advanced HTMX compatibility solutions. Achieved 100% test success rate (20/20 tests passing) with zero regressions and industry-leading technical innovations.
 - [x] **Argo Rollouts with Azure Prometheus Integration (Exercise 4.4):** Implemented enterprise-grade sidecar authentication proxy pattern for automated CPU-based analysis and rollback. Established organizational standard for Azure service authentication with SOPS encryption and Workload Identity federation.
 - [x] **Resource Management & Scaling (Exercises 3.11 & 3.12):** Established resource quotas, enabled cluster monitoring, and configured autoscaling for production workloads.
