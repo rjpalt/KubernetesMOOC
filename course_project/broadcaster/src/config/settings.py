@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     webhook_retry_attempts: int = Field(default=3, description="Webhook retry attempts")
 
     # Metrics Configuration
-    metrics_port: int = Field(default=7777, description="Prometheus metrics port")
+    metrics_port: int = Field(default=8002, description="Prometheus metrics port")
 
     # Kubernetes Detection
     kubernetes_namespace: str | None = Field(default=None, description="Current Kubernetes namespace (auto-detected)")

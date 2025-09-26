@@ -8,7 +8,6 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
-from prometheus_client import start_http_server
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -34,12 +33,8 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting up broadcaster service...")
 
-    # Start Prometheus metrics server
-    try:
-        start_http_server(settings.metrics_port)
-        logger.info(f"Prometheus metrics server started on port {settings.metrics_port}")
-    except Exception as e:
-        logger.warning(f"Failed to start metrics server: {e}")
+    # Note: Prometheus metrics are served via FastAPI /metrics endpoint on main port
+    logger.info(f"Prometheus metrics available at http://{settings.host}:{settings.port}/metrics")
 
     # Start NATS consumer as background task
     broadcaster = BroadcasterService()
@@ -99,7 +94,7 @@ def main():
         logger.info(f"NATS URL: {settings.nats_url}")
         logger.info(f"NATS Topic: {settings.nats_topic}")
         logger.info(f"Webhook URL: {settings.webhook_url}")
-        logger.info(f"Metrics port: {settings.metrics_port}")
+        logger.info(f"Metrics endpoint: http://{settings.host}:{settings.port}/metrics")
 
         uvicorn.run(app, host=settings.host, port=settings.port)
     except Exception as e:
