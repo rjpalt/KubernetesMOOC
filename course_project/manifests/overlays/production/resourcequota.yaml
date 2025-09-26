@@ -8,9 +8,9 @@ spec:
     # CPU quotas
     requests.cpu: "2000m"
     limits.cpu: "4000m"
-    # Memory quotas
-    requests.memory: "2048Mi"
-    limits.memory: "4096Mi"
+    # Memory quotas - increased to support 3 NATS replicas
+    requests.memory: "3072Mi"
+    limits.memory: "6144Mi"
     # Pod quotas
     count/pods: "20"
     # Storage quotas

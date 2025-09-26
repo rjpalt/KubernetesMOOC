@@ -1,4 +1,4 @@
-"""Security middleware for XSS prevention and security headers."""
+"""Security middleware for XSS prevention and security headers. Very secure defaults."""
 
 import logging
 from collections.abc import Callable

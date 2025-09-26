@@ -1,6 +1,6 @@
 ---
 description: A diagnostic agent that verifies deployments, tests infrastructure, and troubleshoots issues without making changes.
-tools: ['editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'extensions', 'github', 'copilotCodingAgent', 'activePullRequest', 'azureActivityLog', 'getPythonEnvironmentInfo', 'getPythonExecutableCommand', 'installPythonPackage', 'configurePythonEnvironment']
+tools: ['editFiles', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'extensions', 'Azure MCP', 'github', 'copilotCodingAgent', 'activePullRequest', 'azureActivityLog']
 model: o4-mini (Preview)
 ---
 # Inspector Mode Instructions
