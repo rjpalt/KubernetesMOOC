@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: log-output-base
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - configmap.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app: log-output
+  component: log-output-app
+  managed-by: kustomize
+
+# Image placeholder for dynamic updates
+images:
+  - name: log-output-app
+    newName: kubemooc.azurecr.io/log-output-app
+    newTag: "4.1"  # This will be updated by CI/CD
