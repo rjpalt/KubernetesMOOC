@@ -21,33 +21,46 @@
     - [x] Create "broadcaster" service with NATS integration (Ex 4.6).
     - [x] **Testing Improvement:** Enhance E2E tests (map to user stories, implement test data cleanup).
 
-### Phase 4: GitOps Adoption & Production Readiness (Exercises 4.7 - 4.10)
-- [ ] **Goal:** Transition the project to a GitOps-centric model and improve production readiness.
+### Phase 4: Initial GitOps Migration (Exercise 4.7)
+- [ ] **Goal:** Take the first step into GitOps by migrating a single, non-critical service.
 - [ ] **Actions:**
     - [ ] Migrate Log output app to GitOps (Ex 4.7).
+
+### Phase 5: Full Project GitOps Adoption (Exercises 4.8 & 4.9)
+- [ ] **Goal:** Transition the main application to a full GitOps workflow with environment promotion.
+- [ ] **Actions:**
     - [ ] Migrate the main project to GitOps for the `main` branch (Ex 4.8).
     - [ ] Establish `staging` and `production` environments with GitOps promotion (Ex 4.9).
+
+### Phase 6: Production Hardening & CI/CD Optimization
+- [ ] **Goal:** Improve the reliability, performance, and security of the production environment and CI/CD pipeline.
+- [ ] **Actions:**
     - [ ] **Production Readiness:** Migrate production database to DBaaS.
     - [ ] **CI/CD Health:** Investigate and fix the failing documentation deployment workflow.
+    - [ ] **CI/CD Performance:** Parallelize `course_project` image push jobs to reduce pipeline execution time.
     - [ ] **Frontend Security:** Fix frontend internal API exposure without breaking backend functionality.
+
+### Phase 7: Architectural Refactoring (Exercise 4.10)
+- [ ] **Goal:** Decouple application code from Kubernetes configuration to improve maintainability and prepare for advanced deployment strategies.
+- [ ] **Actions:**
     - [ ] Separate application code and Kubernetes configuration into dedicated repositories (Ex 4.10).
 
 ## Next Sprint: Extending Kubernetes (Chapter 5)
 
-### Phase 1: Custom Resource Definition (CRD) & Controller (Exercise 5.1)
+### Phase 8: Custom Resource Definition (CRD) & Controller (Exercise 5.1)
 - [ ] **Goal:** Build a custom controller to extend the Kubernetes API.
 - [ ] **Tech Focus:** Golang.
 - [ ] **Actions:**
     - [ ] **MVP:** Create a `DummySite` CRD and a controller that reconciles it by fetching a URL and creating a basic HTML page.
     - [ ] **Enhancement:** Incrementally improve the controller with more robust features (e.g., status updates, error handling).
 
-### Phase 2: Service Mesh & Advanced Traffic Management (Exercises 5.2, 5.3)
+### Phase 9: Service Mesh & Advanced Traffic Management (Exercises 5.2, 5.3)
 - [ ] **Goal:** Implement and manage a service mesh using Istio.
 - [ ] **Actions:**
     - [ ] Install Istio and deploy the sample application (Ex 5.2).
     - [ ] Migrate the `log-output` app to the service mesh and implement traffic splitting between two versions of a new `greeter` service (Ex 5.3).
 
-### Phase 3: Advanced Container Patterns & Serverless (Exercises 5.4, 5.6, 5.7)
+### Phase 10: Advanced Container Patterns & Serverless (Exercises 5.4, 5.6, 5.7)
 - [ ] **Goal:** Explore advanced pod design and event-driven serverless architectures.
 - [ ] **Actions:**
     - [ ] Implement an application using `init` and `sidecar` containers (Ex 5.4).
@@ -55,7 +68,7 @@
     - [ ] Convert the `ping-pong` application to run as a serverless service (Ex 5.7).
     - [ ] **Event-Driven CronJob:** Convert the `create_wikipedia_todo` cronjob into a serverless function triggered by NATS events.
 
-### Phase 4: Security & Ecosystem (Exercises 5.5, 5.8)
+### Phase 11: Security & Ecosystem (Exercises 5.5, 5.8)
 - [ ] **Goal:** Broaden knowledge of the cloud-native ecosystem and improve security posture.
 - [ ] **Actions:**
     - [ ] **NATS Security:** Implement Role-Based Access Control (RBAC) for the NATS deployment to enforce the principle of least privilege.

@@ -1,6 +1,9 @@
 name: CI Production - Build and Push Images
 
 on:
+  # Allow manual triggering for testing purposes
+  workflow_dispatch:
+
   # Only trigger on pushes to main (merges)
   push:
     branches: [ main ]
@@ -150,7 +153,7 @@ jobs:
   test-frontend:
     name: Frontend Tests  
     runs-on: ubuntu-latest
-    needs: [code-quality, test-backend]  # Frontend depends on backend contract AND quality
+    needs: code-quality  # PARALLEL: Run alongside backend tests
     defaults:
       run:
         working-directory: course_project/todo-app
@@ -197,7 +200,7 @@ jobs:
   test-microservice-integration:
     name: Service Integration Tests
     runs-on: ubuntu-latest
-    needs: [code-quality, test-backend, test-frontend]
+    needs: [test-backend, test-frontend] # DEPENDS on parallel tests
     services:
       postgres:
         image: postgres:17
@@ -310,10 +313,10 @@ jobs:
         docker stop backend-test frontend-test
         docker rm backend-test frontend-test
 
-  build-and-push-images:
-    name: Build and Push Production Images
+  push-backend:
+    name: Push Backend Image
     runs-on: ubuntu-latest
-    needs: [code-quality, test-backend, test-frontend, test-microservice-integration]
+    needs: [test-backend, test-microservice-integration]
     
     steps:
     - name: Checkout code
@@ -339,8 +342,30 @@ jobs:
         platforms: linux/amd64
         push: true
         tags: ${{ env.REGISTRY }}/todo-app-be:${{ github.ref_name }}-${{ github.sha }}
-        cache-from: type=gha  # Reuse the exact same build from test job
+        cache-from: type=gha
         cache-to: type=gha,mode=max
+
+  push-frontend:
+    name: Push Frontend Image
+    runs-on: ubuntu-latest
+    needs: [test-frontend, test-microservice-integration]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Azure Login via Workload Identity
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CI_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+    - name: Login to ACR
+      run: az acr login --name kubemooc
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
     
     - name: Push tested frontend image to ACR
       uses: docker/build-push-action@v5
@@ -349,9 +374,31 @@ jobs:
         platforms: linux/amd64
         push: true
         tags: ${{ env.REGISTRY }}/todo-app-fe:${{ github.ref_name }}-${{ github.sha }}
-        cache-from: type=gha  # Reuse the exact same build from test job
+        cache-from: type=gha
         cache-to: type=gha,mode=max
 
+  push-cron:
+    name: Push Cron Image
+    runs-on: ubuntu-latest
+    needs: test-microservice-integration
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Azure Login via Workload Identity
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CI_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+    - name: Login to ACR
+      run: az acr login --name kubemooc
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
     - name: Push cron image to ACR
       uses: docker/build-push-action@v5
       with:
@@ -359,9 +406,31 @@ jobs:
         platforms: linux/amd64
         push: true
         tags: ${{ env.REGISTRY }}/todo-app-cron:${{ github.ref_name }}-${{ github.sha }}
-        cache-from: type=gha  # Reuse the exact same build from test job
+        cache-from: type=gha
         cache-to: type=gha,mode=max
 
+  push-broadcaster:
+    name: Push Broadcaster Image
+    runs-on: ubuntu-latest
+    needs: test-microservice-integration
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Azure Login via Workload Identity
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CI_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+    - name: Login to ACR
+      run: az acr login --name kubemooc
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
     - name: Push broadcaster image to ACR
       uses: docker/build-push-action@v5
       with:
@@ -371,7 +440,13 @@ jobs:
         tags: ${{ env.REGISTRY }}/broadcaster:${{ github.ref_name }}-${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+
+  build-summary:
+    name: Build and Push Summary
+    runs-on: ubuntu-latest
+    needs: [push-backend, push-frontend, push-cron, push-broadcaster]
     
+    steps:
     - name: Image build summary
       run: |
         BRANCH_NAME=${{ github.ref_name }}
