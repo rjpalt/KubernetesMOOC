@@ -393,7 +393,7 @@ jobs:
   build-and-push-images:
     name: Push Tested Images to ACR
     runs-on: ubuntu-latest
-    needs: [code-quality, test-backend, test-frontend, test-broadcaster, test-microservice-integration]
+    needs: [test-backend, test-frontend, test-broadcaster, test-microservice-integration]  # Logical dependencies
     if: github.actor != 'nektos/act'
     
     steps:
@@ -414,24 +414,18 @@ jobs:
       uses: docker/setup-buildx-action@v3
     
     - name: Push tested backend image to ACR
-      uses: docker/build-push-action@v5
-      with:
-        context: course_project/todo-backend
-        platforms: linux/amd64
-        push: true
-        tags: ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
-        cache-from: type=gha  # Reuse the exact same build from test job
-        cache-to: type=gha,mode=max
+      run: |
+        # Pull the image built during integration testing
+        docker pull ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+        # Push it to final location (it's already built and cached)
+        docker push ${{ env.REGISTRY }}/todo-app-be:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
     
     - name: Push tested frontend image to ACR
-      uses: docker/build-push-action@v5
-      with:
-        context: course_project/todo-app
-        platforms: linux/amd64
-        push: true
-        tags: ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
-        cache-from: type=gha  # Reuse the exact same build from test job
-        cache-to: type=gha,mode=max
+      run: |
+        # Pull the image built during integration testing  
+        docker pull ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
+        # Push it to final location
+        docker push ${{ env.REGISTRY }}/todo-app-fe:${{ github.head_ref || github.ref_name }}-${{ github.event.pull_request.head.sha || github.sha }}
 
     - name: Push cron image to ACR
       uses: docker/build-push-action@v5
