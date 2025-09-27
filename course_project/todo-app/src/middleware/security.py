@@ -1,4 +1,4 @@
-"""Security middleware for frontend XSS prevention. Verrah secure!"""
+"""Security middleware for frontend XSS prevention. Verrah secure!!"""
 
 import logging
 from collections.abc import Callable
