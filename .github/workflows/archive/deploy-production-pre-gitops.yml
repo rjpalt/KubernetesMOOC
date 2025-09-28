@@ -1,0 +1,339 @@
+name: Production Deployment
+
+on:
+  # Trigger after CI production pipeline completes successfully on main branch
+  workflow_run:
+    workflows: ["CI Production - Build and Push Images"]
+    types: [completed]
+    branches: [main]
+  
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+
+permissions:
+  id-token: write  # Required for Azure authentication
+  contents: read   # Required for checkout
+
+env:
+  ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+  AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+  AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+
+jobs:
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    # Only run if the CI workflow completed successfully
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # Get the commit that triggered the CI workflow
+        ref: ${{ github.event.workflow_run.head_sha }}
+    
+    - name: Set environment variables
+      run: |
+        # Use the branch and commit SHA from the workflow_run event
+        BRANCH_NAME="${{ github.event.workflow_run.head_branch }}"
+        COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+        NAMESPACE="project"
+        
+        echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+        echo "COMMIT_SHA=${COMMIT_SHA}" >> $GITHUB_ENV
+        echo "NAMESPACE=${NAMESPACE}" >> $GITHUB_ENV
+        echo "IMAGE_TAG_SUFFIX=${BRANCH_NAME}-${COMMIT_SHA}" >> $GITHUB_ENV
+        
+        echo "## Production Deployment 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** \`${COMMIT_SHA}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Namespace:** \`${NAMESPACE}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Trigger:** Successful CI workflow completion" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Azure Login via Workload Identity
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+    - name: Connect to AKS cluster
+      run: |
+        az aks get-credentials \
+          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+          --name ${{ env.AKS_CLUSTER_NAME }}
+    
+    - name: Verify images exist in registry
+      run: |
+        echo "Verifying that tested images exist in registry..."
+        IMAGE_SUFFIX="${{ env.IMAGE_TAG_SUFFIX }}"
+        
+        # Check if all required images exist and fail if any are missing
+        echo "Checking backend image..."
+        BACKEND_TAGS=$(az acr repository show-tags \
+          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
+          --repository todo-app-be \
+          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
+          --output tsv)
+        
+        if [ -z "$BACKEND_TAGS" ]; then
+          echo "❌ Backend image with tag containing '${IMAGE_SUFFIX}' not found!"
+          exit 1
+        fi
+        
+        echo "Checking frontend image..."
+        FRONTEND_TAGS=$(az acr repository show-tags \
+          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
+          --repository todo-app-fe \
+          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
+          --output tsv)
+        
+        if [ -z "$FRONTEND_TAGS" ]; then
+          echo "❌ Frontend image with tag containing '${IMAGE_SUFFIX}' not found!"
+          exit 1
+        fi
+        
+        echo "Checking cron image..."
+        CRON_TAGS=$(az acr repository show-tags \
+          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
+          --repository todo-app-cron \
+          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
+          --output tsv)
+        
+        if [ -z "$CRON_TAGS" ]; then
+          echo "❌ Cron image with tag containing '${IMAGE_SUFFIX}' not found!"
+          exit 1
+        fi
+        
+        echo "✅ All tested images found in registry:"
+        echo "  - Backend: $BACKEND_TAGS"
+        echo "  - Frontend: $FRONTEND_TAGS"
+        echo "  - Cron: $CRON_TAGS"
+    
+    - name: Deploy to production
+      run: |
+        cd course_project/manifests/overlays/production
+        
+        # Set the tested image tags
+        kustomize edit set image \
+          ${{ env.ACR_LOGIN_SERVER }}/todo-app-be=${{ env.ACR_LOGIN_SERVER }}/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }} \
+          ${{ env.ACR_LOGIN_SERVER }}/todo-app-fe=${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }} \
+          ${{ env.ACR_LOGIN_SERVER }}/todo-app-cron=${{ env.ACR_LOGIN_SERVER }}/todo-app-cron:${{ env.IMAGE_TAG_SUFFIX }}
+        
+        # Apply the manifests to production namespace
+        kustomize build . | kubectl apply -f -
+        
+        echo "✅ Production deployment applied to project namespace"
+    
+    - name: Deploy Azure monitoring configuration
+      run: |
+        cd course_project/manifests/overlays/azure-production
+        kubectl apply -k .
+        echo "✅ Azure monitoring configuration deployed to production"
+    
+    - name: Wait for deployments
+      run: |
+        echo "Waiting for deployments to be ready..."
+        
+        # Wait for PostgreSQL StatefulSet first (database dependency)
+        echo "Waiting for PostgreSQL StatefulSet..."
+        kubectl rollout status statefulset/postgres-statefulset -n ${{ env.NAMESPACE }} --timeout=600s
+        echo "✅ PostgreSQL ready"
+        
+        # Use deployment rollout status instead of individual pod waits
+        # This avoids race conditions with terminating pods during rolling updates
+        kubectl rollout status deployment/todo-app-be -n ${{ env.NAMESPACE }} --timeout=300s
+        echo "✅ Backend deployment ready"
+        
+        kubectl rollout status deployment/todo-app-fe -n ${{ env.NAMESPACE }} --timeout=300s
+        echo "✅ Frontend deployment ready"
+        
+        echo "✅ All deployments ready"
+    
+    - name: Verify production health
+      run: |
+        echo "Verifying production environment health..."
+        
+        # Get service information
+        kubectl get services -n ${{ env.NAMESPACE }} -o wide
+        
+        # Find ready pods using field selector (avoids terminating pods)
+        echo "Finding ready backend pod..."
+        BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-be --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        
+        if [ -z "$BACKEND_POD" ]; then
+          echo "No running backend pods found, waiting briefly..."
+          sleep 10
+          BACKEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-be --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+        fi
+        
+        echo "Found backend pod: $BACKEND_POD"
+        
+        echo "Finding ready frontend pod..."
+        FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+        
+        if [ -z "$FRONTEND_POD" ]; then
+          echo "No running frontend pods found, waiting briefly..."
+          sleep 10
+          FRONTEND_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} -l app=todo-app-fe --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
+        fi
+        
+        echo "Found frontend pod: $FRONTEND_POD"
+        
+        # Test backend health using kubectl exec (internal container call)
+        echo "Testing backend health internally..."
+        if kubectl exec -n ${{ env.NAMESPACE }} $BACKEND_POD -- curl -f --max-time 10 -s http://localhost:8001/be-health > /dev/null; then
+          echo "✅ Backend internal health check passed"
+        else
+          echo "❌ Backend internal health check failed"
+          kubectl exec -n ${{ env.NAMESPACE }} $BACKEND_POD -- curl -v --max-time 10 http://localhost:8001/be-health || true
+          exit 1
+        fi
+        
+        # Test frontend health using kubectl exec (internal container call)
+        echo "Testing frontend health internally..."
+        if kubectl exec -n ${{ env.NAMESPACE }} $FRONTEND_POD -- curl -f --max-time 10 -s http://localhost:8000/health > /dev/null; then
+          echo "✅ Frontend internal health check passed"
+        else
+          echo "❌ Frontend internal health check failed"
+          kubectl exec -n ${{ env.NAMESPACE }} $FRONTEND_POD -- curl -v --max-time 10 http://localhost:8000/health || true
+          exit 1
+        fi
+        
+        # Test service connectivity (backend to frontend via service)
+        echo "Testing service connectivity (backend → frontend)..."
+        if kubectl exec -n ${{ env.NAMESPACE }} $BACKEND_POD -- curl -f --max-time 10 -s http://todo-app-fe-svc:2507/health > /dev/null; then
+          echo "✅ Backend → Frontend service connectivity passed"
+        else
+          echo "❌ Backend → Frontend service connectivity failed"
+          exit 1
+        fi
+        
+        # Test service connectivity (frontend to backend via service)
+        echo "Testing service connectivity (frontend → backend)..."
+        if kubectl exec -n ${{ env.NAMESPACE }} $FRONTEND_POD -- curl -f --max-time 10 -s http://todo-app-be-svc:2506/be-health > /dev/null; then
+          echo "✅ Frontend → Backend service connectivity passed"
+        else
+          echo "❌ Frontend → Backend service connectivity failed"
+          exit 1
+        fi
+        
+        # Test external load balancer endpoints (what users actually access)
+        echo "Testing external production endpoints..."
+        if curl -f --max-time 15 -s http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/be-health > /dev/null; then
+          echo "✅ External backend endpoint accessible"
+        else
+          echo "⚠️  External backend endpoint not accessible (may be expected during deployment)"
+        fi
+        
+        if curl -f --max-time 15 -s http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/health > /dev/null; then
+          echo "✅ External frontend endpoint accessible"
+        else
+          echo "⚠️  External frontend endpoint not accessible (may be expected during deployment)"
+        fi
+        
+        # Verify ResourceQuota compliance
+        echo "Verifying ResourceQuota compliance..."
+        kubectl describe resourcequota production-resource-quota -n ${{ env.NAMESPACE }}
+        
+        echo "✅ All internal health checks passed - applications are healthy"
+    
+    - name: Verify monitoring infrastructure
+      run: |
+        echo "Verifying NATS and broadcaster services for monitoring..."
+        
+        # Check NATS deployment
+        if kubectl rollout status statefulset/nats -n ${{ env.NAMESPACE }} --timeout=300s; then
+          echo "✅ NATS deployment ready"
+        else
+          echo "❌ NATS deployment failed"
+          exit 1
+        fi
+        
+        # Check broadcaster deployment  
+        if kubectl rollout status deployment/broadcaster -n ${{ env.NAMESPACE }} --timeout=300s; then
+          echo "✅ Broadcaster deployment ready"
+        else
+          echo "❌ Broadcaster deployment failed"
+          exit 1
+        fi
+        
+        # Verify metrics services exist
+        if kubectl get service nats-metrics -n ${{ env.NAMESPACE }} &>/dev/null; then
+          echo "✅ NATS metrics service deployed"
+        else
+          echo "❌ NATS metrics service missing"
+          exit 1
+        fi
+        
+        if kubectl get service broadcaster-metrics -n ${{ env.NAMESPACE }} &>/dev/null; then
+          echo "✅ Broadcaster metrics service deployed"
+        else
+          echo "❌ Broadcaster metrics service missing"
+          exit 1
+        fi
+        
+        echo "✅ Monitoring infrastructure verified - Azure Managed Prometheus can scrape metrics"
+    
+    - name: Verify CronJobs deployed
+      run: |
+        echo "Checking CronJob deployments..."
+        kubectl get cronjobs -n ${{ env.NAMESPACE }} -o wide
+        
+        # Check if our backup CronJob exists
+        if kubectl get cronjob todo-backup-cronjob -n ${{ env.NAMESPACE }} &>/dev/null; then
+          echo "✅ Backup CronJob deployed successfully"
+          kubectl describe cronjob todo-backup-cronjob -n ${{ env.NAMESPACE }}
+        else
+          echo "❌ Backup CronJob not found"
+          exit 1
+        fi
+        
+        # Check if original CronJob exists
+        if kubectl get cronjob todo-cronjob -n ${{ env.NAMESPACE }} &>/dev/null; then
+          echo "✅ Wikipedia CronJob deployed successfully"
+        else
+          echo "❌ Wikipedia CronJob not found"
+          exit 1
+        fi
+    
+    - name: Generate deployment summary
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Deployment Results 📊" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Status | Image |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | ✅ Deployed | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend | ✅ Deployed | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Cron | ✅ Deployed | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-cron:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Production Access 🌐" >> $GITHUB_STEP_SUMMARY
+        echo "**Namespace:** \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Production URL:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/" >> $GITHUB_STEP_SUMMARY
+        echo "**Backend Health:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/be-health" >> $GITHUB_STEP_SUMMARY
+        echo "**API Docs:** http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/docs/" >> $GITHUB_STEP_SUMMARY
+        echo "**Health Checks:** ✅ All services responding" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Deployed Services 🔧" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Backend API (todo-app-be)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Frontend Web App (todo-app-fe)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ NATS Message Broker (event notifications)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Broadcaster Service (webhook delivery)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Wikipedia CronJob (daily todos)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Database Backup CronJob (Azure Blob Storage)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ PostgreSQL Database (persistent storage)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Monitoring 📊" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Azure Managed Prometheus (metrics collection)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ NATS Metrics (connection and message flow)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Broadcaster Metrics (event processing)" >> $GITHUB_STEP_SUMMARY
+        echo "- ✅ Grafana Dashboard (operational visibility)" >> $GITHUB_STEP_SUMMARY
