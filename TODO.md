@@ -37,6 +37,10 @@
 - [ ] **Actions:**
     - [ ] **Production Readiness:** Migrate production database to DBaaS.
     - [ ] **CI/CD Health:** Investigate and fix the failing documentation deployment workflow.
+    - [ ] **CI/CD Reliability:** Implement the advanced, multi-layered testing strategy ([ADR](./tmp/Future%20Research/TESTING_STRATEGY_ADR.md)) to improve confidence and catch integration issues earlier.
+        - [ ] **L1:** Standardize and enforce unit test coverage.
+        - [ ] **L2:** Implement service-level integration tests (e.g., backend-db-nats).
+        - [ ] **L3:** Develop a full end-to-end (E2E) workflow test.
     - [ ] **CI/CD Performance:** Parallelize `course_project` image push jobs to reduce pipeline execution time.
     - [ ] **Frontend Security:** Fix frontend internal API exposure without breaking backend functionality.
 

@@ -17,7 +17,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 
 # Copy the application files
-COPY app.py settings.py ./
+COPY app.py log_server.py settings.py ./
 
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser -m appuser

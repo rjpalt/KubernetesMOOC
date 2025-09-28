@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: log-output-production
+
+# Reference base configuration
+resources:
+- ../../base
+
+# Production-specific namespace
+namespace: exercises
+
+# Production-specific labels
+
+# Image configuration for CI/CD updates
+images:
+- name: log-output-app
+  newName: kubemooc.azurecr.io/log-output-app
+  newTag: "4.1"
+labels:
+- includeSelectors: true
+  pairs:
+    environment: production
