@@ -5,7 +5,7 @@ metadata:
   namespace: argocd
   labels:
     app.kubernetes.io/name: main-app
-    app.kubernetes.io/part-of: todo-application
+    app.kubernetes.io/part-of: todo-app
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
