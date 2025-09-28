@@ -143,8 +143,9 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - Monitoring is enabled via Prometheus metrics exposed on port 8002.
   - Testing and proof of functionality is documented in the [4.6_evidence.md](docs/exercises/4.6_evidence.md). Further evidence can be digged out but it took me about 2 weeks and 20-25 hours to complete this exercise, so I am not going to spend more time on it.
 - [4.7](https://github.com/rjpalt/KubernetesMOOC/tree/4.7)
-  - Implementation of simple ArcgoCD Deployment for the log-output app.
-  - 
+  - Implementation of simple ArgoCD Deployment for the log-output app.
+  - [Image of ArgoCD deployment running](https://github.com/user-attachments/assets/9aefc432-a85b-4b0f-92ff-873126d4f414)
+  - Deployment via [Actions](https://github.com/rjpalt/KubernetesMOOC/actions/runs/18070042495)
 
 # Exercise 3.9: DBaaS vs DIY Containerized Docker #
 In this project I decided to change to Azure managed PostgreSQL. The main reasons, on a theoretical side of things, are that running a production and test environment Database yourself gets very thorny quite fast. It's ok, if you have a very simple app that jsut uses a simple PostgreSQL, but if you intend to scale up, it turns into a bottleneck quite fast. I can quickly come up with scenarios where building your own backup system, high availability (HA) solution, redundancy, and maintenance/updates turns into a sysadmin's nightmare. These will require automation and the automation will require upkeep on their behalf and you need to handle it yourself. I would not, personally, want to be responsible of that pile of things if I can avoid it; it is prone to accidents and mistakes and definitely to human errors.
