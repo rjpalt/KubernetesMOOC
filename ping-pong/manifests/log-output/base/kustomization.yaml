@@ -15,8 +15,4 @@ commonLabels:
   component: log-output-app
   managed-by: kustomize
 
-# Image placeholder for dynamic updates
-images:
-  - name: log-output-app
-    newName: kubemooc.azurecr.io/log-output-app
-    newTag: "4.1"  # This will be updated by CI/CD
+# Image will be configured in overlay - not here
