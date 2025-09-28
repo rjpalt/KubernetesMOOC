@@ -1,4 +1,4 @@
-"""Backend service configuration settings using Pydantic Settings. So set."""
+"""Backend service configuration settings using Pydantic Settings. So set, so."""
 
 import os
 
