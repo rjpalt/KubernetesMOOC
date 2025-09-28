@@ -121,7 +121,7 @@ jobs:
       uses: EndBug/add-and-commit@v9
       with:
         add: '${{ env.MANIFEST_PATH }}/kustomization.yaml'
-        message: 'Update log-output image to ${{ steps.tag.outputs.image_tag }} - Built from commit ${{ github.sha }}'
+        message: 'Update log-output image to ${{ steps.tag.outputs.image_tag }}'
         default_author: github_actions
     
     - name: Build summary
