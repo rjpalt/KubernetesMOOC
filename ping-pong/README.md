@@ -10,6 +10,7 @@ Simple HTTP service that responds with "pong N" and increments counter. The coun
 - Configurable via environment variables using Pydantic settings
 - Health check and readiness endpoints for monitoring with dependency cascade
 - **Sidecar Authentication Proxy**: Azure Prometheus integration for automated canary analysis
+- **GitOps Integration**: Log-output service demonstrates complete GitOps workflow with ArgoCD automation
 
 ## Kubernetes Deployment
 

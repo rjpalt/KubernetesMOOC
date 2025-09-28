@@ -21,10 +21,10 @@
     - [x] Create "broadcaster" service with NATS integration (Ex 4.6).
     - [x] **Testing Improvement:** Enhance E2E tests (map to user stories, implement test data cleanup).
 
-### Phase 4: Initial GitOps Migration (Exercise 4.7)
-- [ ] **Goal:** Take the first step into GitOps by migrating a single, non-critical service.
-- [ ] **Actions:**
-    - [ ] Migrate Log output app to GitOps (Ex 4.7).
+### Phase 4: Initial GitOps Migration (Exercise 4.7) - ✅ COMPLETE
+- [x] **Goal:** Take the first step into GitOps by migrating a single, non-critical service.
+- [x] **Actions:**
+    - [x] Migrate Log output app to GitOps (Ex 4.7).
 
 ### Phase 5: Full Project GitOps Adoption (Exercises 4.8 & 4.9)
 - [ ] **Goal:** Transition the main application to a full GitOps workflow with environment promotion.
@@ -91,6 +91,7 @@
 - [ ] **Documentation:** Automate OpenAPI documentation publishing.
 
 ## Recently Completed
+- [x] **GitOps Migration - Log Output Service (Exercise 4.7):** Successfully implemented complete GitOps workflow using ArgoCD, Kustomize, and GitHub Actions. Established automated deployment pipeline (Code → Build → Manifest Update → ArgoCD Sync → Deployment) with zero-downtime deployments. Created reusable base + overlay pattern for Kubernetes manifests, implemented CI/CD automation with Azure ACR integration, and achieved end-to-end validation. ArgoCD accessible at https://20.54.1.117 with operational GitOps foundation ready for scaling to additional services. Implementation serves as proven pattern for future service migrations.
 - [x] **Broadcaster Service with NATS Integration (Exercise 4.6):** Implemented comprehensive event-driven architecture with NATS message broker integration. Created broadcaster service that consumes todo events and publishes webhooks to external systems. Established Azure Managed Prometheus monitoring with custom metrics (broadcaster_messages_processed_total, broadcaster_webhook_errors_total). Deployed production-ready monitoring dashboard in Azure Managed Grafana with real-time visualization of message flow from backend → NATS → broadcaster → webhook delivery. Fixed configuration alignment for consistent port usage (8002) across all service components.
 - [x] **E2E Test Enhancement for "Done" Feature:** Implemented comprehensive E2E test suite enhancement with 4 new test cases covering complete user journeys for marking todos as "Done". Established production-grade data cleanup infrastructure with advanced HTMX compatibility solutions. Achieved 100% test success rate (20/20 tests passing) with zero regressions and industry-leading technical innovations.
 - [x] **Argo Rollouts with Azure Prometheus Integration (Exercise 4.4):** Implemented enterprise-grade sidecar authentication proxy pattern for automated CPU-based analysis and rollback. Established organizational standard for Azure service authentication with SOPS encryption and Workload Identity federation.

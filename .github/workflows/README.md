@@ -34,6 +34,11 @@ graph TD
         J5 -- On Success --> K(deploy-production.yml<br>Deploys to Production);
     end
 
+    subgraph "GitOps Automation"
+        N[Push to main<br>(log_output/ changes)] --> O(log-output-ci.yaml<br>Build & Update Manifests);
+        O --> P[ArgoCD Auto-Sync<br>Deploy to Cluster];
+    end
+
     subgraph "Documentation"
         L[Push to main<br>(docs/ folder)] --> M(deploy-docs.yaml<br>Deploys Docs);
     end
@@ -43,6 +48,7 @@ graph TD
     style E fill:#d1e7ff,stroke:#333,stroke-width:2px
     style I fill:#d1e7ff,stroke:#333,stroke-width:2px
     style L fill:#fff2cc,stroke:#333,stroke-width:2px
+    style N fill:#e6ccff,stroke:#333,stroke-width:2px
 ```
 
 ## CI/CD Architecture Overview
@@ -184,9 +190,25 @@ Build Summary (comprehensive status)
     4. Performs health checks to ensure the deployment was successful.
 - **Dependencies**: `ci-production.yml`.
 
+### GitOps Automation
+
+#### 8. `log-output-ci.yaml`
+- **Purpose**: GitOps CI/CD pipeline for the log-output service demonstrating automated container builds and manifest updates.
+- **Trigger**: Runs on pushes to the `main` branch affecting `log_output/**` or `ping-pong/manifests/log-output/**`, with manual trigger capability.
+- **Process**:
+    1. **Test Job** (PR only): Builds Docker image for testing and validates Kustomize manifests.
+    2. **Build-and-Deploy Job** (main branch): 
+       - Authenticates with Azure using Workload Identity
+       - Builds and pushes image to ACR with `main-{commit-sha}` tag
+       - Updates Kustomize manifest with new image tag
+       - Commits manifest changes back to repository
+    3. **ArgoCD Integration**: ArgoCD automatically detects manifest changes and syncs deployment.
+- **Architecture**: Implements complete GitOps workflow: code change → build → manifest update → deployment.
+- **Dependencies**: Requires ArgoCD Application configured to sync from `main` branch.
+
 ### Documentation
 
-#### 8. `deploy-docs.yaml`
+#### 9. `deploy-docs.yaml`
 - **Purpose**: Automatically builds and deploys the project documentation.
 - **Trigger**: Runs on pushes to the `main` branch that include changes in the `docs/` directory.
 - **Process**:
