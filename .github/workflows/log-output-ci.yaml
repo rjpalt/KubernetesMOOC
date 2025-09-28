@@ -1,0 +1,139 @@
+name: Log-Output Service CI/CD
+
+on:
+  push:
+    branches: [ main ]  # Only deploy from main branch
+    paths:
+      - 'log_output/**'
+      - 'ping-pong/manifests/log-output/**'
+  pull_request:
+    branches: [ main ]  # Test on PRs to main
+    paths:
+      - 'log_output/**'
+      - 'ping-pong/manifests/log-output/**'
+  workflow_dispatch:  # Manual trigger for testing (remove once stable)
+    inputs:
+      reason:
+        description: 'Initial testing purposes'
+        required: false
+        default: 'Manual testing'
+
+permissions:
+  id-token: write  # Required for Azure authentication
+  contents: write  # Required for git commits (manifest updates)
+
+env:
+  ACR_LOGIN_SERVER: kubemooc.azurecr.io
+  REGISTRY: kubemooc.azurecr.io
+  SERVICE_NAME: log-output
+  MANIFEST_PATH: ping-pong/manifests/log-output/overlays/production
+
+jobs:
+  # Test and build on PRs, deploy only on main branch pushes
+  test:
+    name: Test Log-Output
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build image for testing
+      uses: docker/build-push-action@v5
+      with:
+        context: log_output
+        platforms: linux/amd64
+        push: false  # Don't push on PRs
+        tags: log-output-app:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Test Kustomize build
+      run: |
+        cd ping-pong/manifests/log-output/overlays/production
+        kustomize build . > /tmp/test-output.yaml
+        kubectl apply --dry-run=client -f /tmp/test-output.yaml
+
+  build-and-deploy:
+    name: Build and Deploy Log-Output
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' && github.actor != 'nektos/act'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0  # Need full history for git operations
+    
+    - name: Azure Login via Workload Identity
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CI_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+    - name: Login to ACR
+      run: az acr login --name kubemooc
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Generate image tag
+      id: tag
+      run: |
+        BRANCH_NAME=${{ github.head_ref || github.ref_name }}
+        COMMIT_SHA=${{ github.sha }}
+        SHORT_SHA=${COMMIT_SHA:0:7}
+        IMAGE_TAG="${BRANCH_NAME}-${SHORT_SHA}"
+        echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+        echo "Generated image tag: ${IMAGE_TAG}"
+    
+    - name: Build and push log-output image
+      uses: docker/build-push-action@v5
+      with:
+        context: log_output
+        platforms: linux/amd64
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/log-output-app:${{ steps.tag.outputs.image_tag }}
+          ${{ env.REGISTRY }}/log-output-app:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Set up Kustomize
+      uses: imranismail/setup-kustomize@v1
+    
+    - name: Update manifest with new image tag
+      run: |
+        cd ${{ env.MANIFEST_PATH }}
+        kustomize edit set image log-output-app=${{ env.REGISTRY }}/log-output-app:${{ steps.tag.outputs.image_tag }}
+        
+        # Show the changes
+        echo "Updated kustomization.yaml:"
+        cat kustomization.yaml
+    
+    - name: Commit kustomization.yaml to GitHub
+      uses: EndBug/add-and-commit@v9
+      with:
+        add: '${{ env.MANIFEST_PATH }}/kustomization.yaml'
+        message: 'Update log-output image to ${{ steps.tag.outputs.image_tag }} - Built from commit ${{ github.sha }}'
+        default_author: github_actions
+    
+    - name: Build summary
+      run: |
+        echo "## Log-Output CI/CD Summary 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Status | Details |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Image Build | ✅ | \`${{ env.REGISTRY }}/log-output-app:${{ steps.tag.outputs.image_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Manifest Update | ✅ | Updated \`${{ env.MANIFEST_PATH }}/kustomization.yaml\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Git Commit | ✅ | Changes pushed to \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**ArgoCD will automatically sync these changes.**" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Image:** \`${{ env.REGISTRY }}/log-output-app:${{ steps.tag.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

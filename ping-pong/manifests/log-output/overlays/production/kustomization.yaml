@@ -14,3 +14,9 @@ namespace: exercises
 # Production-specific labels
 commonLabels:
   environment: production
+
+# Image configuration for CI/CD updates
+images:
+  - name: log-output-app
+    newName: kubemooc.azurecr.io/log-output-app
+    newTag: "4.1"  # Will be updated by CI/CD pipeline
