@@ -12,8 +12,6 @@ kind: Kustomization
   
   # Frontend service (depends on backend)
   
-  # Cron job service (depends on backend API)
-  
   # Message bus (NATS) for async communication
   
   # Broadcaster service (depends on NATS for messaging)
@@ -22,6 +20,5 @@ resources:
 - postgres/
 - todo-be/
 - todo-fe/
-- todo-cron/
 - nats/
 - broadcaster/
