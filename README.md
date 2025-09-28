@@ -142,7 +142,8 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - The broadcaster is configured to run 3 replicas in production and can be scaled up to 6+ replicas without message duplication due to the queue group configuration.
   - Monitoring is enabled via Prometheus metrics exposed on port 8002.
   - Testing and proof of functionality is documented in the [4.6_evidence.md](docs/exercises/4.6_evidence.md). Further evidence can be digged out but it took me about 2 weeks and 20-25 hours to complete this exercise, so I am not going to spend more time on it.
-- [4.7](https://github.com/rjpalt/KubernetesMOOC/tree/4.7)
+- [4.7]([https://github.com/rjpalt/KubernetesMOOC/tree/4.7](https://github.com/rjpalt/KubernetesMOOC/tree/4.7/ping-pong/manifests/log-output)
+  - All of the changes have been done in the manifests. The ArgoCD manifests are in the `cluster-manifests` folder as they are shared across all resources.
   - Implementation of simple ArgoCD Deployment for the log-output app.
   - [Image of ArgoCD deployment running](https://github.com/user-attachments/assets/9aefc432-a85b-4b0f-92ff-873126d4f414)
   - Deployment via [Actions](https://github.com/rjpalt/KubernetesMOOC/actions/runs/18070042495)
