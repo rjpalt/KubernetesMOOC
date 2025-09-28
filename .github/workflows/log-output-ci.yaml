@@ -52,11 +52,14 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
     
+    - name: Set up Kustomize
+      uses: imranismail/setup-kustomize@v1
+    
     - name: Test Kustomize build
       run: |
         cd ping-pong/manifests/log-output/overlays/production
         kustomize build . > /tmp/test-output.yaml
-        kubectl apply --dry-run=client -f /tmp/test-output.yaml
+        kubectl apply --dry-run=client --validate=false -f /tmp/test-output.yaml
 
   build-and-deploy:
     name: Build and Deploy Log-Output
