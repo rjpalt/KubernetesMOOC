@@ -147,7 +147,7 @@ See [Common Commands](docs/exercises/common-commands.md) for frequently used pat
   - Implementation of simple ArgoCD Deployment for the log-output app.
   - [Image of ArgoCD deployment running](https://github.com/user-attachments/assets/9aefc432-a85b-4b0f-92ff-873126d4f414)
   - Deployment via [Actions](https://github.com/rjpalt/KubernetesMOOC/actions/runs/18070042495)
-- [4.8](https://github.com/rjpalt/KubernetesMOOC/tree/4.8/course_project) - GitOps Migration
+- [4.8](https://github.com/rjpalt/KubernetesMOOC/blob/4.8/cluster-manifests/main-app.yaml) - GitOps Migration
   - The ArgoCD management is handled in the [application manifest](cluster-manifests/main-app.yaml) for clarity and keeping in line with GitOps principles.
   - The CronJob is moved out of the scope for now, to keep the cluster more maintainable. It will be, at any rate, migrated to a function solution a bit later.
   - Monitoring is not yet tested at this stage, will test it properly in 4.9.
