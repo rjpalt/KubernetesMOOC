@@ -38,8 +38,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        # Get the commit that triggered the CI workflow
-        ref: ${{ github.event.workflow_run.head_sha }}
+        # Checkout the actual branch, not the detached commit
+        ref: ${{ github.event.workflow_run.head_branch }}
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0  # Need full history for git operations
     
