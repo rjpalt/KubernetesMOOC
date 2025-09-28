@@ -17,7 +17,7 @@ namespace: exercises
 images:
 - name: log-output-app
   newName: kubemooc.azurecr.io/log-output-app
-  newTag: main-49f0245
+  newTag: main-7c46f0b
 labels:
 - includeSelectors: true
   pairs:
