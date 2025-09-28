@@ -1,6 +1,17 @@
-# Kubernetes Manifests - Kustomization Structure
+# Kubernetes Manifests - GitOps with Kustomize
 
-This directory contains Kubernetes manifests organized for use with Kustomize, enabling flexible deployment across different environments.
+This directory contains Kubernetes manifests organized for GitOps deployment via ArgoCD and Kustomize, enabling automated, Git-driven deployments across multiple environments.
+
+## GitOps Architecture Overview
+
+**Current State**: All production deployments are managed by ArgoCD following pure GitOps principles:
+
+- **Git as Source of Truth**: All infrastructure changes committed to this repository
+- **Automated Sync**: ArgoCD Application monitors `overlays/production/` and syncs automatically
+- **Self-Healing**: Configuration drift is automatically corrected
+- **Audit Trail**: Complete deployment history preserved in Git commits
+
+**ArgoCD Application**: Managed via [`cluster-manifests/main-app.yaml`](../../cluster-manifests/main-app.yaml)
 
 ## Directory Structure
 
@@ -47,8 +58,8 @@ manifests/
     │   └── nats/                  # NATS development overlay
     │       ├── nats-dev-patch.yaml
     │       └── kustomization.yaml
-    ├── staging/                   # Staging environment settings
-    └── production/                # Production environment settings
+    ├── staging/                   # Staging environment settings (planned for Ex 4.9)
+    └── production/                # Production environment settings (✅ ArgoCD managed)
         ├── nats/                  # NATS production overlay
         │   ├── nats-prod-patch.yaml
         │   └── kustomization.yaml
@@ -56,7 +67,7 @@ manifests/
         ├── hpa-frontend.yaml      # Frontend autoscaling (1-3 replicas)
         ├── hpa-broadcaster.yaml   # Broadcaster autoscaling (1-5 replicas)
         ├── resourcequota.yaml     # Resource limits
-        └── kustomization.yaml     # Production-specific configuration
+        └── kustomization.yaml     # Production-specific configuration (ArgoCD sync target)
 ```
 
 ## NATS Message Bus Infrastructure
@@ -209,6 +220,54 @@ HTTP Service: broadcaster-svc:8002
 Metrics Endpoint: broadcaster-metrics:7777
 Webhook URL: Configured via broadcaster-secret (WEBHOOK_URL)
 ```
+
+## Deployment Strategies
+
+### GitOps Workflow (Production)
+
+**Current State**: All production deployments use pure GitOps via ArgoCD ✅
+
+```bash
+# Development workflow
+git add . && git commit -m "Update feature X"
+git push origin main
+
+# ArgoCD automatically:
+# 1. Detects changes in overlays/production/
+# 2. Syncs to project namespace
+# 3. Self-heals any configuration drift
+```
+
+**ArgoCD Application Configuration**:
+- **Source**: `overlays/production/kustomization.yaml`
+- **Target**: `project` namespace  
+- **Sync Policy**: Automated with pruning enabled
+- **Status**: Available at http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/
+
+### Manual Deployment (Development/Testing)
+
+**Local Development**:
+```bash
+# Deploy to development namespace
+kubectl apply -k overlays/development
+
+# Deploy specific feature branch
+kubectl apply -k overlays/feature
+```
+
+**Emergency Manual Sync** (Production - Not Recommended):
+```bash
+# ArgoCD will override manual changes
+kubectl apply -k overlays/production
+```
+
+### Environment Strategy
+
+| Environment | Namespace | Database | Hostname | GitOps |
+|------------|-----------|----------|----------|---------|
+| **Development** | `feature-ex-c4-e6` | In-cluster PostgreSQL | nip.io DNS | Manual |
+| **Staging** | `staging` | Azure DBaaS | staging.domain.com | Planned (Ex 4.9) |
+| **Production** | `project` | Azure DBaaS | d9hqaucbbyazhfem.fz53.alb.azure.com | ✅ ArgoCD |
 
 ### Multi-Port Service Architecture
 
@@ -442,17 +501,50 @@ The production overlay includes CPU-based autoscaling for all applications:
 - **Triggers**: Pod resource demands exceeding current node capacity
 - **Scope**: Cluster-wide, supports all environments
 
-## Deployment Dependencies
+## GitOps Deployment Strategy
 
-Services must be deployed in the following order due to dependencies:
+### Current Production Deployment (✅ Live)
+
+**Automated via ArgoCD**: Production deployments are fully automated through GitOps:
+
+1. **Developer Workflow**: 
+   ```bash
+   # Make changes to application code or manifests
+   git add . && git commit -m "Update feature X"
+   git push origin main
+   ```
+
+2. **CI/CD Pipeline**: 
+   - GitHub Actions builds and pushes images to Azure Container Registry
+   - Deploy workflow updates `overlays/production/kustomization.yaml` with new image tags
+   - Git commit triggers ArgoCD sync automatically
+
+3. **ArgoCD Sync**: 
+   - Detects changes in `overlays/production/`
+   - Applies changes to `project` namespace
+   - Self-healing corrects any configuration drift
+
+4. **Production Access**: http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/
+
+### Staging Environment (🚧 Planned for Exercise 4.9)
+
+**Multi-Environment Strategy**: 
+- **Staging Namespace**: Dedicated `staging` namespace with separate DBaaS instance
+- **Unique Hostnames**: `staging.domain.com` to prevent routing conflicts with production
+- **Validation Pipeline**: Automated L2/L3 testing in staging before production promotion
+- **Monitoring Verification**: Prometheus/Grafana validation in staging environment
+
+### Service Dependencies
+
+ArgoCD manages deployment order automatically, but services have these logical dependencies:
 
 1. **shared/** - Creates namespace and ingress configuration
-2. **postgres/** - Database must be ready before backend
+2. **postgres/** - Database must be ready before backend  
 3. **nats/** - Message bus must be ready before broadcaster
-4. **todo-be/** - Backend API must be ready before frontend and cron
+4. **todo-be/** - Backend API must be ready before frontend
 5. **broadcaster/** - Message consumer (depends on NATS)
 6. **todo-fe/** - Frontend service (depends on backend)
-7. **todo-cron/** - Scheduled tasks (depends on backend API)
+7. **todo-cron/** - ⚠️ Currently disabled in production (removed from kustomization due to resource constraints)
 
 ## Kustomization Files
 
@@ -620,8 +712,73 @@ kubectl apply -f cluster-manifests/cluster-protection-rbac.yaml
 
 This ensures that feature branch cleanup is secure and controlled while protecting production and system namespaces.
 
+## Production Status & Monitoring
+
+### Current Production State ✅
+
+**ArgoCD Application**: `main-app` 
+- **Status**: Synced/Healthy
+- **Resources**: 29+ resources managed
+- **Last Sync**: Automated via GitOps pipeline
+- **Health**: All services operational
+
+**Live Services**:
+- **Frontend**: http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/
+- **Backend API**: `/be/health` endpoint active
+- **Database**: Azure Database for PostgreSQL flexible server
+- **Message Bus**: NATS StatefulSet with metrics collection
+- **Broadcaster**: Webhook notifications operational (3 replicas)
+
+**Current Limitations**:
+- **todo-cron**: Disabled due to resource constraints (removed from kustomization)
+- **Horizontal Pod Autoscaling**: Resource-limited scaling (1-5 replicas max)
+
+### Monitoring Integration
+
+**Azure Managed Prometheus**:
+- **Collection**: Automatic scraping via service annotations
+- **Metrics**: NATS, broadcaster, backend performance metrics
+- **Grafana**: Visualization dashboards for service health
+
+**Health Check Strategy**:
+- **Liveness Probes**: Service availability verification
+- **Readiness Probes**: Traffic routing decisions
+- **Application Gateway**: Health probe routing to `/be/health`
+
 ## Environment Patterns
 
-- **Development**: Single replicas, resource limits for local testing
-- **Staging**: Production-like settings with reduced resources
-- **Production**: Multiple replicas, strict resource limits, security policies
+| Environment | Replicas | Resources | Security | Purpose |
+|------------|----------|-----------|----------|---------|
+| **Development** | 1 | Minimal limits | Basic | Local testing |
+| **Staging** | 2-3 | Production-like | Enhanced | Deployment validation |
+| **Production** | 1-5 (HPA) | Strict limits | Full policies | Live workloads |
+
+## Staging Environment Architecture (Exercise 4.9)
+
+### Planned Infrastructure
+
+**Namespace Separation**: 
+- **Production**: `project` namespace
+- **Staging**: `staging` namespace (isolated resources)
+
+**Database Strategy**:
+- **Production**: Azure Database for PostgreSQL (live data)
+- **Staging**: Separate Azure DBaaS instance (test data)
+
+**Routing Strategy**:
+- **Production**: `d9hqaucbbyazhfem.fz53.alb.azure.com/project/`
+- **Staging**: `staging.domain.com` (prevents routing conflicts)
+
+**Testing Pipeline**:
+```bash
+# L2/L3 Testing in Staging
+1. Deploy to staging namespace
+2. Run comprehensive test suite
+3. Validate monitoring/alerting
+4. Promote to production via GitOps
+```
+
+**Multi-Environment Promotion**:
+- **Feature Branch** → **Staging** → **Production**
+- **Validation Gates**: Automated testing, manual approval, monitoring verification
+- **Rollback Strategy**: ArgoCD revision history, database backups
