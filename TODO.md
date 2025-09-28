@@ -26,18 +26,24 @@
 - [x] **Actions:**
     - [x] Migrate Log output app to GitOps (Ex 4.7).
 
-### Phase 5: Full Project GitOps Adoption (Exercises 4.8 & 4.9)
-- [ ] **Goal:** Transition the main application to a full GitOps workflow with environment promotion.
-- [ ] **Actions:**
-    - [ ] Migrate the main project to GitOps for the `main` branch (Ex 4.8).
-    - [ ] Establish `staging` and `production` environments with GitOps promotion (Ex 4.9).
+### Phase 5: Full Project GitOps Adoption (Exercises 4.8 & 4.9) - ✅ COMPLETE (4.8)
+- [x] **Goal:** Transition the main application to a full GitOps workflow with environment promotion.
+- [x] **Actions:**
+    - [x] Migrate the main project to GitOps for the `main` branch (Ex 4.8).
+    - [ ] **Establish Staging Environment & Promotion Workflow (Ex 4.9):**
+        - [ ] **Architecture:** Create a high-fidelity `staging` environment with a dedicated `staging` namespace and a separate DBaaS instance for data isolation.
+        - [ ] **Routing:** Implement unique hostnames for `staging` and `production` (e.g., `staging.domain.com`) to prevent ingress routing conflicts.
+        - [ ] **Validation Pipeline:** Automate the execution of the advanced testing suite (L2/L3 tests from Phase 6) against the staging environment after every deployment.
+        - [ ] **Monitoring Verification:** Validate Prometheus/Grafana monitoring as part of the staging pipeline to ensure observability is functional before promotion.
+        - [ ] **Promotion:** Develop an automated or manual process to promote validated changes from `staging` to `production`.
 
 ### Phase 6: Production Hardening & CI/CD Optimization
-- [ ] **Goal:** Improve the reliability, performance, and security of the production environment and CI/CD pipeline.
+- [ ] **Goal:** Improve reliability, performance, and security by validating changes in a dedicated staging environment before production promotion.
 - [ ] **Actions:**
+    - [ ] **Observability:** Validate and re-establish Prometheus and Grafana monitoring in the staging environment.
     - [ ] **Production Readiness:** Migrate production database to DBaaS.
     - [ ] **CI/CD Health:** Investigate and fix the failing documentation deployment workflow.
-    - [ ] **CI/CD Reliability:** Implement the advanced, multi-layered testing strategy ([ADR](./tmp/Future%20Research/TESTING_STRATEGY_ADR.md)) to improve confidence and catch integration issues earlier.
+    - [ ] **CI/CD Reliability (Validated in Staging):** Implement the advanced, multi-layered testing strategy ([ADR](./tmp/Future%20Research/TESTING_STRATEGY_ADR.md)) to improve confidence and catch integration issues earlier.
         - [ ] **L1:** Standardize and enforce unit test coverage.
         - [ ] **L2:** Implement service-level integration tests (e.g., backend-db-nats).
         - [ ] **L3:** Develop a full end-to-end (E2E) workflow test.
@@ -91,6 +97,7 @@
 - [ ] **Documentation:** Automate OpenAPI documentation publishing.
 
 ## Recently Completed
+- [x] **GitOps Migration - Main Application (Exercise 4.8):** Successfully transitioned the entire todo-application stack to a fully automated GitOps workflow using ArgoCD. Established a pure GitOps pattern where all production deployments are triggered by Git commits, managed by a single ArgoCD Application, and automatically synced to the cluster. The new workflow (Code → Build → Git Commit → ArgoCD Sync → Deployment) eliminates manual kubectl operations, provides a complete audit trail, and enables self-healing configuration drift correction. This foundational implementation paves the way for multi-environment promotion strategies.
 - [x] **GitOps Migration - Log Output Service (Exercise 4.7):** Successfully implemented complete GitOps workflow using ArgoCD, Kustomize, and GitHub Actions. Established automated deployment pipeline (Code → Build → Manifest Update → ArgoCD Sync → Deployment) with zero-downtime deployments. Created reusable base + overlay pattern for Kubernetes manifests, implemented CI/CD automation with Azure ACR integration, and achieved end-to-end validation. ArgoCD accessible at https://20.54.1.117 with operational GitOps foundation ready for scaling to additional services. Implementation serves as proven pattern for future service migrations.
 - [x] **Broadcaster Service with NATS Integration (Exercise 4.6):** Implemented comprehensive event-driven architecture with NATS message broker integration. Created broadcaster service that consumes todo events and publishes webhooks to external systems. Established Azure Managed Prometheus monitoring with custom metrics (broadcaster_messages_processed_total, broadcaster_webhook_errors_total). Deployed production-ready monitoring dashboard in Azure Managed Grafana with real-time visualization of message flow from backend → NATS → broadcaster → webhook delivery. Fixed configuration alignment for consistent port usage (8002) across all service components.
 - [x] **E2E Test Enhancement for "Done" Feature:** Implemented comprehensive E2E test suite enhancement with 4 new test cases covering complete user journeys for marking todos as "Done". Established production-grade data cleanup infrastructure with advanced HTMX compatibility solutions. Achieved 100% test success rate (20/20 tests passing) with zero regressions and industry-leading technical innovations.
