@@ -40,13 +40,13 @@ patches:
     name: nats
 - patch: |-
     - op: replace
-      path: /spec/template/spec/containers/0/env/3/value
+      path: /spec/template/spec/containers/0/env/4/value
       value: "kubemooc-postgres-prod.postgres.database.azure.com"
     - op: replace
-      path: /spec/template/spec/containers/0/env/6/valueFrom/secretKeyRef/name
+      path: /spec/template/spec/containers/0/env/7/valueFrom/secretKeyRef/name
       value: "postgres-secret-prod"
     - op: replace
-      path: /spec/template/spec/containers/0/env/7/valueFrom/secretKeyRef/name
+      path: /spec/template/spec/containers/0/env/8/valueFrom/secretKeyRef/name
       value: "postgres-secret-prod"
   target:
     kind: Deployment
