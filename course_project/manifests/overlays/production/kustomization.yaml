@@ -55,13 +55,13 @@ patches:
 images:
 - name: kubemooc.azurecr.io/broadcaster
   newName: kubemooc.azurecr.io/broadcaster
-  newTag: main-c1e1d4da9615c9876e30d51f02c97f230f21a860
+  newTag: main-d869c7ddebf0eb26c406374d868bd873dd604800
 - name: kubemooc.azurecr.io/todo-app-be
   newName: kubemooc.azurecr.io/todo-app-be
-  newTag: main-c1e1d4da9615c9876e30d51f02c97f230f21a860
+  newTag: main-d869c7ddebf0eb26c406374d868bd873dd604800
 - name: kubemooc.azurecr.io/todo-app-cron
   newName: kubemooc.azurecr.io/todo-app-cron
-  newTag: main-c1e1d4da9615c9876e30d51f02c97f230f21a860
+  newTag: main-d869c7ddebf0eb26c406374d868bd873dd604800
 - name: kubemooc.azurecr.io/todo-app-fe
   newName: kubemooc.azurecr.io/todo-app-fe
-  newTag: main-c1e1d4da9615c9876e30d51f02c97f230f21a860
+  newTag: main-d869c7ddebf0eb26c406374d868bd873dd604800
