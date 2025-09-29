@@ -13,6 +13,7 @@ spec:
       labels:
         app: todo-app-be
     spec:
+      serviceAccountName: postgres-service-account
       containers:
         - name: todo-backend
           # WARNING: This image tag is automatically updated by CI/CD pipeline
