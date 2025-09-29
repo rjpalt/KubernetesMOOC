@@ -1,4 +1,4 @@
-"""NATS service for publishing todo events."""
+"""NATS service for publishing todo events, because we like it."""
 
 import json
 import logging
