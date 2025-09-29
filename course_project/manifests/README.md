@@ -70,6 +70,221 @@ manifests/
         └── kustomization.yaml     # Production-specific configuration (ArgoCD sync target)
 ```
 
+## Azure Workload Identity Authentication Architecture
+
+### Overview
+
+The application uses **Azure Workload Identity** to provide secure, credential-free access to Azure Key Vault secrets. This modern authentication mechanism eliminates the need for long-lived secrets in containers while providing fine-grained access control and comprehensive audit trails.
+
+### Architecture Components
+
+**Azure Managed Identity**: `keyvault-identity-kube-mooc`
+- **Client ID**: `9b82dc92-8be2-4de4-90e4-e99eefb44e9f` 
+- **Principal ID**: `953496a4-698f-436b-9ee0-58ddbc3d4b64`
+- **Purpose**: Central identity for all Kubernetes service accounts accessing Key Vault
+- **Permissions**: "Key Vault Secrets User" role (get/list secrets only)
+
+**Kubernetes Service Account**: `postgres-service-account`
+- **Annotation**: `azure.workload.identity/client-id: 9b82dc92-8be2-4de4-90e4-e99eefb44e9f`
+- **Namespaces**: `project` (production), `feature-*` (development branches)
+- **Purpose**: Links Kubernetes pods to Azure managed identity
+
+**AKS OIDC Issuer**: `https://northeurope.oic.prod-aks.azure.com/[tenant-id]/[cluster-id]/`
+- **Purpose**: Issues cryptographically signed tokens for service accounts
+- **Trust Relationship**: Azure AD validates tokens against this issuer
+
+### Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant Pod as Kubernetes Pod
+    participant SA as Service Account Token
+    participant CSI as CSI Secrets Store
+    participant AAD as Azure AD
+    participant KV as Key Vault
+    
+    Pod->>SA: Mount service account token
+    Pod->>CSI: Request secret via SecretProviderClass
+    CSI->>AAD: Present service account token + client ID
+    AAD->>AAD: Validate token signature & federated credential
+    AAD->>CSI: Issue Azure access token
+    CSI->>KV: Request secrets with access token
+    KV->>KV: Validate RBAC permissions
+    KV->>CSI: Return secret values
+    CSI->>Pod: Mount secrets as Kubernetes secret
+```
+
+**Step-by-Step Process**:
+1. **Pod Initialization**: Kubernetes mounts service account token into pod
+2. **Secret Request**: CSI Secrets Store driver reads `SecretProviderClass` configuration
+3. **Token Exchange**: Driver presents service account token to Azure AD with managed identity client ID
+4. **Token Validation**: Azure AD validates token signature against AKS OIDC issuer
+5. **Federated Credential Lookup**: Azure AD matches token subject to federated credential
+6. **Access Token Issuance**: Azure AD issues short-lived Azure access token for managed identity
+7. **Key Vault Authentication**: CSI driver uses access token to authenticate to Key Vault
+8. **Permission Validation**: Key Vault validates RBAC role assignment
+9. **Secret Retrieval**: Key Vault returns requested secret values
+10. **Kubernetes Integration**: CSI driver creates Kubernetes secret for pod consumption
+
+### Federated Identity Credentials
+
+**Production Environment** (`project` namespace):
+```yaml
+Credential Name: postgres-workload-identity
+Subject: system:serviceaccount:project:postgres-service-account
+Issuer: [AKS OIDC Issuer URL]
+Purpose: Production database secret access
+```
+
+**Development Environments** (feature branches):
+```yaml
+Credential Name: keyvault-workload-identity-ex-[branch]
+Subject: system:serviceaccount:feature-[branch]:postgres-service-account  
+Issuer: [AKS OIDC Issuer URL]
+Purpose: Development database secret access
+```
+
+**Multi-Environment Strategy**:
+- **Single Managed Identity**: One identity serves all environments
+- **Multiple Federated Credentials**: Separate trust relationships per namespace
+- **Namespace Isolation**: Each environment can only access its designated secrets
+- **Branch-Specific Access**: Feature branches get isolated credential sets
+
+### Secret Provider Classes
+
+**Production Configuration**:
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: postgres-secret-provider-prod
+  namespace: project
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"          # Modern workload identity
+    useVMManagedIdentity: "false"    # Federated credential authentication
+    clientID: "9b82dc92-8be2-4de4-90e4-e99eefb44e9f"
+    keyvaultName: "kv-kubemooc-1754386572"
+    objects: |
+      array:
+        - objectName: postgres-user-prod
+          objectType: secret
+        - objectName: postgres-password-prod
+          objectType: secret
+  secretObjects:
+  - secretName: postgres-secret-prod
+    type: Opaque
+    data:
+    - objectName: postgres-user-prod
+      key: USER
+    - objectName: postgres-password-prod
+      key: PASSWORD
+```
+
+**Development Configuration**:
+- **SecretProviderClass**: `postgres-secret-provider` (base configuration)
+- **Secrets**: `postgres-user`, `postgres-password` (development credentials)
+- **Target**: `postgres-secret` Kubernetes secret
+
+### Deployment Integration
+
+**Backend Deployment Configuration**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app-be
+spec:
+  template:
+    spec:
+      serviceAccountName: postgres-service-account  # Links to Azure identity
+      containers:
+      - name: todo-backend
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret-prod  # Created by SecretProviderClass
+              key: USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret-prod
+              key: PASSWORD
+        volumeMounts:
+        - name: secrets-store-prod
+          mountPath: "/mnt/secrets-store-prod"
+          readOnly: true
+      volumes:
+      - name: secrets-store-prod
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: "postgres-secret-provider-prod"
+```
+
+### Security Architecture
+
+**Zero Trust Principles**:
+- **No Long-Lived Secrets**: No passwords, API keys, or certificates in containers
+- **Identity-Based Authentication**: Cryptographic proof via OIDC tokens
+- **Short-Lived Tokens**: 15-minute default lifetime with automatic refresh
+- **Principle of Least Privilege**: Minimal Key Vault permissions
+- **Namespace Isolation**: Federated credentials restrict cross-namespace access
+
+**Audit and Monitoring**:
+- **Azure Monitor**: All Key Vault access logged with correlation IDs
+- **Kubernetes Events**: Service account token issuance and pod startup events
+- **CSI Driver Logs**: Secret mounting operations and authentication failures
+- **Error Correlation**: Trace IDs link authentication failures across systems
+
+### Troubleshooting Guide
+
+**Common Error**: `AADSTS700213: No matching federated identity record found`
+
+**Root Cause**: Service account name mismatch between deployment and federated credential
+
+**Diagnostic Steps**:
+```bash
+# 1. Verify service account annotation
+kubectl get serviceaccount postgres-service-account -n project -o yaml
+
+# 2. Check federated credential configuration  
+az identity federated-credential list --identity-name keyvault-identity-kube-mooc
+
+# 3. Validate subject format: system:serviceaccount:[namespace]:[service-account-name]
+
+# 4. Check deployment configuration
+kubectl get deployment todo-app-be -n project -o yaml | grep serviceAccountName
+
+# 5. Review pod events for authentication failures
+kubectl describe pod [pod-name] -n project
+```
+
+**Authentication Chain Validation**:
+```bash
+Pod → Service Account → Federated Credential → Managed Identity → Key Vault RBAC → Secrets
+```
+
+Each component must be correctly configured for the authentication flow to succeed.
+
+### Database Migration Context
+
+**Production Database Migration**: The Azure Workload Identity system enables secure migration from in-cluster PostgreSQL to Azure Database for PostgreSQL:
+
+- **Schema Migration**: Production secrets (`postgres-user-prod`, `postgres-password-prod`) stored in Key Vault
+- **Environment Separation**: Production uses Azure DBaaS, development uses in-cluster PostgreSQL
+- **Zero-Downtime Rotation**: Secrets can be rotated in Key Vault without pod restarts
+- **Multi-Environment Support**: Same authentication system supports both database architectures
+
+**Migration Benefits**:
+- ✅ **Credential Security**: Database passwords never stored in Git or container images
+- ✅ **Rotation Support**: Key Vault rotation integrates with Kubernetes secret refresh
+- ✅ **Environment Parity**: Same authentication mechanism across dev/staging/production
+- ✅ **Audit Compliance**: Complete access trail for production database credentials
+
 ## NATS Message Bus Infrastructure
 
 ### Architecture Overview
