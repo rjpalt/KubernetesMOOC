@@ -31,22 +31,22 @@
 - [x] **Actions:**
     - [x] Migrate the main project to GitOps for the `main` branch (Ex 4.8).
     - [ ] **Establish Staging Environment & Promotion Workflow (Ex 4.9):**
-        - [ ] **Architecture:** Create a high-fidelity `staging` environment with a dedicated `staging` namespace and a separate DBaaS instance for data isolation.
-        - [ ] **Routing:** Implement unique hostnames for `staging` and `production` (e.g., `staging.domain.com`) to prevent ingress routing conflicts.
-        - [ ] **Validation Pipeline:** Automate the execution of the advanced testing suite (L2/L3 tests from Phase 6) against the staging environment after every deployment.
-        - [ ] **Monitoring Verification:** Validate Prometheus/Grafana monitoring as part of the staging pipeline to ensure observability is functional before promotion.
-        - [ ] **Promotion:** Develop an automated or manual process to promote validated changes from `staging` to `production`.
+        - [ ] **Epic 1: Foundational Infrastructure Hardening**
+            - [ ] **Work Package 1.1: Production DBaaS Migration:** Migrate the production database to a dedicated, managed DBaaS instance.
+            - [ ] **Work Package 1.2: Staging Environment Scaffolding:** Create the `staging` namespace, Kustomize overlay, and configure a separate database and unique ingress routing.
+        - [ ] **Epic 2: Staging Environment CI/CD Integration & Validation**
+            - [ ] **Work Package 2.1: Automated Staging Deployment:** Create a CI/CD workflow (triggered on merge to `main`) that deploys release candidates to the `staging` GitHub environment.
+            - [ ] **Work Package 2.2: Advanced Test Suite Integration:** Integrate L2 (service integration) and L3 (E2E) smoke tests into the staging deployment pipeline.
+        - [ ] **Epic 3: Production Promotion & Workflow Optimization**
+            - [ ] **Work Package 3.1: Staging-to-Production Promotion:** Implement a manual promotion process using a `production` GitHub environment that triggers an Argo Rollouts canary deployment.
 
 ### Phase 6: Production Hardening & CI/CD Optimization
 - [ ] **Goal:** Improve reliability, performance, and security by validating changes in a dedicated staging environment before production promotion.
 - [ ] **Actions:**
     - [ ] **Observability:** Validate and re-establish Prometheus and Grafana monitoring in the staging environment.
-    - [ ] **Production Readiness:** Migrate production database to DBaaS.
-    - [ ] **CI/CD Health:** Investigate and fix the failing documentation deployment workflow.
-    - [ ] **CI/CD Reliability (Validated in Staging):** Implement the advanced, multi-layered testing strategy ([ADR](./tmp/Future%20Research/TESTING_STRATEGY_ADR.md)) to improve confidence and catch integration issues earlier.
-        - [ ] **L1:** Standardize and enforce unit test coverage.
-        - [ ] **L2:** Implement service-level integration tests (e.g., backend-db-nats).
-        - [ ] **L3:** Develop a full end-to-end (E2E) workflow test.
+    - [ ] **Production Readiness:** Execute **Work Package 1.1 (Production DBaaS Migration)**.
+    - [ ] **CI/CD Health:** Disable the failing documentation deployment workflow to reduce pipeline noise.
+    - [ ] **CI/CD Reliability (Validated in Staging):** Execute **Work Package 2.2 (Advanced Test Suite Integration)**. This requires QA expertise to define comprehensive L2/L3 smoke tests.
     - [ ] **CI/CD Performance:** Parallelize `course_project` image push jobs to reduce pipeline execution time.
     - [ ] **Frontend Security:** Fix frontend internal API exposure without breaking backend functionality.
 

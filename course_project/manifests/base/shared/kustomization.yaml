@@ -6,4 +6,5 @@ resources:
 - httproute.yaml
 - namespace.yaml
 - secret-provider-class.yaml
+- secret-provider-class-prod.yaml
 - serviceaccount.yaml

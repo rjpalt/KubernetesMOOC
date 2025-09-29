@@ -83,3 +83,14 @@ spec:
             limits:
               cpu: "300m"
               memory: "256Mi"
+          volumeMounts:
+            - name: secrets-store-prod
+              mountPath: "/mnt/secrets-store-prod"
+              readOnly: true
+      volumes:
+        - name: secrets-store-prod
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "postgres-secret-provider-prod"
