@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: staging
+  labels:
+    app.kubernetes.io/name: staging
+    app.kubernetes.io/part-of: todo-app
+    environment: staging
+    gateway-access: allowed
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-service-account
+  namespace: staging
+  annotations:
+    azure.workload.identity/client-id: "9b82dc92-8be2-4de4-90e4-e99eefb44e9f"
+  labels:
+    azure.workload.identity/use: "true"
