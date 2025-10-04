@@ -1,5 +1,6 @@
 ---
 mode: agent
+tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'extensions', 'todos', 'runTests', 'search']
 ---
 Perform a session history dump. Create a concise summary of this thread for your future self, capturing the primary objectives, key steps taken, and the rationale behind our decisions. The goal is to create a memory file that will allow you to instantly resume this session's context later.
 
