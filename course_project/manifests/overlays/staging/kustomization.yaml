@@ -1,0 +1,127 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Staging overlay - used for deploying to staging namespace
+# Usage: 
+#   cd course_project/manifests/overlays/staging
+#   kustomize edit set image [images...]
+#   kustomize build . | kubectl apply -f -
+
+namespace: staging
+
+resources:
+- ../../base/shared/
+- ../../base/todo-be/
+- ../../base/todo-fe/
+- ../../base/nats/
+- ../../base/broadcaster/
+- namespace.yaml
+- serviceaccount.yaml
+- resourcequota.yaml
+- hpa-backend.yaml
+- hpa-frontend.yaml
+- hpa-broadcaster.yaml
+
+
+# Patch HTTPRoute for AGC gateway with hostname-based routing, frontend for clean URLs (no path prefix), and NATS for cost optimization
+patches:
+- patch: |-
+    - op: replace
+      path: /spec/parentRefs
+      value:
+        - name: agc-feature-gateway
+          namespace: agc-shared
+    - op: add
+      path: /spec/hostnames
+      value:
+        - "staging.23.98.101.23.nip.io"
+    - op: replace
+      path: /spec/rules
+      value:
+        - matches:
+          - path:
+              type: PathPrefix
+              value: /be-health
+          backendRefs:
+            - name: todo-app-be-svc
+              port: 2506
+        - matches:
+          - path:
+              type: PathPrefix
+              value: /docs
+          backendRefs:
+            - name: todo-app-be-svc
+              port: 2506
+        - matches:
+          - path:
+              type: PathPrefix
+              value: /api
+          backendRefs:
+            - name: todo-app-be-svc
+              port: 2506
+        - matches:
+          - path:
+              type: PathPrefix
+              value: /image
+          backendRefs:
+            - name: todo-app-fe-svc
+              port: 2507
+        - matches:
+          - path:
+              type: PathPrefix
+              value: /todos
+          backendRefs:
+            - name: todo-app-fe-svc
+              port: 2507
+        - matches:
+          - path:
+              type: PathPrefix
+              value: /
+          backendRefs:
+            - name: todo-app-fe-svc
+              port: 2507
+  target:
+    kind: HTTPRoute
+    name: todo-app
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/env/3/value
+      value: ""
+  target:
+    kind: Deployment
+    name: todo-app-fe
+- path: nats-staging-patch.yaml
+- patch: |-
+    - op: replace
+      path: /spec/ingress/1/from/0/namespaceSelector/matchLabels/kubernetes.io~1metadata.name
+      value: staging
+  target:
+    kind: NetworkPolicy
+    name: nats
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/env/4/value
+      value: "kubemooc-postgres-feature.postgres.database.azure.com"
+    - op: replace
+      path: /spec/template/spec/containers/0/env/7/valueFrom/secretKeyRef/name
+      value: "postgres-secret-staging"
+    - op: replace
+      path: /spec/template/spec/containers/0/env/8/valueFrom/secretKeyRef/name
+      value: "postgres-secret-staging"
+  target:
+    kind: Deployment
+    name: todo-app-be
+
+images:
+- name: kubemooc.azurecr.io/broadcaster
+  newName: kubemooc.azurecr.io/broadcaster
+  newTag: staging-PLACEHOLDER
+- name: kubemooc.azurecr.io/todo-app-be
+  newName: kubemooc.azurecr.io/todo-app-be
+  newTag: staging-PLACEHOLDER
+- name: kubemooc.azurecr.io/todo-app-cron
+  newName: kubemooc.azurecr.io/todo-app-cron
+  newTag: staging-PLACEHOLDER
+- name: kubemooc.azurecr.io/todo-app-fe
+  newName: kubemooc.azurecr.io/todo-app-fe
+  newTag: staging-PLACEHOLDER

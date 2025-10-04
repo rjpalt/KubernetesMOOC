@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nats
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: nats
+      app.kubernetes.io/name: nats
+  serviceName: nats-headless
+  replicas: 1  # Single replica for staging (cost optimization)
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "7777"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: nats
+        args:
+          - "--cluster_name=staging-nats-cluster"
+          - "--http_port=8222"
+          - "--port=4222"
+          # No cluster routes needed for single replica
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        env:
+        - name: NATS_CLUSTER_NAME
+          value: "staging-cluster"
+  volumeClaimTemplates:
+  - metadata:
+      name: nats-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi  # Minimal storage for staging
