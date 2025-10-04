@@ -4,14 +4,16 @@ This directory contains Kubernetes manifests organized for GitOps deployment via
 
 ## GitOps Architecture Overview
 
-**Current State**: All production deployments are managed by ArgoCD following pure GitOps principles:
+**Current State**: Production and staging environments are managed by ArgoCD following pure GitOps principles:
 
 - **Git as Source of Truth**: All infrastructure changes committed to this repository
-- **Automated Sync**: ArgoCD Application monitors `overlays/production/` and syncs automatically
+- **Automated Sync**: ArgoCD Applications monitor respective overlays and sync automatically
 - **Self-Healing**: Configuration drift is automatically corrected
 - **Audit Trail**: Complete deployment history preserved in Git commits
 
-**ArgoCD Application**: Managed via [`cluster-manifests/main-app.yaml`](../../cluster-manifests/main-app.yaml)
+**ArgoCD Applications**: 
+- Production: [`cluster-manifests/main-app.yaml`](../../cluster-manifests/main-app.yaml) → `overlays/production/`
+- Staging: [`cluster-manifests/argocd-application-staging.yaml`](../../cluster-manifests/argocd-application-staging.yaml) → `overlays/staging/`
 
 ## Directory Structure
 
@@ -49,25 +51,170 @@ manifests/
 │       ├── secret-template.yaml  # Webhook URL configuration
 │       └── kustomization.yaml    # Base resource list
 └── overlays/                      # Environment-specific overrides
-    ├── development/               # Development environment settings
-    ├── feature/                   # Feature branch application manifests
-    ├── production/                # Production application manifests  
-    ├── staging/                   # Staging environment settings
+    ├── feature/                   # Feature branch application manifests (Azure Function managed)
+    │   ├── kustomization.yaml     # Dynamic BRANCH_NAME placeholders
+    │   └── nats-feature-patch.yaml
+    ├── staging/                   # Staging environment settings (✅ ArgoCD managed)
+    │   ├── kustomization.yaml     # Main staging orchestrator
+    │   ├── resourcequota.yaml     # 2000m CPU, 2048Mi memory limits
+    │   ├── hpa-backend.yaml       # Backend autoscaling (1-2 replicas)
+    │   ├── hpa-frontend.yaml      # Frontend autoscaling (1-2 replicas)
+    │   ├── hpa-broadcaster.yaml   # Broadcaster autoscaling (1-2 replicas)
+    │   └── nats-staging-patch.yaml # Single-replica NATS for cost optimization
+    ├── production/                # Production environment settings (✅ ArgoCD managed)
+    │   ├── nats/                  # NATS production overlay
+    │   │   ├── nats-prod-patch.yaml
+    │   │   └── kustomization.yaml
+    │   ├── hpa-backend.yaml       # Backend autoscaling (1-5 replicas)
+    │   ├── hpa-frontend.yaml      # Frontend autoscaling (1-3 replicas)
+    │   ├── hpa-broadcaster.yaml   # Broadcaster autoscaling (1-5 replicas)
+    │   ├── resourcequota.yaml     # 3000m CPU, 3072Mi memory limits
+    │   └── kustomization.yaml     # Production configuration (ArgoCD sync target)
     ├── azure-feature/             # Azure monitoring for feature branches
+    │   ├── ama-metrics-settings.yaml
+    │   ├── ama-metrics-prometheus-config.yaml
+    │   └── kustomization.yaml
     └── azure-production/          # Azure monitoring for production
-    │   └── nats/                  # NATS development overlay
-    │       ├── nats-dev-patch.yaml
-    │       └── kustomization.yaml
-    ├── staging/                   # Staging environment settings (planned for Ex 4.9)
-    └── production/                # Production environment settings (✅ ArgoCD managed)
-        ├── nats/                  # NATS production overlay
-        │   ├── nats-prod-patch.yaml
-        │   └── kustomization.yaml
-        ├── hpa-backend.yaml       # Backend autoscaling (1-5 replicas)
-        ├── hpa-frontend.yaml      # Frontend autoscaling (1-3 replicas)
-        ├── hpa-broadcaster.yaml   # Broadcaster autoscaling (1-5 replicas)
-        ├── resourcequota.yaml     # Resource limits
-        └── kustomization.yaml     # Production-specific configuration (ArgoCD sync target)
+        ├── ama-metrics-settings.yaml
+        ├── ama-metrics-prometheus-config.yaml
+        └── kustomization.yaml
+```
+
+## Base Shared Resources
+
+### Overview
+
+The `base/shared/` directory contains environment-agnostic resources that are shared across all deployments (feature, staging, production). These resources are included by all overlays and transformed to match the target namespace.
+
+### Namespace and ServiceAccount
+
+**Purpose**: Provides the foundation for workload identity and namespace isolation.
+
+**Files**:
+- `namespace.yaml`: Defines the base namespace (transformed by overlays)
+- `serviceaccount.yaml`: PostgreSQL ServiceAccount with Azure Workload Identity annotation
+
+**ServiceAccount Configuration**:
+```yaml
+metadata:
+  name: postgres-service-account
+  annotations:
+    azure.workload.identity/client-id: 9b82dc92-8be2-4de4-90e4-e99eefb44e9f
+```
+
+**How It Works**:
+- Base namespace name (`project`) gets transformed to target namespace (`staging`, `feature-x`)
+- ServiceAccount annotation enables passwordless Azure authentication
+- Kustomize namespace transformation applies to both resources automatically
+
+### HTTPRoute Configuration
+
+**Purpose**: Defines the routing rules for external access to frontend and backend services.
+
+**File**: `ingress.yaml` (HTTPRoute resource)
+
+**Base Configuration**:
+```yaml
+kind: HTTPRoute
+metadata:
+  name: todo-app-route
+spec:
+  parentRefs:
+    - name: gateway  # Production uses actual gateway
+  rules:
+    - Frontend: / → todo-frontend-svc:8080
+    - Backend API: /api/* → todo-backend-svc:8002  
+    - Health: /be-health → todo-backend-svc:8002
+```
+
+**Environment Customization**:
+- **Production**: Path-based routing (`/project/*`), uses production gateway
+- **Staging**: Hostname-based routing (`staging.nip.io`), uses AGC gateway
+- **Feature**: Hostname-based routing (`feature-x.nip.io`), uses AGC gateway
+
+Each overlay patches the HTTPRoute for environment-specific gateway and routing configuration.
+
+### Azure Key Vault Integration (SecretProviderClass)
+
+**Purpose**: Enables secure, passwordless access to database credentials stored in Azure Key Vault.
+
+**Files**:
+- `secret-provider-class-staging.yaml`: Staging environment Key Vault integration
+- (Future: Production SecretProviderClass when production migrates to DBaaS)
+
+**Staging SecretProviderClass Configuration**:
+```yaml
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: postgres-secret-provider-staging
+  namespace: staging  # Must match target namespace
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "false"  
+    clientID: "9b82dc92-8be2-4de4-90e4-e99eefb44e9f"  # Workload Identity
+    keyvaultName: "kv-kubemooc-1754386572"
+    tenantId: "b7cff52d-a4ec-4367-903c-5cf05c061aca"
+    objects: |
+      array:
+        - objectName: "postgres-user-staging"
+          objectType: "secret"
+        - objectName: "postgres-password-staging"
+          objectType: "secret"
+  secretObjects:
+    - secretName: postgres-secret-staging
+      type: Opaque
+      data:
+        - objectName: postgres-user-staging
+          key: USER
+        - objectName: postgres-password-staging
+          key: PASSWORD
+```
+
+**How It Works**:
+1. **CSI Driver Mount**: Backend deployment mounts SecretProviderClass as volume
+2. **Workload Identity**: ServiceAccount annotation enables Azure authentication
+3. **Key Vault Access**: CSI driver fetches secrets from Azure Key Vault
+4. **Kubernetes Secret**: Secrets synchronized to `postgres-secret-staging`
+5. **Environment Variables**: Backend reads `USER` and `PASSWORD` from secret
+
+**Security Benefits**:
+- No passwords in Git or manifests
+- Automatic secret rotation capability
+- Centralized secret management
+- Audit trail via Azure Key Vault logs
+
+**Prerequisites**:
+- Azure Key Vault CSI driver installed on cluster
+- Federated identity credential configured for namespace ServiceAccount
+- Key Vault access policy grants read permissions to managed identity
+
+**Environment Pattern**:
+- **Staging**: `secret-provider-class-staging.yaml` → `postgres-secret-staging`
+- **Production**: Future implementation when DBaaS migration complete
+- **Feature**: Dynamic SecretProviderClass created by Azure Function
+
+### Why Shared Resources?
+
+**Design Rationale**:
+1. **DRY Principle**: Define once, reuse across environments
+2. **Consistency**: Same resource structure across all deployments
+3. **Namespace Transformation**: Kustomize transforms names automatically
+4. **Security**: ServiceAccount annotation works across all namespaces
+5. **Maintainability**: Single source for routing and identity configuration
+
+**Overlay Pattern**:
+```yaml
+# All overlays include base/shared/
+resources:
+  - ../../base/shared/  # Namespace, ServiceAccount, HTTPRoute, SecretProviderClass
+
+# Overlays patch as needed
+patches:
+  - HTTPRoute: Update gateway and hostname
+  - (Namespace transformation handles naming automatically)
 ```
 
 ## NATS Message Bus Infrastructure
@@ -747,38 +894,227 @@ This ensures that feature branch cleanup is secure and controlled while protecti
 
 ## Environment Patterns
 
-| Environment | Replicas | Resources | Security | Purpose |
-|------------|----------|-----------|----------|---------|
-| **Development** | 1 | Minimal limits | Basic | Local testing |
-| **Staging** | 2-3 | Production-like | Enhanced | Deployment validation |
-| **Production** | 1-5 (HPA) | Strict limits | Full policies | Live workloads |
+| Environment | Namespace | Replicas | Resources | Database | GitOps | Purpose |
+|------------|-----------|----------|-----------|----------|--------|---------|
+| **Feature** | feature-{branch} | 1 | 1000m CPU, 1Gi mem | Azure DBaaS (dynamic) | No (Azure Function) | Branch testing |
+| **Staging** | staging | 1-2 (HPA) | 2000m CPU, 2Gi mem | Azure DBaaS (dedicated) | Yes (ArgoCD) | Pre-production validation |
+| **Production** | project | 1-5 (HPA) | 3000m CPU, 3Gi mem | Azure DBaaS (dedicated server) | Yes (ArgoCD) | Live workloads |
 
-## Staging Environment Architecture (Exercise 4.9)
+## Staging Environment Architecture (✅ Implemented WP 1.2)
 
-### Planned Infrastructure
+### Infrastructure Overview
 
-**Namespace Separation**: 
-- **Production**: `project` namespace
-- **Staging**: `staging` namespace (isolated resources)
+**Purpose**: Pre-production validation environment with production-like configuration at 67% capacity for cost optimization.
 
-**Database Strategy**:
-- **Production**: Azure Database for PostgreSQL (live data)
-- **Staging**: Separate Azure DBaaS instance (test data)
+**Namespace**: `staging` (isolated from production)
 
-**Routing Strategy**:
-- **Production**: `d9hqaucbbyazhfem.fz53.alb.azure.com/project/`
-- **Staging**: `staging.domain.com` (prevents routing conflicts)
+**GitOps Management**: Managed by ArgoCD via [`cluster-manifests/argocd-application-staging.yaml`](../../cluster-manifests/argocd-application-staging.yaml)
 
-**Testing Pipeline**:
-```bash
-# L2/L3 Testing in Staging
-1. Deploy to staging namespace
-2. Run comprehensive test suite
-3. Validate monitoring/alerting
-4. Promote to production via GitOps
+### Database Integration
+
+**Azure Database for PostgreSQL**:
+- **Server**: `kubemooc-postgres-feature.postgres.database.azure.com` (shared with feature branches)
+- **Database**: `todoapp_staging` (dedicated database for isolation)
+- **User**: `staging_user` with scoped permissions
+- **Authentication**: Azure Workload Identity (passwordless)
+
+**Azure Key Vault Integration**:
+- **Vault**: `kv-kubemooc-1754386572`
+- **Secrets**: `postgres-user-staging`, `postgres-password-staging`
+- **SecretProviderClass**: `postgres-secret-provider-staging` (in `base/shared/`)
+- **Kubernetes Secret**: `postgres-secret-staging` (mounted by backend pods)
+
+**Workload Identity**:
+- **Managed Identity**: `keyvault-identity-kube-mooc` (Client ID: `9b82dc92-8be2-4de4-90e4-e99eefb44e9f`)
+- **Federated Credential**: `postgres-workload-identity-staging`
+- **Subject**: `system:serviceaccount:staging:postgres-service-account`
+- **ServiceAccount Annotation**: `azure.workload.identity/client-id` enables authentication
+
+### Resource Configuration
+
+**ResourceQuota** (`overlays/staging/resourcequota.yaml`):
+```yaml
+CPU: 2000m requests / 4000m limits (67% of production)
+Memory: 2048Mi requests / 4096Mi limits
+Pods: 15 max
+Storage: 5Gi across PVCs
+ConfigMaps/Secrets: 8 each
 ```
 
-**Multi-Environment Promotion**:
-- **Feature Branch** → **Staging** → **Production**
-- **Validation Gates**: Automated testing, manual approval, monitoring verification
-- **Rollback Strategy**: ArgoCD revision history, database backups
+**Horizontal Pod Autoscaling**:
+- **Backend**: 1-2 replicas (vs 1-5 production)
+- **Frontend**: 1-2 replicas (vs 1-3 production)
+- **Broadcaster**: 1-2 replicas (vs 1-5 production)
+- **NATS**: 1 replica (vs 3 production) - cost optimized, no clustering
+
+**NATS Configuration** (`overlays/staging/nats-staging-patch.yaml`):
+- Single replica for cost savings
+- Reduced resources (250m CPU, 256Mi memory)
+- 1Gi storage (vs 10Gi production)
+- No cluster routes (single instance)
+
+### Gateway and Routing
+
+**Gateway**: Azure Application Gateway for Containers (`agc-feature-gateway` in `agc-shared` namespace)
+
+**HTTPRoute Configuration**: Hostname-based routing (not path-based like production)
+- **Hostname**: `staging.23.98.101.23.nip.io`
+- **Frontend**: `http://staging.23.98.101.23.nip.io/`
+- **Backend API**: `http://staging.23.98.101.23.nip.io/api/*`
+- **Health Check**: `http://staging.23.98.101.23.nip.io/be-health`
+
+**Why Hostname-Based Routing**:
+- Clean URLs without path prefixes (`API_BASE_PATH=""`)
+- Consistent with feature branch pattern
+- Easier to test and debug
+- Avoids frontend path rewriting complexity
+
+### Kustomize Overlay Structure
+
+**Main Orchestrator** (`overlays/staging/kustomization.yaml`):
+```yaml
+resources:
+  - ../../base/shared/          # Namespace, ServiceAccount, HTTPRoute (patched)
+  - ../../base/todo-be/
+  - ../../base/todo-fe/
+  - ../../base/nats/
+  - ../../base/broadcaster/
+  - resourcequota.yaml
+  - hpa-backend.yaml
+  - hpa-frontend.yaml
+  - hpa-broadcaster.yaml
+
+patches:
+  - HTTPRoute: Gateway + hostname configuration
+  - Frontend: Empty API_BASE_PATH for clean URLs
+  - Backend: Staging database connection
+  - NATS: Reference to nats-staging-patch.yaml
+
+images:
+  - All images: staging-PLACEHOLDER (updated by CI/CD)
+
+namespace: staging  # Transforms all resources
+```
+
+**Key Patches**:
+1. **HTTPRoute**: Switches from production gateway to `agc-feature-gateway`, adds hostname routing
+2. **Frontend Environment**: Sets `API_BASE_PATH=""` for root-level API calls
+3. **Backend Database**: Updates `POSTGRES_HOST`, `POSTGRES_USER`, `POSTGRES_PASSWORD` env vars to staging database
+4. **NATS Strategic Merge**: Applies `nats-staging-patch.yaml` for single-replica configuration
+
+### Deployment Strategy
+
+**GitOps Workflow** (Recommended):
+```bash
+# 1. Apply ArgoCD Application
+kubectl apply -f cluster-manifests/argocd-application-staging.yaml
+
+# 2. Apply namespace label (required for AGC gateway)
+kubectl label namespace staging dev-gateway-access=allowed
+
+# 3. ArgoCD syncs automatically from overlays/staging/
+# Monitor at: http://20.54.1.117 (ArgoCD UI)
+```
+
+**Manual Deployment** (Alternative):
+```bash
+# 1. Validate manifests
+kubectl kustomize overlays/staging/ | less
+
+# 2. Apply namespace label first
+kubectl label namespace staging dev-gateway-access=allowed
+
+# 3. Deploy manifests
+kubectl apply -k overlays/staging/
+```
+
+### Validation Steps
+
+**Post-Deployment Verification**:
+```bash
+# 1. Check ArgoCD sync status
+kubectl get application staging-app -n argocd
+
+# 2. Verify all pods are running
+kubectl get pods -n staging
+
+# 3. Check database connectivity
+kubectl logs -n staging deployment/todo-backend | grep "Database connected"
+
+# 4. Test HTTPRoute
+curl http://staging.23.98.101.23.nip.io/be-health
+
+# 5. Verify HPA configuration
+kubectl get hpa -n staging
+
+# 6. Check resource quota usage
+kubectl describe resourcequota -n staging
+```
+
+### Known Issues and Considerations
+
+**Namespace Label Requirement**:
+- AGC gateway requires `dev-gateway-access=allowed` label on namespace
+- Label not included in Kustomize manifests (must be applied manually or by provisioning function)
+- Feature branches receive label automatically via Azure Function
+- **Action**: Apply label manually after ArgoCD deployment or add to provisioning
+
+**Image Tag Management**:
+- All images use `staging-PLACEHOLDER` tag in manifests
+- CI/CD pipeline must update tags after building staging images
+- Recommended: Use Kustomize image transformer or ArgoCD image updater
+
+**Cost Optimization**:
+- NATS runs single replica (no high availability)
+- Acceptable for staging - restore from Git if pod fails
+- Feature flags or traffic shadowing can be used for critical validation
+
+### Comparison with Other Environments
+
+| Configuration | Feature Branches | Staging | Production |
+|--------------|------------------|---------|------------|
+| **Database Server** | kubemooc-postgres-feature | kubemooc-postgres-feature | kubemooc-postgres-prod |
+| **Database Name** | todoapp_feature_{branch} | todoapp_staging | todoapp_production |
+| **Gateway** | agc-feature-gateway | agc-feature-gateway | agc-feature-gateway |
+| **Routing Type** | Hostname (feature-x.nip.io) | Hostname (staging.nip.io) | Path-based (/project/) |
+| **Max Backend Replicas** | 1 | 2 | 5 |
+| **NATS Replicas** | 1 | 1 | 3 |
+| **CPU Requests** | 1000m | 2000m | 3000m |
+| **Memory Requests** | 1024Mi | 2048Mi | 3072Mi |
+| **Deployment Method** | Azure Function | ArgoCD | ArgoCD |
+| **Purpose** | Development testing | Pre-prod validation | Live traffic |
+
+### Multi-Environment Promotion Pipeline
+
+**Standard Flow**:
+```
+Feature Branch → Staging → Production
+```
+
+**Promotion Gates**:
+1. **Feature → Staging**: Manual trigger after feature complete
+2. **Staging → Production**: Requires validation:
+   - E2E test suite passes in staging
+   - Manual QA sign-off
+   - Database migration tested
+   - Monitoring dashboards validated
+
+**Rollback Strategy**:
+- **ArgoCD**: Revert to previous Git commit
+- **Database**: Point-in-time restore from Azure backups
+- **Manifests**: Full history preserved in Git
+
+### Future Enhancements
+
+**Planned Improvements**:
+- Automated CI/CD pipeline for staging image tag updates
+- E2E test suite running post-deployment
+- Grafana dashboard for staging-specific metrics
+- Auto-shutdown during non-business hours (cost optimization)
+- Database migration testing automation
+- Promotion pipeline with automated validation gates
+
+**Documentation**:
+- Comprehensive setup guide: `tmp/STAGING_ENVIRONMENT_SUMMARY.md`
+- Database infrastructure: `tmp/resources/Database-migration-resources.md`
+- ArgoCD template: `cluster-manifests/argocd-application-staging.yaml`
