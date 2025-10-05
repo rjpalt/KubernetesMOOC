@@ -24,7 +24,7 @@ graph TD
         G -- On Success --> H(e2e-tests.yml<br>Runs E2E Tests);
     end
 
-    subgraph "Production Deployment"
+    subgraph "Production & Staging Deployment"
         I[Merge to main] --> J(ci-production.yml<br>Parallel Testing & Push);
         J -- Tests Pass --> J1[Push Backend];
         J -- Tests Pass --> J2[Push Frontend];
@@ -32,6 +32,7 @@ graph TD
         J -- Tests Pass --> J4[Push Broadcaster];
         J1 & J2 & J3 & J4 --> J5[Build Summary];
         J5 -- On Success --> K(deploy-production.yml<br>Deploys to Production);
+        J5 -- On Success --> K2(deploy-staging.yml<br>Deploys to Staging);
     end
 
     subgraph "GitOps Automation"
@@ -185,14 +186,36 @@ Build Summary (comprehensive status)
 - **Trigger**: Runs after `ci-production.yml` completes successfully.
 - **Process**:
     1. Verifies that the images tagged `main-{commit-sha}` exist in ACR.
-    2. Applies the Kubernetes manifests to the production namespace, updating the running application to the new version.
-    3. **NEW**: Deploys Azure monitoring configuration using `azure-production` overlay.
-    4. Performs health checks to ensure the deployment was successful.
+    2. Updates production overlay kustomization with new image tags.
+    3. Commits changes to Git for ArgoCD GitOps synchronization.
+    4. **NEW**: Deploys Azure monitoring configuration using `azure-production` overlay.
+    5. Performs health checks to ensure the deployment was successful.
 - **Dependencies**: `ci-production.yml`.
+
+#### 8. `deploy-staging.yml`
+- **Purpose**: Deploys the application to the staging Kubernetes environment for pre-production validation.
+- **Trigger**: Runs after `ci-production.yml` completes successfully (parallel with production deployment).
+- **Process**:
+    1. Verifies that the tested images tagged `main-{commit-sha}` exist in ACR.
+    2. Updates staging overlay kustomization with new image tags (same images as production).
+    3. Commits changes to Git for ArgoCD GitOps synchronization.
+    4. Validates staging deployment health and generates staging URL artifact.
+    5. Creates deployment artifacts for test integration (WP 2.2).
+- **Environment**: Uses GitHub Environment `staging` for protection and secrets management.
+- **Integration Points**:
+    - **Input**: Tested images from `ci-production.yml` (same as production)
+    - **Output**: Staging URL artifact for test suite integration
+    - **ArgoCD**: `staging-app` Application syncs from `overlays/staging`
+- **Key Differences from Production**:
+    - Deploys to `staging` namespace
+    - Uses AGC feature gateway (`agc-feature-gateway`)
+    - Connects to staging database (`kubemooc-postgres-feature`)
+    - Hostname: `staging.23.98.101.23.nip.io`
+- **Dependencies**: `ci-production.yml`. Provides deployment URL for WP 2.2 test integration.
 
 ### GitOps Automation
 
-#### 8. `log-output-ci.yaml`
+#### 9. `log-output-ci.yaml`
 - **Purpose**: GitOps CI/CD pipeline for the log-output service demonstrating automated container builds and manifest updates.
 - **Trigger**: Runs on pushes to the `main` branch affecting `log_output/**` or `ping-pong/manifests/log-output/**`, with manual trigger capability.
 - **Process**:
@@ -208,7 +231,7 @@ Build Summary (comprehensive status)
 
 ### Documentation
 
-#### 9. `deploy-docs.yaml`
+#### 10. `deploy-docs.yaml`
 - **Purpose**: Automatically builds and deploys the project documentation.
 - **Trigger**: Runs on pushes to the `main` branch that include changes in the `docs/` directory.
 - **Process**:

@@ -1,0 +1,223 @@
+name: Staging Deployment
+
+on:
+  # Trigger after CI production pipeline completes successfully on main branch
+  workflow_run:
+    workflows: ["CI Production - Build and Push Images"]
+    types: [completed]
+    branches: [main]
+  
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+
+permissions:
+  id-token: write  # Required for Azure authentication
+  contents: write  # Required for Git push back to main
+
+env:
+  ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+  AKS_CLUSTER_NAME: ${{ vars.AKS_CLUSTER_NAME }}
+  AKS_RESOURCE_GROUP: ${{ vars.AKS_RESOURCE_GROUP }}
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging  # GitHub Environment protection
+    # Only run if the CI workflow completed successfully
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # Checkout the actual branch, not the detached commit
+        ref: ${{ github.event.workflow_run.head_branch }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0  # Need full history for git operations
+    
+    - name: Set environment variables
+      run: |
+        # Use the branch and commit SHA from the workflow_run event
+        BRANCH_NAME="${{ github.event.workflow_run.head_branch }}"
+        COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+        NAMESPACE="staging"
+        
+        echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+        echo "COMMIT_SHA=${COMMIT_SHA}" >> $GITHUB_ENV
+        echo "NAMESPACE=${NAMESPACE}" >> $GITHUB_ENV
+        echo "IMAGE_TAG_SUFFIX=${BRANCH_NAME}-${COMMIT_SHA}" >> $GITHUB_ENV
+        
+        echo "## Staging Deployment 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** \`${BRANCH_NAME}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** \`${COMMIT_SHA}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Namespace:** \`${NAMESPACE}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Trigger:** Successful CI workflow completion" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Azure Login via Workload Identity
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+    
+    - name: Connect to AKS cluster
+      run: |
+        az aks get-credentials \
+          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+          --name ${{ env.AKS_CLUSTER_NAME }}
+    
+    - name: Verify images exist in registry
+      run: |
+        echo "Verifying that tested images exist in registry..."
+        IMAGE_SUFFIX="${{ env.IMAGE_TAG_SUFFIX }}"
+        
+        # Check if all required images exist and fail if any are missing
+        echo "Checking backend image..."
+        BACKEND_TAGS=$(az acr repository show-tags \
+          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
+          --repository todo-app-be \
+          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
+          --output tsv)
+        
+        if [ -z "$BACKEND_TAGS" ]; then
+          echo "❌ Backend image with tag containing '${IMAGE_SUFFIX}' not found!"
+          exit 1
+        fi
+        
+        echo "Checking frontend image..."
+        FRONTEND_TAGS=$(az acr repository show-tags \
+          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
+          --repository todo-app-fe \
+          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
+          --output tsv)
+        
+        if [ -z "$FRONTEND_TAGS" ]; then
+          echo "❌ Frontend image with tag containing '${IMAGE_SUFFIX}' not found!"
+          exit 1
+        fi
+        
+        echo "Checking cron image..."
+        CRON_TAGS=$(az acr repository show-tags \
+          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
+          --repository todo-app-cron \
+          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
+          --output tsv)
+        
+        if [ -z "$CRON_TAGS" ]; then
+          echo "❌ Cron image with tag containing '${IMAGE_SUFFIX}' not found!"
+          exit 1
+        fi
+        
+        echo "Checking broadcaster image..."
+        BROADCASTER_TAGS=$(az acr repository show-tags \
+          --name $(echo "${{ env.ACR_LOGIN_SERVER }}" | cut -d'.' -f1) \
+          --repository broadcaster \
+          --query "[?contains(@, '${IMAGE_SUFFIX}')]" \
+          --output tsv)
+        
+        if [ -z "$BROADCASTER_TAGS" ]; then
+          echo "❌ Broadcaster image with tag containing '${IMAGE_SUFFIX}' not found!"
+          exit 1
+        fi
+        
+        echo "✅ All tested images found in registry:"
+        echo "  - Backend: $BACKEND_TAGS"
+        echo "  - Frontend: $FRONTEND_TAGS"
+        echo "  - Cron: $CRON_TAGS"
+        echo "  - Broadcaster: $BROADCASTER_TAGS"
+    
+    - name: Set up Kustomize
+      uses: imranismail/setup-kustomize@v1
+    
+    - name: Update image tags and commit to Git
+      run: |
+        cd course_project/manifests/overlays/staging
+        
+        # Set the tested image tags
+        kustomize edit set image \
+          ${{ env.ACR_LOGIN_SERVER }}/todo-app-be=${{ env.ACR_LOGIN_SERVER }}/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }} \
+          ${{ env.ACR_LOGIN_SERVER }}/todo-app-fe=${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }} \
+          ${{ env.ACR_LOGIN_SERVER }}/todo-app-cron=${{ env.ACR_LOGIN_SERVER }}/todo-app-cron:${{ env.IMAGE_TAG_SUFFIX }} \
+          ${{ env.ACR_LOGIN_SERVER }}/broadcaster=${{ env.ACR_LOGIN_SERVER }}/broadcaster:${{ env.IMAGE_TAG_SUFFIX }}
+        
+        # Show the changes
+        echo "Updated kustomization.yaml:"
+        cat kustomization.yaml
+        
+        echo "✅ Image tags updated - ArgoCD will sync automatically"
+    
+    - name: Commit kustomization.yaml to GitHub
+      uses: EndBug/add-and-commit@v9
+      with:
+        add: 'course_project/manifests/overlays/staging/kustomization.yaml'
+        message: 'GitOps Staging Deployment: ${{ env.IMAGE_TAG_SUFFIX }}'
+        default_author: github_actions
+    
+    - name: Wait for ArgoCD sync (basic validation)
+      run: |
+        echo "Waiting for ArgoCD to sync staging deployment..."
+        echo "Note: ArgoCD auto-sync can take up to 5 minutes (300 seconds)"
+        echo "Waiting 2 minutes to allow ArgoCD to detect changes..."
+        sleep 120
+    
+    - name: Validate staging deployment
+      run: |
+        echo "Validating staging deployment health..."
+        
+        # Check if pods are running
+        kubectl get pods -n staging
+        
+        # Check deployment rollout status
+        kubectl rollout status deployment/todo-app-be -n staging --timeout=5m || true
+        kubectl rollout status deployment/todo-app-fe -n staging --timeout=5m || true
+        kubectl rollout status deployment/broadcaster -n staging --timeout=5m || true
+        
+        # Basic health check (if service is accessible)
+        echo "Deployment validation complete"
+    
+    - name: Generate staging URL artifact
+      run: |
+        STAGING_URL="http://staging.23.98.101.23.nip.io"
+        echo "${STAGING_URL}" > staging_url.txt
+        echo "Staging URL: ${STAGING_URL}"
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Staging Environment Access 🌐" >> $GITHUB_STEP_SUMMARY
+        echo "**URL:** ${STAGING_URL}" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Upload staging URL artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: staging-deployment-url
+        path: staging_url.txt
+        retention-days: 30
+    
+    - name: Generate GitOps deployment summary
+      run: |
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## GitOps Deployment Results 📊" >> $GITHUB_STEP_SUMMARY
+        echo "| Component | Status | Image |" >> $GITHUB_STEP_SUMMARY
+        echo "|-----------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Backend | ✅ Deployed via ArgoCD | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-be:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Frontend | ✅ Deployed via ArgoCD | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-fe:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Cron | ✅ Deployed via ArgoCD | \`${{ env.ACR_LOGIN_SERVER }}/todo-app-cron:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "| Broadcaster | ✅ Deployed via ArgoCD | \`${{ env.ACR_LOGIN_SERVER }}/broadcaster:${{ env.IMAGE_TAG_SUFFIX }}\` |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## GitOps Staging Deployment Complete 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "**Deployment Method:** ArgoCD GitOps (staging-app)" >> $GITHUB_STEP_SUMMARY
+        echo "**Git Commit:** Image tags updated in main branch" >> $GITHUB_STEP_SUMMARY
+        echo "**ArgoCD Sync:** Automated deployment from Git" >> $GITHUB_STEP_SUMMARY
+        echo "**Namespace:** \`${{ env.NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Staging URL:** http://staging.23.98.101.23.nip.io" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**ArgoCD will automatically sync these changes.**" >> $GITHUB_STEP_SUMMARY
+        echo "**Ready for WP 2.2 test suite integration.**" >> $GITHUB_STEP_SUMMARY

@@ -7,7 +7,8 @@ This directory contains cluster-wide infrastructure configurations that operate 
 ```
 cluster-manifests/
 ├── README.md                           # This documentation
-├── main-app.yaml                       # ArgoCD Application for GitOps todo-app management
+├── main-app.yaml                       # ArgoCD Application for production GitOps
+├── argocd-application-staging.yaml     # ArgoCD Application for staging GitOps
 ├── argocd-server-loadbalancer.yaml     # ArgoCD UI LoadBalancer service
 ├── cluster-protection-rbac.yaml        # Cluster-wide RBAC security policies
 ├── agc-gateway.yaml                    # Azure Application Gateway for Containers
@@ -21,9 +22,13 @@ cluster-manifests/
 
 ## GitOps Infrastructure
 
-### ArgoCD Application Management (`main-app.yaml`)
+### Multi-Environment GitOps Strategy
 
-**Purpose**: Manages the complete todo-application stack via GitOps principles.
+The cluster uses ArgoCD to manage deployments across multiple environments with identical GitOps patterns but environment-specific configurations.
+
+### Production Application (`main-app.yaml`)
+
+**Purpose**: Manages production todo-application stack via GitOps principles.
 
 **Configuration**:
 ```yaml
@@ -37,26 +42,90 @@ spec:
     repoURL: https://github.com/rjpalt/KubernetesMOOC.git
     targetRevision: main
     path: course_project/manifests/overlays/production
+  destination:
+    namespace: project
 ```
 
 **Key Features**:
 - **Automated Sync**: `syncPolicy.automated` enables continuous deployment
 - **Self-Healing**: Automatically corrects configuration drift
 - **Prune Policy**: Removes resources deleted from Git
-- **Sync Windows**: Respects deployment timing constraints
 - **Ignore Rules**: Excludes HPA replica counts from sync operations
 
 **Managed Resources**: 29+ Kubernetes resources including:
 - Deployments (todo-backend, todo-frontend, broadcaster)
 - Services and networking (HTTPRoutes, Services)
-- Storage (PersistentVolumeClaims)
 - Configuration (ConfigMaps, Secrets via Azure Key Vault)
 - NATS message broker infrastructure
+
+**Infrastructure**:
+- **Database**: Azure Database for PostgreSQL (dedicated production server)
+- **Gateway**: Azure Application Gateway for Containers
+- **URL**: http://d9hqaucbbyazhfem.fz53.alb.azure.com/project/
+- **Resources**: Full production capacity (3000m CPU, 3072Mi memory)
 
 **Deployment Status**: ✅ Production Ready
 - **Sync Status**: Synced
 - **Health Status**: Healthy
 - **Last Sync**: Automated on Git commits to main branch
+
+### Staging Application (`argocd-application-staging.yaml`)
+
+**Purpose**: Manages staging environment for pre-production validation.
+
+**Configuration**:
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: staging-app
+  namespace: argocd
+  labels:
+    environment: staging
+spec:
+  source:
+    repoURL: https://github.com/rjpalt/KubernetesMOOC.git
+    targetRevision: main
+    path: course_project/manifests/overlays/staging
+  destination:
+    namespace: staging
+```
+
+**Key Features**:
+- **Identical GitOps Pattern**: Same sync policies as production
+- **Cost-Optimized**: Reduced resource limits (2000m CPU, 2048Mi memory)
+- **Isolated Database**: Separate database on shared feature server
+- **Independent Routing**: Hostname-based routing (staging.23.98.101.23.nip.io)
+
+**Managed Resources**: Same 29+ resource types as production with staging-specific configuration:
+- **HPA Limits**: maxReplicas: 2 (vs 3 in production)
+- **NATS Replicas**: 1 (vs 3 in production for cost optimization)
+- **Database**: todoapp_staging on kubemooc-postgres-feature
+- **Secrets**: postgres-secret-staging via Azure Key Vault
+
+**Infrastructure**:
+- **Database**: Azure Database for PostgreSQL (shared feature server, dedicated database)
+- **Gateway**: Azure Application Gateway for Containers (AGC)
+- **URL**: http://staging.23.98.101.23.nip.io/
+- **Resources**: 67% of production capacity
+
+**Deployment Status**: Ready for DevOps deployment
+- **Template**: Available in cluster-manifests/
+- **Validation**: Manifests validated via kustomize build
+- **Action Required**: Apply ArgoCD Application to enable GitOps
+
+### Environment Comparison
+
+| Aspect | Production | Staging | Feature Branches |
+|--------|-----------|---------|------------------|
+| **ArgoCD Managed** | Yes (main-app) | Yes (staging-app) | No (Azure Function) |
+| **Namespace** | project | staging | feature-{branch} |
+| **Database** | Production DBaaS | Feature DBaaS (dedicated DB) | Feature DBaaS (dynamic DB) |
+| **Max Replicas** | 3 | 2 | 1 |
+| **NATS Replicas** | 3 | 1 | 1 |
+| **Gateway** | AGC | AGC | AGC |
+| **Routing** | Path-based (/project/) | Hostname (staging.nip.io) | Hostname (feature-x.nip.io) |
+| **Resources** | 3000m CPU | 2000m CPU | 1000m CPU |
 
 ### ArgoCD Access (`argocd-server-loadbalancer.yaml`)
 

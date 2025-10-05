@@ -1,10 +1,24 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
+# Base shared resources - environment-agnostic components
+#
+# IMPORTANT: namespace.yaml is NOT included here (moved to overlays as of October 2025)
+# 
+# Why: Each overlay defines its own namespace to:
+#   1. Prevent Kustomize namespace transformation conflicts
+#   2. Enable environment-specific gateway labels:
+#      - Production: gateway-access=allowed (k8s-nsa2-gateway)
+#      - Staging: dev-gateway-access=allowed (agc-feature-gateway)
+#      - Feature: dev-gateway-access=allowed (agc-feature-gateway)
+#   3. Maintain clean overlay structure (no explicit file listing needed)
+#
+# See: overlays/production/namespace.yaml and overlays/staging/namespace.yaml
+
 resources:
 - health-check-be.yaml
 - health-check-fe.yaml
 - httproute.yaml
-- namespace.yaml
 - secret-provider-class.yaml
 - secret-provider-class-prod.yaml
 - serviceaccount.yaml

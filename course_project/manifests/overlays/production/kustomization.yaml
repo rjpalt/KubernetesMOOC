@@ -9,7 +9,18 @@ kind: Kustomization
 
 namespace: project
 
+# Namespace Definition (Overlay-Specific Pattern)
+#
+# namespace.yaml is defined here (not in base/shared/) because:
+#   1. Production uses k8s-nsa2-gateway which requires gateway-access=allowed label
+#   2. Prevents Kustomize transformation conflicts with base namespace
+#   3. Enables explicit per-environment gateway configuration
+#
+# Gateway: k8s-nsa2-gateway (production gateway)
+# Required Label: gateway-access=allowed
+
 resources:
+- namespace.yaml
 - ../../base/shared/
 - ../../base/todo-be/
 - ../../base/todo-fe/
@@ -38,6 +49,21 @@ patches:
   target:
     kind: NetworkPolicy
     name: nats
+
+# Backend Database Configuration Patch (Production DBaaS)
+#
+# CRITICAL: Array indices are ZERO-BASED
+# Base deployment env array:
+#   env[0] = PORT
+#   env[1] = LOG_LEVEL
+#   env[2] = KUBERNETES_NAMESPACE
+#   env[3] = POSTGRES_HOST          <- Patched here
+#   env[4] = POSTGRES_PORT
+#   env[5] = POSTGRES_DB
+#   env[6] = POSTGRES_USER          <- Patched here
+#   env[7] = POSTGRES_PASSWORD      <- Patched here
+#
+# Always verify indices in base/todo-be/deployment.yaml before modifying
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/env/3/value
