@@ -33,6 +33,21 @@ resources:
 
 
 # Patch API_BASE_PATH for production path-based routing through /project/ and add NATS production patch for HA and storage optimization
+
+# Backend Database Configuration Patch (Production DBaaS)
+#
+# CRITICAL: Array indices are ZERO-BASED
+# Base deployment env array:
+#   env[0] = PORT
+#   env[1] = LOG_LEVEL
+#   env[2] = KUBERNETES_NAMESPACE
+#   env[3] = POSTGRES_HOST          <- Patched here
+#   env[4] = POSTGRES_PORT
+#   env[5] = POSTGRES_DB
+#   env[6] = POSTGRES_USER          <- Patched here
+#   env[7] = POSTGRES_PASSWORD      <- Patched here
+#
+# Always verify indices in base/todo-be/deployment.yaml before modifying
 patches:
 - patch: |-
     - op: replace
@@ -49,21 +64,6 @@ patches:
   target:
     kind: NetworkPolicy
     name: nats
-
-# Backend Database Configuration Patch (Production DBaaS)
-#
-# CRITICAL: Array indices are ZERO-BASED
-# Base deployment env array:
-#   env[0] = PORT
-#   env[1] = LOG_LEVEL
-#   env[2] = KUBERNETES_NAMESPACE
-#   env[3] = POSTGRES_HOST          <- Patched here
-#   env[4] = POSTGRES_PORT
-#   env[5] = POSTGRES_DB
-#   env[6] = POSTGRES_USER          <- Patched here
-#   env[7] = POSTGRES_PASSWORD      <- Patched here
-#
-# Always verify indices in base/todo-be/deployment.yaml before modifying
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/env/3/value
@@ -81,13 +81,13 @@ patches:
 images:
 - name: kubemooc.azurecr.io/broadcaster
   newName: kubemooc.azurecr.io/broadcaster
-  newTag: main-d869c7ddebf0eb26c406374d868bd873dd604800
+  newTag: main-5a5f29fc3f870f3c764e2afd3738e5e59230cb8a
 - name: kubemooc.azurecr.io/todo-app-be
   newName: kubemooc.azurecr.io/todo-app-be
-  newTag: main-d869c7ddebf0eb26c406374d868bd873dd604800
+  newTag: main-5a5f29fc3f870f3c764e2afd3738e5e59230cb8a
 - name: kubemooc.azurecr.io/todo-app-cron
   newName: kubemooc.azurecr.io/todo-app-cron
-  newTag: main-d869c7ddebf0eb26c406374d868bd873dd604800
+  newTag: main-5a5f29fc3f870f3c764e2afd3738e5e59230cb8a
 - name: kubemooc.azurecr.io/todo-app-fe
   newName: kubemooc.azurecr.io/todo-app-fe
-  newTag: main-d869c7ddebf0eb26c406374d868bd873dd604800
+  newTag: main-5a5f29fc3f870f3c764e2afd3738e5e59230cb8a
