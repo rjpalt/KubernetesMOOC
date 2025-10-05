@@ -1,0 +1,16 @@
+# Production Namespace Definition
+#
+# This namespace is defined in the production overlay (not base/shared/) to:
+#   1. Enable production-specific gateway label (gateway-access=allowed)
+#   2. Prevent Kustomize transformation conflicts
+#   3. Support k8s-nsa2-gateway routing requirements
+#
+# Gateway: k8s-nsa2-gateway (production gateway)
+# Routing: Path-based via /project/* prefix
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: project
+  labels:
+    gateway-access: allowed  # REQUIRED for k8s-nsa2-gateway HTTPRoute access

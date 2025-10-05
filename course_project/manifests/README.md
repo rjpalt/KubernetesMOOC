@@ -86,12 +86,31 @@ manifests/
 
 The `base/shared/` directory contains environment-agnostic resources that are shared across all deployments (feature, staging, production). These resources are included by all overlays and transformed to match the target namespace.
 
-### Namespace and ServiceAccount
+**Important**: The `base/shared/` directory **does not** contain a namespace manifest. Each overlay defines its own namespace to prevent Kustomize transformation conflicts and enable environment-specific gateway labels.
 
-**Purpose**: Provides the foundation for workload identity and namespace isolation.
+### Namespace Strategy (Updated October 2025)
+
+**Architecture Pattern**: Each overlay defines its own namespace manifest instead of using a shared base namespace.
+
+**Rationale**:
+- **Kustomize Conflict Prevention**: Base namespace would be transformed by `namespace:` directive, causing conflicts with overlay-specific namespaces
+- **Gateway Label Requirements**: Different gateways require different namespace labels:
+  - Production (`k8s-nsa2-gateway`): requires `gateway-access: allowed`
+  - Staging (`agc-feature-gateway`): requires `dev-gateway-access: allowed`
+  - Feature branches (`agc-feature-gateway`): require `dev-gateway-access: allowed`
+- **Maintainability**: No need for explicit file listing in overlays - can use `../../base/shared/` reference
+- **GitOps Clarity**: Each environment's namespace is explicitly defined in its overlay
+
+**Implementation**:
+- `overlays/production/namespace.yaml`: Defines `project` namespace with `gateway-access: allowed`
+- `overlays/staging/namespace.yaml`: Defines `staging` namespace with `dev-gateway-access: allowed`
+- `overlays/feature/`: Namespace created dynamically by Azure Function with `dev-gateway-access: allowed`
+
+### ServiceAccount
+
+**Purpose**: Provides foundation for Azure Workload Identity authentication.
 
 **Files**:
-- `namespace.yaml`: Defines the base namespace (transformed by overlays)
 - `serviceaccount.yaml`: PostgreSQL ServiceAccount with Azure Workload Identity annotation
 
 **ServiceAccount Configuration**:

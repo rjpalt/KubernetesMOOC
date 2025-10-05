@@ -1,0 +1,20 @@
+# Staging Namespace Definition
+#
+# This namespace is defined in the staging overlay (not base/shared/) to:
+#   1. Enable staging-specific gateway label (dev-gateway-access=allowed)
+#   2. Prevent Kustomize transformation conflicts
+#   3. Support agc-feature-gateway routing requirements
+#   4. Use different label than production (dev-gateway-access vs gateway-access)
+#
+# Gateway: agc-feature-gateway (development/staging gateway)
+# Routing: Hostname-based via staging.23.98.101.23.nip.io
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: staging
+  labels:
+    app.kubernetes.io/name: staging
+    app.kubernetes.io/part-of: todo-app
+    environment: staging
+    dev-gateway-access: allowed  # CRITICAL: Required for agc-feature-gateway HTTPRoute access
