@@ -131,6 +131,9 @@ patches:
       path: /spec/template/spec/containers/0/env/3/value
       value: "kubemooc-postgres-feature.postgres.database.azure.com"
     - op: replace
+      path: /spec/template/spec/containers/0/env/5/value
+      value: "todoapp_staging"
+    - op: replace
       path: /spec/template/spec/containers/0/env/6/valueFrom/secretKeyRef/name
       value: "postgres-secret-staging"
     - op: replace
