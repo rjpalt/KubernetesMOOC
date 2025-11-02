@@ -1,13 +1,14 @@
 name: Production Deployment
 
 on:
-  # Trigger after CI production pipeline completes successfully on main branch
-  workflow_run:
-    workflows: ["CI Production - Build and Push Images"]
-    types: [completed]
-    branches: [main]
+  # DISABLED: Trigger after CI production pipeline completes successfully on main branch
+  # Uncomment when ready to enable automatic production deployments
+  # workflow_run:
+  #   workflows: ["CI Production - Build and Push Images"]
+  #   types: [completed]
+  #   branches: [main]
   
-  # Manual trigger for testing
+  # Manual trigger only (for controlled production deployments)
   workflow_dispatch:
     inputs:
       environment:
@@ -31,23 +32,21 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    # Only run if the CI workflow completed successfully
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Manual trigger only - no conditions needed
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        # Checkout the actual branch, not the detached commit
-        ref: ${{ github.event.workflow_run.head_branch }}
+        # For manual trigger, checkout the current branch
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0  # Need full history for git operations
     
     - name: Set environment variables
       run: |
-        # Use the branch and commit SHA from the workflow_run event
-        BRANCH_NAME="${{ github.event.workflow_run.head_branch }}"
-        COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+        # For manual trigger, use current branch and commit
+        BRANCH_NAME="${{ github.ref_name }}"
+        COMMIT_SHA="${{ github.sha }}"
         NAMESPACE="project"
         
         echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
