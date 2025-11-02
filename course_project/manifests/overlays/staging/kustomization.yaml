@@ -34,6 +34,21 @@ resources:
 
 
 # Patch HTTPRoute for AGC gateway with hostname-based routing, frontend for clean URLs (no path prefix), and NATS for cost optimization
+
+# Backend Database Configuration Patch (Staging DBaaS)
+#
+# CRITICAL: Array indices are ZERO-BASED
+# Base deployment env array:
+#   env[0] = PORT
+#   env[1] = LOG_LEVEL
+#   env[2] = KUBERNETES_NAMESPACE
+#   env[3] = POSTGRES_HOST          <- Patched here
+#   env[4] = POSTGRES_PORT
+#   env[5] = POSTGRES_DB
+#   env[6] = POSTGRES_USER          <- Patched here
+#   env[7] = POSTGRES_PASSWORD      <- Patched here
+#
+# Always verify indices in base/todo-be/deployment.yaml before modifying
 patches:
 - patch: |-
     - op: replace
@@ -108,21 +123,6 @@ patches:
   target:
     kind: NetworkPolicy
     name: nats
-
-# Backend Database Configuration Patch (Staging DBaaS)
-#
-# CRITICAL: Array indices are ZERO-BASED
-# Base deployment env array:
-#   env[0] = PORT
-#   env[1] = LOG_LEVEL
-#   env[2] = KUBERNETES_NAMESPACE
-#   env[3] = POSTGRES_HOST          <- Patched here
-#   env[4] = POSTGRES_PORT
-#   env[5] = POSTGRES_DB
-#   env[6] = POSTGRES_USER          <- Patched here
-#   env[7] = POSTGRES_PASSWORD      <- Patched here
-#
-# Always verify indices in base/todo-be/deployment.yaml before modifying
 - patch: |-
     - op: replace
       path: /spec/template/spec/containers/0/env/3/value
@@ -140,13 +140,13 @@ patches:
 images:
 - name: kubemooc.azurecr.io/broadcaster
   newName: kubemooc.azurecr.io/broadcaster
-  newTag: staging-PLACEHOLDER
+  newTag: main-494e6e912019b1d0dc61db0ac3991880ceab997f
 - name: kubemooc.azurecr.io/todo-app-be
   newName: kubemooc.azurecr.io/todo-app-be
-  newTag: staging-PLACEHOLDER
+  newTag: main-494e6e912019b1d0dc61db0ac3991880ceab997f
 - name: kubemooc.azurecr.io/todo-app-cron
   newName: kubemooc.azurecr.io/todo-app-cron
-  newTag: staging-PLACEHOLDER
+  newTag: main-494e6e912019b1d0dc61db0ac3991880ceab997f
 - name: kubemooc.azurecr.io/todo-app-fe
   newName: kubemooc.azurecr.io/todo-app-fe
-  newTag: staging-PLACEHOLDER
+  newTag: main-494e6e912019b1d0dc61db0ac3991880ceab997f
