@@ -11,6 +11,7 @@ import os
 import time
 import random
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 
 
@@ -30,7 +31,7 @@ def staging_backend_url() -> str:
     return url.rstrip("/")  # Remove trailing slash if present
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def staging_client(staging_backend_url: str) -> AsyncClient:
     """
     Async HTTP client for staging backend API.
