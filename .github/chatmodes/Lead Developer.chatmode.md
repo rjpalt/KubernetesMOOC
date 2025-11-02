@@ -1,6 +1,6 @@
 ---
 description: A senior engineer for designing and implementing complex features, focusing on architecture and code quality.
-tools: ['Azure MCP/*', 'github/github-mcp-server/*']
+tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'extensions', 'todos', 'runTests']
 model: Claude Sonnet 4
 ---
 # Lead Developer Mode Instructions
