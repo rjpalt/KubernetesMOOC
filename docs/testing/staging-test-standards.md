@@ -105,27 +105,34 @@ All test data must use timestamp-based unique IDs to prevent collisions in paral
 ```python
 # L2 Python tests
 import time
+import random
 
 def generate_unique_id(prefix: str) -> str:
-    """Generate unique ID with timestamp for test data."""
+    """Generate unique ID with timestamp and random suffix for test data.
+    
+    Combines millisecond timestamp with random suffix to prevent collisions
+    when multiple tests run in the same millisecond.
+    """
     timestamp = int(time.time() * 1000)  # Milliseconds
-    return f"{prefix}_{timestamp}"
+    random_suffix = random.randint(1000, 9999)
+    return f"{prefix}_{timestamp}_{random_suffix}"
 
 # Usage
 todo_text = generate_unique_id("test_todo")
-# Result: "test_todo_1704123456789"
+# Result: "test_todo_1704123456789_5432"
 ```
 
 ```typescript
 // L3 TypeScript tests
 function generateUniqueId(prefix: string): string {
   const timestamp = Date.now();
-  return `${prefix}_${timestamp}`;
+  const randomSuffix = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
+  return `${prefix}_${timestamp}_${randomSuffix}`;
 }
 
 // Usage
 const todoText = generateUniqueId('test_todo');
-// Result: "test_todo_1704123456789"
+// Result: "test_todo_1704123456789_5432"
 ```
 
 ### Test Data Prefixes
@@ -163,23 +170,35 @@ async def test_create_todo_persists_in_database(staging_client: AsyncClient):
     assert delete_response.status_code == 204  # Verify cleanup succeeded
 ```
 
-**L3 Tests**: Use centralized cleanup helpers from `cleanup-helpers.ts`.
+**L3 Tests**: Use existing cleanup infrastructure from `utils/cleanup-helpers.ts`.
 
 ```typescript
-import { cleanupTodo } from './cleanup-helpers';
+import { createTodoAndTrack, cleanupTestTodos } from '../utils/cleanup-helpers';
 
-test('creating todo should persist', async ({ page }) => {
-  const todoText = generateUniqueId('e2e');
+test.describe('Feature Tests', () => {
+  let createdTodoIds: string[] = [];
   
-  // Create todo
-  await page.fill('input[name="todo"]', todoText);
-  await page.click('button[type="submit"]');
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    createdTodoIds = [];
+  });
   
-  // Assert
-  await expect(page.locator(`text=${todoText}`)).toBeVisible();
-  
-  // Cleanup
-  await cleanupTodo(page, todoText);
+  test.afterEach(async ({ page }) => {
+    await cleanupTestTodos(page, createdTodoIds);
+  });
+
+  test('creating todo should persist', async ({ page }) => {
+    const todoText = generateUniqueId('e2e');
+    
+    // Create and track todo
+    const todoId = await createTodoAndTrack(page, todoText);
+    createdTodoIds.push(todoId);
+    
+    // Assert
+    await expect(page.locator(`text=${todoText}`)).toBeVisible();
+    
+    // Cleanup handled by afterEach hook
+  });
 });
 ```
 
@@ -280,12 +299,15 @@ test('complete todo CRUD workflow', async ({ page }) => {
 **L2 Tests (pytest)**:
 ```python
 import asyncio
+import time
+from httpx import AsyncClient
 
 async def wait_for_health(client: AsyncClient, timeout: int = 120) -> bool:
-    """Wait for backend health with retry logic."""
+    """Wait for backend health with exponential backoff retry logic."""
     start_time = time.time()
     retry_count = 0
     max_retries = 3
+    backoff_seconds = 1
     
     while time.time() - start_time < timeout:
         try:
@@ -296,6 +318,10 @@ async def wait_for_health(client: AsyncClient, timeout: int = 120) -> bool:
             retry_count += 1
             if retry_count >= max_retries:
                 raise
+            
+            # Exponential backoff: 1s, 2s, 4s, max 30s
+            await asyncio.sleep(backoff_seconds)
+            backoff_seconds = min(backoff_seconds * 2, 30)
         
         await asyncio.sleep(10)  # Check every 10 seconds
     
@@ -412,13 +438,19 @@ test('todo creation workflow', async ({ page }) => {
 **Required Fixtures** (define in `conftest.py`):
 
 ```python
+import os
+import time
+import random
 import pytest
 from httpx import AsyncClient
 
 @pytest.fixture
 def staging_backend_url() -> str:
-    """Staging backend URL from environment."""
-    import os
+    """Staging backend URL from environment.
+    
+    Note: Unlike local test fixtures, staging tests hit deployed
+    services rather than in-process apps, so we use simple HTTP clients.
+    """
     url = os.getenv("STAGING_BACKEND_URL")
     assert url, "STAGING_BACKEND_URL environment variable required"
     return url
@@ -431,10 +463,11 @@ async def staging_client(staging_backend_url: str) -> AsyncClient:
 
 @pytest.fixture
 def unique_id_generator():
-    """Helper for generating unique test IDs."""
+    """Helper for generating unique test IDs with timestamp and random suffix."""
     def _generate(prefix: str) -> str:
-        import time
-        return f"{prefix}_{int(time.time() * 1000)}"
+        timestamp = int(time.time() * 1000)
+        random_suffix = random.randint(1000, 9999)
+        return f"{prefix}_{timestamp}_{random_suffix}"
     return _generate
 ```
 
@@ -488,14 +521,27 @@ jobs:
 ### Test Isolation
 
 **Data Isolation**:
-- Use timestamp-based unique IDs (prevents collisions)
+- Use timestamp-based unique IDs with random suffix (prevents collisions)
 - Clean up test data after each test
 - Avoid shared state between tests
+- **Note**: Some operations (like delete) may require serial execution to prevent race conditions
 
 **Resource Isolation**:
 - L2 tests use AsyncClient (no browser)
 - L3 tests use Playwright browser (no direct API calls)
 - No shared fixtures between L2 and L3
+
+**Serial Execution for Timing-Sensitive Tests**:
+```typescript
+// Force sequential execution for delete tests to prevent race conditions
+test.describe.configure({ mode: 'serial' });
+test.describe('Delete Operations (Isolated)', () => {
+  // Tests run one at a time, preventing interference
+  test('should delete a todo', async ({ page }) => {
+    // Test implementation
+  });
+});
+```
 
 ## Documentation Requirements
 
