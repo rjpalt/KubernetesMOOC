@@ -31,13 +31,13 @@
 - [x] **Actions:**
     - [x] Migrate the main project to GitOps for the `main` branch (Ex 4.8).
     - [ ] **Establish Staging Environment & Promotion Workflow (Ex 4.9):**
-        - [ ] **Epic 1: Foundational Infrastructure Hardening**
-            - [ ] **Work Package 1.1: Production DBaaS Migration:** Migrate the production database to a dedicated, managed DBaaS instance.
-            - [ ] **Work Package 1.2: Staging Environment Scaffolding:** Create the `staging` namespace, Kustomize overlay, and configure a separate database and unique ingress routing.
-        - [ ] **Epic 2: Staging Environment CI/CD Integration & Validation**
-            - [ ] **Work Package 2.1: Automated Staging Deployment:** Create a CI/CD workflow (triggered on merge to `main`) that deploys release candidates to the `staging` GitHub environment.
-            - [ ] **Work Package 2.2: Advanced Test Suite Integration:** Integrate L2 (service integration) and L3 (E2E) smoke tests into the staging deployment pipeline.
-        - [ ] **Epic 3: Production Promotion & Workflow Optimization**
+        - [x] **Epic 1: Foundational Infrastructure Hardening** ✅ **COMPLETE**
+            - [x] **Work Package 1.1: Production DBaaS Migration:** Migrate the production database to a dedicated, managed DBaaS instance.
+            - [x] **Work Package 1.2: Staging Environment Scaffolding:** Create the `staging` namespace, Kustomize overlay, and configure a separate database and unique ingress routing.
+        - [ ] **Epic 2: Staging Environment CI/CD Integration & Validation** 🔄 **IN PROGRESS**
+            - [x] **Work Package 2.1: Automated Staging Deployment:** Create a CI/CD workflow (triggered on merge to `main`) that deploys release candidates to the `staging` GitHub environment. *(Awaiting first deployment validation)*
+            - [ ] **Work Package 2.2: Advanced Test Suite Integration:** Integrate L2 (service integration) and L3 (E2E) smoke tests into the staging deployment pipeline. *(Ready to start)*
+        - [ ] **Epic 3: Production Promotion & Workflow Optimization** 📋 **NEXT**
             - [ ] **Work Package 3.1: Staging-to-Production Promotion:** Implement a manual promotion process using a `production` GitHub environment that triggers an Argo Rollouts canary deployment.
 
 ### Phase 6: Production Hardening & CI/CD Optimization

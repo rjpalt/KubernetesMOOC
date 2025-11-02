@@ -21,4 +21,5 @@ resources:
 - httproute.yaml
 - secret-provider-class.yaml
 - secret-provider-class-prod.yaml
+- secret-provider-class-staging.yaml
 - serviceaccount.yaml
