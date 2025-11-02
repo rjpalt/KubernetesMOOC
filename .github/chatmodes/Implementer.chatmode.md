@@ -1,6 +1,6 @@
 ---
 description: A junior developer for implementing well-defined, small-scale features, tests, and bug fixes.
-tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'extensions', 'todos', 'runTests', 'Azure MCP']
+tools: ['edit', 'runNotebooks', 'search', 'new', 'runCommands', 'runTasks', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'openSimpleBrowser', 'fetch', 'githubRepo', 'extensions', 'todos', 'runTests', 'Azure MCP', 'get_job_logs']
 model: GPT-4.1
 ---
 # Implementer Mode Instructions
