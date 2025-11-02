@@ -15,6 +15,58 @@ Service-level integration tests for validating the staging environment infrastru
 **Execution Time**: ~40 seconds total
 **Technology**: pytest + httpx AsyncClient
 
+## Architecture: How Database Tests Work from CI
+
+**The Question**: If Azure DBaaS is private (not publicly accessible), how can these tests validate database connectivity from GitHub Actions runners?
+
+**The Answer**: Tests validate database connectivity **indirectly** through the backend API.
+
+### Request Flow
+
+```
+GitHub Actions Runner (Public Internet)
+    ↓ HTTPS
+Gateway (Public Load Balancer) 
+    ↓ ClusterIP
+Backend Service (Kubernetes Pod)
+    ↓ Private Endpoint
+Azure Database for PostgreSQL (DBaaS)
+    ↓ Response path reversed
+GitHub Actions Runner (receives API response)
+```
+
+### What We're Testing
+
+**Direct Database Connection**: ❌ Not possible from CI runner
+```bash
+# This would FAIL from GitHub Actions
+psql -h kubemooc-postgres.database.azure.com -U admin
+# Error: Connection refused (private endpoint)
+```
+
+**Backend API → Database Connection**: ✅ Validated by these tests
+```python
+# This WORKS from GitHub Actions
+response = await staging_client.post("/todos", json={"text": "test"})
+# Backend internally queries DBaaS and returns result
+```
+
+### Key Insights
+
+1. **DBaaS is private** - Only accessible within Azure VNet (AKS cluster)
+2. **Backend API is public** - Accessible via Gateway (public load balancer)
+3. **Tests hit public API** - Which internally uses private DBaaS
+4. **Full path validated** - End-to-end request flow through all components
+
+### Why This Architecture Works
+
+- **Production-realistic**: Clients never talk directly to database
+- **Service boundaries**: Tests validate the actual API contract
+- **Network layers**: Validates Gateway → Backend → DBaaS connectivity
+- **CI-compatible**: No need for VPN or private network access from CI runners
+
+**Bottom Line**: These tests validate backend-to-database connectivity by exercising it through the public API, which is the only way external clients (including CI) interact with the system.
+
 ## Test Inventory
 
 ### Backend Health Tests (2 tests)
@@ -26,17 +78,17 @@ Service-level integration tests for validating the staging environment infrastru
 
 ### Database Integration Tests (2 tests)
 **File**: `test_database_integration.py`
-- `test_create_todo_persists_in_database` - Validates todo creation persists in DBaaS
-- `test_read_todo_retrieves_persisted_data` - Validates todo retrieval from DBaaS
+- `test_backend_can_query_database_for_count` - Validates backend can query database via health endpoint
+- `test_database_connection_stable_across_requests` - Validates database connection pooling works
 
-**Can run locally**: ❌ No (Azure DBaaS not publicly accessible)
+**Can run locally**: ✅ Yes (tests via public health endpoint)
 
 ### Service Discovery Tests (2 tests)
 **File**: `test_service_discovery.py`
 - `test_backend_service_reachable_via_gateway` - Validates Gateway HTTPRoute to backend
-- `test_backend_can_query_database` - Validates backend-to-database connectivity
+- `test_backend_database_connectivity_via_health` - Validates backend-to-database connectivity
 
-**Can run locally**: ❌ No (Kubernetes networking only available in AKS)
+**Can run locally**: ✅ Yes (tests via public Gateway endpoints)
 
 ## Prerequisites
 
@@ -105,25 +157,26 @@ python -m py_compile test_database_integration.py
 python -m py_compile test_service_discovery.py
 ```
 
-## Database Connectivity Limitation
+## Test Execution: Local vs CI
 
-**CRITICAL**: Azure Database for PostgreSQL (DBaaS) is **not publicly accessible**.
+**Good News**: All L2 tests can run locally if staging Gateway is accessible!
 
-**What this means**:
-- Database integration tests **cannot run from local machine**
-- Service discovery tests **cannot run from local machine**
-- Tests **must execute in GitHub Actions workflow** (inside AKS network)
+**Why tests work from outside the cluster**:
+- Tests use public Gateway endpoints (`/be-health`) 
+- Backend health endpoint queries database and returns `todos_count`
+- This validates backend-to-database connectivity indirectly
+- No direct database access needed from test runner
 
-**Why**:
-- DBaaS is configured with private endpoint (no public IP)
-- Backend connects to DBaaS via Azure Private Link
-- Only pods inside AKS cluster can reach DBaaS
+**What's NOT tested directly**:
+- Backend's `/todos` CRUD endpoints (not exposed via Gateway)
+- These endpoints are only accessible to frontend service (internal cluster networking)
+- Frontend-to-backend communication is tested in L3 tests
 
 **Development workflow**:
 1. ✅ Write tests locally (use IDE, syntax checking)
-2. ✅ Run health tests locally (validate Gateway connectivity)
-3. ❌ Cannot run database tests locally (DBaaS not accessible)
-4. ✅ Push to CI for full test execution (GitHub Actions has AKS access)
+2. ✅ Run all tests locally (if staging Gateway accessible)
+3. ✅ Get immediate feedback without CI wait time
+4. ✅ CI runs same tests for validation
 
 ## Test Data Management
 

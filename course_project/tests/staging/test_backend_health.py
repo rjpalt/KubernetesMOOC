@@ -70,11 +70,11 @@ async def test_health_endpoint_includes_todo_count(staging_client: AsyncClient):
         f"Health check failed: {response.status_code}"
     
     health_data = response.json()
-    assert "todo_count" in health_data, \
-        f"Missing 'todo_count' field in health response: {health_data}"
+    assert "todos_count" in health_data, \
+        f"Missing 'todos_count' field in health response: {health_data}"
     
-    assert isinstance(health_data["todo_count"], int), \
-        f"todo_count must be integer, got: {type(health_data['todo_count'])}"
+    assert isinstance(health_data["todos_count"], int), \
+        f"todos_count must be integer, got: {type(health_data['todos_count'])}"
     
-    assert health_data["todo_count"] >= 0, \
-        f"todo_count must be non-negative, got: {health_data['todo_count']}"
+    assert health_data["todos_count"] >= 0, \
+        f"todos_count must be non-negative, got: {health_data['todos_count']}"

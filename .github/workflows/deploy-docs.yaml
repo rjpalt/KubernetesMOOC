@@ -2,11 +2,11 @@
 name: Deploy Documentation to Pages
 
 on:
-  # Runs on           echo "📊 Processing coverage reports for docs..."ushes targeting the default branch
-  push:
-    branches: ["main"]
-    paths:
-      - 'course_project/**'
+  # TEMPORARILY DISABLED - Manual trigger only until workflow is fixed
+  # push:
+  #   branches: ["main"]
+  #   paths:
+  #     - 'course_project/**'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:

@@ -47,38 +47,31 @@ async def test_backend_service_reachable_via_gateway(staging_client: AsyncClient
 
 
 @pytest.mark.asyncio
-async def test_backend_can_query_database(
-    staging_client: AsyncClient,
-    unique_id_generator
-):
+async def test_backend_database_connectivity_via_health(staging_client: AsyncClient):
     """
-    Verify backend can communicate with database (service-to-service).
+    Verify backend-to-database connectivity through health endpoint.
     
     Steps:
-        1. Create todo (requires database write)
-        2. Read todo (requires database read)
-        3. Verify both operations succeed
-        4. Cleanup
+        1. Request backend health endpoint
+        2. Verify health endpoint queries database (todos_count field)
+        3. Verify response indicates healthy database connection
     
     Expected Result:
-        Backend successfully performs database operations
+        Backend can successfully query database and return count
     """
-    # Create requires database write
-    todo_text = unique_id_generator("test_svc_discovery")
-    create_response = await staging_client.post(
-        "/todos",
-        json={"text": todo_text}
-    )
-    assert create_response.status_code == 201, \
-        f"Backend cannot write to database: {create_response.status_code}"
+    response = await staging_client.get("/be-health")
     
-    todo_id = create_response.json()["id"]
+    assert response.status_code == 200, \
+        f"Backend health check failed: {response.status_code}"
     
-    # Read requires database query
-    read_response = await staging_client.get(f"/todos/{todo_id}")
-    assert read_response.status_code == 200, \
-        f"Backend cannot read from database: {read_response.status_code}"
+    health_data = response.json()
     
-    # Cleanup
-    delete_response = await staging_client.delete(f"/todos/{todo_id}")
-    assert delete_response.status_code == 204
+    # Verify database connectivity indicator
+    assert "todos_count" in health_data, \
+        f"Backend cannot query database - missing todos_count: {health_data}"
+    
+    assert isinstance(health_data["todos_count"], int), \
+        f"Invalid todos_count type: {type(health_data['todos_count'])}"
+    
+    assert health_data["status"] == "healthy", \
+        f"Backend reports unhealthy status: {health_data['status']}"
